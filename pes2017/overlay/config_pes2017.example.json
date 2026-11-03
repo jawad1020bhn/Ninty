@@ -1,0 +1,12 @@
+{
+  "_comment": "Example config.json for PES 2017. Rename to config.json in the app folder, then adjust the two paths. Setup can also write these for you.",
+  "save_dir": "%USERPROFILE%\\Documents\\KONAMI\\Pro Evolution Soccer 2017\\save",
+  "work": "%USERPROFILE%\\Documents\\TheGaffer\\work",
+  "edit_dat": "%USERPROFILE%\\Documents\\KONAMI\\Pro Evolution Soccer 2017\\save\\EDIT00000000",
+  "pes_exe": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Pro Evolution Soccer 2017\\PES2017.exe",
+  "pes_process": "PES2017",
+  "pes17_date_order": "dmy",
+  "auto_menu": false,
+  "pes17_allow_writes": false,
+  "port": 8766
+}
