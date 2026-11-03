@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "rea": {
+      "command": "node",
+      "args": ["scripts/rea.mjs", "--mcp"],
+      "env": {
+        "REA_OBJDUMP_COMMAND": "/usr/bin/objdump"
+      }
+    }
+  }
+}

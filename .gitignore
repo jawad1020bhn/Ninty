@@ -1,0 +1,36 @@
+# ---------------------------------------------------------------------------
+# Dependencies
+# ---------------------------------------------------------------------------
+node_modules/
+node_modules/.cache/
+
+# ---------------------------------------------------------------------------
+# REA / reverse-engineering working output
+# ---------------------------------------------------------------------------
+# Evidence bundles, exported snapshots and extracted artifacts are regenerated
+# from the analyzed target and can be very large. Keep them out of Git and
+# publish the ones a task actually needs.
+.rea/
+rea-evidence/
+*.evidence.json
+*.evidence-bundle/
+*-evidence-bundle/
+
+# Extracted artifacts / analysis exports (binary blobs)
+artifacts/
+extracted/
+decompiled/
+snapshots/
+
+# ---------------------------------------------------------------------------
+# Logs, temp and local environment
+# ---------------------------------------------------------------------------
+*.log
+npm-debug.log*
+npm-shrinkwrap.json.bak
+.cache/
+tmp/
+.DS_Store
+.env
+.env.*
+!.env.example

@@ -1,0 +1,21 @@
+{
+  "name": "ninty",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Ninty toolchain: reverse-engineering harness powered by REA (rea-agents).",
+  "type": "module",
+  "engines": {
+    "node": "^22.23.4 || ^24.22.1 || >=26.12.1"
+  },
+  "scripts": {
+    "rea": "node scripts/rea.mjs",
+    "rea:mcp": "node scripts/rea.mjs --mcp",
+    "rea:doctor": "node scripts/rea.mjs doctor",
+    "rea:check": "node scripts/rea-check.mjs",
+    "postinstall": "node scripts/rea.mjs --version",
+    "rea:skill": "node scripts/rea-skill.mjs"
+  },
+  "dependencies": {
+    "rea-agents": "6.8.0"
+  }
+}
