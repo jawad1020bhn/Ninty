@@ -48,6 +48,93 @@ PATCHES = [
     # ---------------------------------------------------------------- crypto
     ('lib/pescrypt.py', "M32 = 0xffffffff", KEY_PES17_LINES, 1),
 
+    # A REAL t99p17v20 save proved PES 2017 uses a 176-byte file header
+    # (no gameVersionString), not the 208-byte PES 2021 header.  Without this
+    # the app cannot open any real PES 2017 save at all.
+    ('lib/pescrypt.py',
+     "ENC_HDR = 320\nFILE_HDR = 208",
+     """ENC_HDR = 320
+FILE_HDR = 208
+FILE_HDR_PES17 = 176   # PES 2017 has no gameVersionString in header.dat""", 1),
+
+    ('lib/pescrypt.py',
+     """def decrypt_bytes(f, master=KEY_PES21):
+    if len(f) < ENC_HDR + FILE_HDR:
+        raise ValueError('file too small')
+    eh = _crypt_enc_header(f[:ENC_HDR], master)
+    rk = _rolling(eh)
+    pos = ENC_HDR
+    fh = crypt(_bkey(rk, FILE_HDR), f[pos:pos + FILE_HDR])
+    pos += FILE_HDR
+    ds, ls, dsc, ss = struct.unpack_from('<4I', fh, 64)
+    ss *= 2
+    if pos + ds + ls + dsc + ss != len(f):
+        raise ValueError('wrong key or not a save (block sizes do not match)')
+    out = {'encryptHeader.dat': eh, 'header.dat': fh}
+    for name, ln, p in (('description.dat', dsc, 0), ('logo.png', ls, 1), ('data.dat', ds, 2), ('version.txt', ss, 3)):
+        out[name] = crypt(_bkey(rk, p), f[pos:pos + ln])
+        pos += ln
+    return out""",
+     """def _decrypt_bytes(f, master, file_hdr):
+    if len(f) < ENC_HDR + file_hdr:
+        raise ValueError('file too small')
+    eh = _crypt_enc_header(f[:ENC_HDR], master)
+    rk = _rolling(eh)
+    pos = ENC_HDR
+    fh = crypt(_bkey(rk, file_hdr), f[pos:pos + file_hdr])
+    pos += file_hdr
+    ds, ls, dsc, ss = struct.unpack_from('<4I', fh, 64)
+    ss *= 2
+    # A wrong key + wrong header size can coincidentally add up to len(f).
+    # Reject implausible block sizes before touching any large payload.
+    if not (0 < ds < 200000000 and 0 <= ls < 5000000 and 0 <= dsc < 1000000
+            and 0 < ss < 1000):
+        raise ValueError('wrong key or not a save (implausible block sizes)')
+    if pos + ds + ls + dsc + ss != len(f):
+        raise ValueError('wrong key or not a save (block sizes do not match)')
+    out = {'encryptHeader.dat': eh, 'header.dat': fh}
+    for name, ln, p in (('description.dat', dsc, 0), ('logo.png', ls, 1), ('data.dat', ds, 2), ('version.txt', ss, 3)):
+        out[name] = crypt(_bkey(rk, p), f[pos:pos + ln])
+        pos += ln
+    return out
+
+
+def decrypt_bytes(f, master=KEY_PES21):
+    # Try both file-header sizes: 208 B (PES 2021 / FL) and 176 B (PES 2017).
+    last = None
+    for hdr in (FILE_HDR, FILE_HDR_PES17):
+        try:
+            return _decrypt_bytes(f, master, hdr)
+        except ValueError as e:
+            last = e
+    raise ValueError(str(last))""", 1),
+
+    ('lib/pescrypt.py',
+     """def encrypt_parts(parts, master=KEY_PES21):
+    fh = bytearray(parts['header.dat'])
+    struct.pack_into('<4I', fh, 64, len(parts['data.dat']), len(parts['logo.png']), len(parts['description.dat']), len(parts['version.txt']) // 2)
+    eh = parts['encryptHeader.dat']
+    rk = _rolling(eh)
+    out = [_crypt_enc_header(eh, master), crypt(_bkey(rk, FILE_HDR), bytes(fh))]
+    for name, p in (('description.dat', 0), ('logo.png', 1), ('data.dat', 2), ('version.txt', 3)):
+        out.append(crypt(_bkey(rk, p), parts[name]))
+    return b''.join(out)""",
+     """def encrypt_parts(parts, master=KEY_PES21):
+    fh = bytearray(parts['header.dat'])
+    # PES 2017 stores a 176 B file header.  The header length itself tells us
+    # which key-derivation param to use, so a decrypted PES 2017 folder
+    # re-encrypts correctly with no extra marker file.
+    if len(fh) not in (FILE_HDR, FILE_HDR_PES17):
+        fh = bytearray((bytes(fh) + bytes(FILE_HDR))[:FILE_HDR])
+    file_hdr = len(fh)
+    struct.pack_into('<4I', fh, 64, len(parts['data.dat']), len(parts['logo.png']), len(parts['description.dat']), len(parts['version.txt']) // 2)
+    eh = parts['encryptHeader.dat']
+    rk = _rolling(eh)
+    out = [_crypt_enc_header(eh, master), crypt(_bkey(rk, file_hdr), bytes(fh))]
+    for name, p in (('description.dat', 0), ('logo.png', 1), ('data.dat', 2), ('version.txt', 3)):
+        out.append(crypt(_bkey(rk, p), parts[name]))
+    return b''.join(out)""", 1),
+
     # ------------------------------------------------------------ Save factory
     ('lib/mlwrite.py',
      "class Save:\n    _RO_CACHE = {}\n\n    def __init__(self, folder, ro=False):",
@@ -267,6 +354,75 @@ def state(slot):
     _CUR_SLOT['slot'] = slot""", 1),
 
     ('server.py',
+     """def state(slot):
+    _CUR_SLOT['slot'] = slot""",
+     """def pes17_tools_info(slot):
+    # Real-save PES 2017 info (read side), independent of the FL26 views.
+    import pes17_write
+    src = os.path.join(CFG['save_dir'], slot)
+    c = pes17_write.Pes17Container.load(src)
+    ep = CFG.get('edit_dat') or os.path.join(CFG['save_dir'], 'EDIT00000000')
+    ec = None
+    if os.path.isfile(ep):
+        try:
+            ec = pes17_write.load_edit(ep)
+        except Exception as ex:
+            print('[pes17] EDIT load:', ex)
+    return pes17_write.info(c, ec)
+
+
+def pes17_tools_apply(slot, ops, dry=False):
+    # Measured, round-trip-verified PES 2017 writes.  All FL26 write
+    # endpoints remain blocked by pes17_readonly().
+    import pes17_write
+    src = os.path.join(CFG['save_dir'], slot)
+    with LOCK:
+        c = pes17_write.Pes17Container.load(src)
+        ep = CFG.get('edit_dat') or os.path.join(CFG['save_dir'], 'EDIT00000000')
+        ec = None
+        if os.path.isfile(ep):
+            try:
+                ec = pes17_write.load_edit(ep)
+            except Exception:
+                ec = None
+        results, changed = pes17_write.apply_ops(c, ops, ec.data if ec else None)
+        if dry:
+            c.encrypt()          # prove the modified container re-encrypts
+            return dict(ok=True, dry=True, changed_bytes=changed, results=results)
+        r = pes17_write.save_with_backup(src, c, CFG['work'])
+        PCACHE.clear()
+        _REV[0] += 1
+        r.update(dict(changed_bytes=changed, results=results))
+        return r
+
+
+def state(slot):
+    _CUR_SLOT['slot'] = slot""", 1),
+
+    ('server.py',
+     """            if u.path == '/api/state':
+                slot = parse_qs(u.query).get('slot', [''])[0]
+                return self.send(200, state(slot))""",
+     """            if u.path == '/api/pes17/info':
+                return self.send(200, pes17_tools_info(parse_qs(u.query).get('slot', [''])[0]))
+            if u.path == '/api/pes17/offers':
+                r = pes17_tools_info(parse_qs(u.query).get('slot', [''])[0])
+                return self.send(200, dict(ok=True, offers=r['offers'], teams=r['teams']))
+            if u.path == '/api/state':
+                slot = parse_qs(u.query).get('slot', [''])[0]
+                return self.send(200, state(slot))""", 1),
+
+    ('server.py',
+     """            if self.path == '/api/lan/set':
+                return self.send(200, lan_set(body))""",
+     """            if self.path == '/api/lan/set':
+                return self.send(200, lan_set(body))
+            if self.path == '/api/pes17/write':
+                return self.send(200, pes17_tools_apply(body.get('slot'),
+                                                        body.get('ops') or [],
+                                                        bool(body.get('dry'))))""", 1),
+
+    ('server.py',
      """    r = mlsave.read_save(d, None)
     s = mlwrite.Save(d)""",
      """    if pes17.is_pes17(d):
@@ -274,7 +430,14 @@ def state(slot):
             pes17_auto_db(d)
         except Exception as ex:
             print('[pes17] database:', ex)
-        r = pes17.read_save(d, date_order=CFG.get('pes17_date_order', 'dmy'))
+        ed = None
+        try:
+            ep = CFG.get('edit_dat') or os.path.join(CFG['save_dir'], 'EDIT00000000')
+            if ep and os.path.isfile(ep):
+                ed = pes17._edit_data(ep)
+        except Exception as ex:
+            print('[pes17] EDIT data:', ex)
+        r = pes17.read_save(d, date_order=CFG.get('pes17_date_order', 'dmy'), edit_data=ed)
     else:
         r = mlsave.read_save(d, None)
     s = mlwrite.Save(d)""", 1),
@@ -476,7 +639,7 @@ def players_data(slot):
     # ------------------------------------------------------------------- UI
     ('static/index.html',
      """if(S.layout&&S.layout.game27){let seen=false;""",
-     """if(S.layout&&S.layout.pes17){banner('<b>PES 2017 save &mdash; read-only mode.</b> The app reads your club, squad, players and standings from the PES 2017 Master League save and its EDIT file, and runs the whole career side (inbox, negotiations, board, press, scouting) in the app. Writing into PES 2017 saves is disabled until its save tables are mapped, so your save cannot be damaged. Do transfers, tactics and contracts in the game.',false);}else if(S.layout&&S.layout.game27){let seen=false;""", 1),
+     """if(S.layout&&S.layout.pes17){banner('<b>PES 2017 save.</b> The app reads your club, squad, players, shirt numbers, league table and negotiations from your real Master League + EDIT files. FL26-style writes (transfers, tactics, contracts) stay blocked; the measured PES 2017 write tools are here: <a href="/pes17.html" style="color:#fff;text-decoration:underline">PES 2017 tools</a>. Always keep a backup.',false);}else if(S.layout&&S.layout.game27){let seen=false;""", 1),
 ]
 
 
@@ -503,6 +666,8 @@ def apply(target):
     for rel, dest in (
         ('lib/pes17.py', 'lib/pes17.py'),
         ('lib/pes17_layout.py', 'lib/pes17_layout.py'),
+        ('lib/pes17_write.py', 'lib/pes17_write.py'),
+        ('static/pes17.html', 'static/pes17.html'),
         ('README_PES2017.txt', 'README_PES2017.txt'),
         ('config_pes2017.example.json', 'config_pes2017.example.json'),
     ):
@@ -512,12 +677,12 @@ def apply(target):
         shutil.copy2(src, dst)
 
     with open(os.path.join(target, 'VERSION.txt'), 'w', encoding='utf-8') as f:
-        f.write('pc414-pes17-ro (2026-11-03)\n')
+        f.write('pc414-pes17-realwrite (2026-11-03)\n')
 
     # Syntax-check all patched Python files in memory (no __pycache__ in the
     # shipped package, no execution of the app).
     for fn in ('server.py', 'lib/pescrypt.py', 'lib/mlwrite.py',
-               'lib/pes17.py', 'lib/pes17_layout.py'):
+               'lib/pes17.py', 'lib/pes17_layout.py', 'lib/pes17_write.py'):
         with open(os.path.join(target, fn), encoding='utf-8') as f:
             compile(f.read(), fn, 'exec')
     print('PES 2017 patch applied to', target, '(%d replacements)' %

@@ -105,6 +105,18 @@ def make_parts(data, desc, name='ML'):
     }
 
 
+def make_parts17(data=None, desc=None):
+    """Same parts as make_parts() but with the 176 B PES 2017 file header.
+
+    Real t99p17v20 saves proved PES 2017 uses 176 B, not the 208 B PES 2021
+    header.  Tests use this so the crypto path is exercised without Windows.
+    """
+    p = make_parts(data if data is not None else make_ml_data(),
+                   desc if desc is not None else DESC)
+    p['header.dat'] = p['header.dat'][:176]
+    return p
+
+
 def write_dec(folder, ml=True, marker=True):
     os.makedirs(folder, exist_ok=True)
     data = make_ml_data() if ml else make_edit_data()

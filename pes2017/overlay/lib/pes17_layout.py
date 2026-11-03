@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """PES 2017 save layout helper for The Gaffer.
 
-Use this when you want to unlock *writing* to PES 2017 saves.  It reads a
+Use this when you want to unlock *more* writing to PES 2017 saves.  It reads a
 decrypted Master League save and reports the structures that are known, and it
 can diff two decrypted saves so that one in-game action can be traced to the
-exact bytes that changed.
+exact bytes that changed.  The tables already measured (negotiations, shirt
+numbers, squad slots) are writable through lib/pes17_write.py; everything else
+still needs a before/after pair.
 
 Examples
 --------
@@ -34,13 +36,20 @@ def _read(folder, name='data.dat'):
         return f.read()
 
 
-def info(folder):
+def info(folder, edit_src=None):
     d = _read(folder)
-    r = pes17.read_save(folder)
+    edit_data = None
+    if edit_src:
+        try:
+            edit_data = pes17._edit_data(edit_src)
+        except Exception:
+            edit_data = None
+    r = pes17.read_save(folder, edit_data=edit_data)
     teams = pes17.team_records(d)
-    blocks = pes17.standings(d, teams)
+    blocks = pes17.standings(d, teams, edit_data)
     out = dict(
-        game='PES 2017', read_only=True,
+        game='PES 2017', read_only=False,
+        write_mode='measured tables only (see lib/pes17_write.py)',
         files={f: os.path.getsize(os.path.join(folder, f))
                for f in sorted(os.listdir(folder)) if os.path.isfile(os.path.join(folder, f))},
         data_size=len(d),
@@ -52,11 +61,20 @@ def info(folder):
         squad=r.get('squad', []),
         standings=[dict(league=b['league'], offset=b['offset'], teams=len(b['rows']),
                         first=[x['club'] for x in b['rows'][:5]]) for b in blocks],
-        known_write_tables=[],
-        note=('Writing is disabled. Points/goals/played fields inside the club '
-              'record, the standing structures, budget, contracts, transfers '
-              'and formation/tactics blocks still need to be measured on real '
-              'PES 2017 save pairs.'),
+        known_write_tables=[
+            dict(name='transfer negotiations', offset=pes17.OFFERS0,
+                 end=pes17.OFFERS_END, block=pes17.OFFER_BLOCK,
+                 slot=pes17.OFFER_SLOT, slots=pes17.OFFER_SLOTS),
+            dict(name='shirt numbers', offset='club+' + str(pes17.SHIRT_OFF),
+                 size=pes17.SHIRT_SLOTS),
+            dict(name='squad slots (experimental)',
+                 offset='club+' + str(pes17.SQUAD_OFF),
+                 size=pes17.SQUAD_SLOTS * 8),
+        ],
+        note=('Measured writes: negotiations, shirt numbers and (experimental) '
+              'squad slots. Points/goals/played, budget, contracts, forced '
+              'transfers and formation/tactics blocks still need before/after '
+              'PES 2017 save pairs. All FL26-style writes remain refused.'),
     )
     return out
 
@@ -108,9 +126,10 @@ def main():
     ap.add_argument('mode', choices=('info', 'diff', 'edit'))
     ap.add_argument('paths', nargs='+')
     ap.add_argument('--json', help='write the report to this JSON file')
+    ap.add_argument('--edit', help='EDIT00000000 (for competition names / standings offsets)')
     args = ap.parse_args()
     if args.mode == 'info':
-        r = info(args.paths[0])
+        r = info(args.paths[0], args.edit)
     elif args.mode == 'diff':
         if len(args.paths) < 2:
             ap.error('diff needs two folders')

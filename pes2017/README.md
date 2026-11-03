@@ -1,114 +1,126 @@
-# The Gaffer — PES 2017 compatibility pack
+# The Gaffer — PES 2017 compatibility pack (real-save build)
 
-This directory contains the source of a **read-only PES 2017 port** of
-`TheGaffer_pc414_20261103.zip` (The Gaffer pc414, a Football Manager style
-companion app for Football Life 26 / PES 2021 and FL27 Master League).
+Source of the PES 2017 port of `TheGaffer_pc414_20261103.zip` (a Football
+Manager style companion for Football Life 26 / PES 2021 / FL27 Master League).
+
+**This build was rebuilt after the user supplied real files** in
+`Needed files/`: `ML00000011`, `EDIT00000000` and `info.txt`
+(patch `t99p17v20`, game folder `D:\jawedfolder\Games\Pro Evolution Soccer 2017`).
+The first build was synthetic-only; the real files exposed a blocking crypto bug
+and let us measure the actual tables. Full measurements and honest validation
+status: [`REAL_SAVE_REPORT.md`](REAL_SAVE_REPORT.md).
 
 ## TL;DR
 
-| | PES 2021 / FL26 / FL27 (original) | PES 2017 (this build) |
+| | original FL26/PES2021 | this build on real PES 2017 |
 |---|---|---|
-| Save container decryption | PES 2021 key (+ FL27 key) | **PES 2017 key, auto-detected** |
-| Club, league, date, next competition | read | **read** |
-| Squad (players, names, ages, attributes, OVR) | read from save + F7 dump | **read from save + `EDIT00000000`** |
-| League table | full | **positions only** (points/goals not mapped) |
-| Transfers, loans, contracts, tactics, training, AI moves | written into the save | **blocked** (different save layout) |
-| App-side career (inbox, negotiations, board, press, scouting, awards...) | works | **works** |
+| container key | PES 2021 / FL27 | **PES 2017 key, auto-detected** |
+| file header | 208 B | **176 B (fixed)** |
+| club, date, league, next competition | read | **read** |
+| squad + names/attributes | save + Sider dump | **save + `EDIT00000000` (20,018 players)** |
+| shirt numbers | read | **read + write** |
+| league table | full | **20 rows, positions only** (points not mapped) |
+| transfer negotiations | app-side | **read + write (measured slots)** |
+| transfers, loans, contracts, tactics, formation, budgets, training | written | **blocked** (needs save pairs) |
+| app-side career (inbox, board, press, scouting, awards…) | works | **works** |
 
-Everything that would write into a PES 2017 Master League save is refused by
-three independent guards, so the save cannot be corrupted.
+Real result: Birmingham City FC, `10/1/2029`, 26-player squad with real names,
+Sky Bet Championship table (20 rows), 0 active negotiations.
 
 ## Files
 
 ```
 pes2017/
-  overlay/lib/pes17.py               core: keys, ML save reader, EDIT importer, read-only Save adapter
-  overlay/lib/pes17_layout.py        diagnostic CLI: info / diff / edit (for mapping write tables)
-  overlay/README_PES2017.txt         user documentation, shipped in the zip
-  overlay/config_pes2017.example.json  example config.json for PES 2017
-  patch.py                           exact, asserted text patches for the pc414 sources
+  overlay/lib/pes17.py               keys, ML/EDIT readers, measured write tables, read-only Save adapter
+  overlay/lib/pes17_layout.py        diagnostic CLI: info / diff / edit (maps before/after save pairs)
+  overlay/lib/pes17_write.py         real-save container I/O + whitelisted, round-trip-verified writes
+  overlay/static/pes17.html          PES 2017 tools page (read + write UI)
+  overlay/README_PES2017.txt         user docs, shipped in the zip
+  overlay/config_pes2017.example.json
+  patch.py                           40 asserted text patches for pc414 sources
   build.py                           extract original zip -> patch -> dist/TheGaffer_pes2017_pc414.zip
   tests/sample.py                    synthetic but structurally faithful PES 2017 saves
   tests/test_pes17.py                15 unit tests (crypto, detection, parsing, EDIT DB, write guard)
+  tests/test_pes17_write.py          10 tests: 176 B header, container round-trip, real-file reads/writes
+  REAL_SAVE_REPORT.md                measurements + validation status
   dist/TheGaffer_pes2017_pc414.zip   the ready-to-unzip Windows build
 ```
 
-Rebuild after changing anything in `overlay/` or `patch.py`:
+Rebuild / test:
 
 ```bash
 python3 pes2017/build.py
 python3 -m unittest discover -s pes2017/tests -p 'test_*.py' -v
 ```
 
-`patch.py` fails loudly if the upstream pc414 source changes, so the patch can
-never be applied half-way by accident.
+`patch.py` fails loudly if upstream pc414 drifts. The build is syntax-checked
+in memory and contains no `__pycache__` / `.pyc`.
 
-## What was changed in the original program
+## What changed in the original program
 
-* `lib/pescrypt.py` — added `KEY_PES17` (from pesXdecrypter `src/masterkey.c`,
-  public domain), `key_candidates()` and `key_for()`. The container algorithm
-  (MT19937 + rolling XOR, 320 B encryption header, 208 B file header) is the
-  same for PES 2016–2021; only the 64-byte master key differs.
-* `server.py` — decryption tries all known keys and writes the winning key name
-  into `gaffer_key.txt`; encryption uses that key and refuses PES 2017 writes;
-  `_game_of()` recognises `pes17`; `data/pes17/*.json` player database is built
-  automatically from `EDIT00000000`; Setup finds PES 2017 save folders and
-  process names; the state endpoint reads PES 2017 club/squad/standings;
-  `--host` was added for LAN/preview hosting.
+* `lib/pescrypt.py` — `KEY_PES17`, `key_candidates()`, `key_for()`; **dual
+  header sizes** (208 B for PES 2021/FL, 176 B for PES 2017) in
+  `decrypt_bytes()` / `encrypt_parts()`. Decrypt → re-encrypt of both real user
+  files is byte-identical.
+* `server.py` — decryption tries all keys, remembers the winner in
+  `gaffer_key.txt`; `_game_of()` recognises `pes17`; `data/pes17/*.json` is
+  built automatically from `EDIT00000000`; Setup finds PES 2017 paths; state
+  reads real club/squad/standings (with EDIT-derived competition names); new
+  `/api/pes17/info`, `/api/pes17/offers`, `/api/pes17/write` endpoints;
+  `--host` for LAN/preview.
 * `lib/mlwrite.py` — `Save.__new__` returns `pes17.Pes17Save` for PES 2017
-  folders; this single hook redirects **all 169** `mlwrite.Save(...)` calls.
-  `flag_map()` returns `{}` on PES 2017 data (no FL26 zlib chain).
-* `lib/pes17.py` (new) — reads the PES 2017 ML team table (offset 80,
-  1312 B records, 64 B name at +4), the 32-slot squad list (+248, pairs of
-  roster pointer / player id), the standing structures (8617528, 2600 B per
-  league), and the EDIT player database (188 B records from offset 120:
-  116 B player entry + 72 B appearance entry). It builds `players.json`,
-  `ratings.json`, `positions.json`, `playpos.json` and `teamids.json` in the
-  exact shapes `reload_db()` expects. Attributes are decoded from the bitfields
-  documented on the Rigged Wiki PES 2017 Edit file page; OVR is estimated with
-  the app's own `dbimport.ovr_of()` linear model.
-* `static/index.html` — a PES 2017 read-only banner.
-* `VERSION.txt`, `README_PES2017.txt`, `config_pes2017.example.json` — docs.
+  folders (redirects all 169 constructions); `flag_map()` returns `{}`.
+* `lib/pes17.py` — team table (80 / 1312 / `tid = cid >> 14`), squad (+248),
+  shirt numbers (+512), standings located dynamically from EDIT league arrays,
+  EDIT player DB (188 B records from 120, count from `0x5C`), competition
+  names from EDIT, negotiation blocks (9,591,148), read-only `Save` adapter.
+* `lib/pes17_write.py` — `Pes17Container`, `info()`, `apply_ops()`,
+  `save_with_backup()`; every changed byte must be inside a measured table.
+* `static/index.html` — PES 2017 banner links to the tools page.
+* `static/pes17.html` — tools UI: slot picker, real-save info, squad/table/
+  offers, queued ops, dry-run, backups.
+
+## Safety model
+
+* All FL26-style write endpoints still raise `pes17.READ_ONLY_MSG` — PES 2021
+  offsets cannot be written into a PES 2017 save.
+* PES 2017 writes are limited to measured tables: negotiation slots, shirt
+  numbers, (experimental) squad slots, and a u32 `raw` escape hatch that is
+  still range-checked.
+* Every write: decrypt → mutate bytearray → assert changed bytes are inside
+  measured ranges → re-encrypt → decrypt again → compare all six parts →
+  `.tmp` + `os.replace` → reload from disk → compare → timestamped backup.
+* Dry-run proves the ops without touching the save. Bad ops write nothing.
 
 ## Verified
 
-* 15 unit tests pass, including a full PES 2017 encrypt → decrypt round trip,
-  rejection of the PES 2021 key, detection by both marker and binary
-  signature, description/date parsing, team/squad/standings parsing, EDIT
-  database import, and refusal of every write path.
-* End-to-end smoke test: the patched server was started against a synthetic
-  encrypted PES 2017 `ML00000000` + `EDIT00000000`. `/api/state` returned the
-  real club, date, 32-player squad (with names from EDIT), 20-row league table
-  and `layout.pes17=true`. 124 of 127 GET endpoints returned 200; the three
-  exceptions are two dev-only lab endpoints and the national-team squad view
-  (which correctly reports there is no national team). Four POST write
-  endpoints were refused and the save file's SHA-256 was unchanged.
+* **25 unit tests pass**, including tests that decrypt, read, modify and
+  re-encrypt the user's real `ML00000011` / `EDIT00000000` (on copies only).
+* End-to-end HTTP smoke on the real files: `/api/state`, `/api/pes17/info`,
+  `/api/pes17/offers`, 14 other GET endpoints all 200. Dry write left the
+  SHA-256 unchanged; real write changed 9 bytes, offers 0 → 1, shirt 2 → 9,
+  and produced a backup. `/api/apply` and friends were still refused.
+* `READ_ONLY_MSG` guards and `sha256sum` checks confirm FL26 endpoints never
+  touch the save.
 
-## Why writing is disabled
+## NOT verified / still needed
 
-`mlwrite.py` (~6,300 lines) writes at hard-coded PES 2021/FL26 offsets. PES
-2017 uses a different database:
+* Game-side confirmation that an injected offer appears in PES 2017's inbox
+  (no Windows/game run in this sandbox).
+* The `claim` path for the human club (no AI negotiation block).
+* Formations, lineup, tactics, contracts, budgets, transfers, loans, youth,
+  training, points/goals — need **before/after save pairs** (one in-game change
+  per pair). Use `lib/pes17_layout.py diff before after`.
 
-| structure | PES 2017 | PES 2021 / FL26 |
-|---|---|---|
-| club table start | 80 | 84 |
-| club record size | 1312 B | 1680 B |
-| squad list | +248, 32 × 8 B (roster ptr, id) | +332, 40 × 8 B (id, tag) |
-| ML save size | ~9.9 MB | 19.9 / 45 / 60 MB |
-| formation block (`F0`) | not mapped | 1,675,944 (+shift) |
-| tactics table (`TAC0`) | not mapped | 1,260,140 (+shift) |
-| EDIT player record | 188 B from 120 | different table |
-
-Writing FL26 offsets into that file would corrupt the career. The companion
-`lib/pes17_layout.py diff` command is designed to map these tables from pairs
-of real saves (one in-game action per pair) so that features can be unlocked
-one by one. Send a few save pairs to enable transfers/tactics/etc.
+See `REAL_SAVE_REPORT.md` for the exact offsets, the honest validation table,
+and the sources.
 
 ## Sources
 
-* [the4chancup/pesXdecrypter](https://github.com/the4chancup/pesXdecrypter) — public-domain container algorithm and per-version master keys.
-* [Rigged Wiki: PES 2017 Edit file](https://implyingrigged.info/wiki/Pro_Evolution_Soccer_2017/Edit_file) — player entry bitfields.
-* [PES2017-Master-League-Transfer-Engine](https://github.com/irvantaufik28/PES2017-Master-League-Transfer-Engine) — ML save club table, squad list and standings offsets.
+* [the4chancup/pesXdecrypter](https://github.com/the4chancup/pesXdecrypter) — public-domain container algorithm + per-version keys.
+* [Rigged Wiki: PES 2017 Edit file](https://implyingrigged.info/wiki/Pro_Evolution_Soccer_2017/Edit_file) — player bitfields.
+* [PES2017-Master-League-Transfer-Engine](https://github.com/irvantaufik28/PES2017-Master-League-Transfer-Engine) — club/squad/standings/offer offsets, team-id shift, in-game checklist.
+* The user's real `Needed files/*`.
 
 The Gaffer is free fan-made software; see `README.txt` in the program folder
 for its FREE TO USE terms. This modified build is for personal use — do not

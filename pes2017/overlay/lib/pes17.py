@@ -72,16 +72,44 @@ STANDINGS0 = 8617528       # 0x837E38, start of active ML standing structures
 STANDINGS_STRIDE = 2600
 STANDINGS_TEAMS = 20       # u32 team ids at the head of each 2600 B block
 STANDINGS_LEAGUES = (
-    'English 1st Division', 'Ligue 1', 'Italian 1st Division', 'Eredivisie',
-    'LaLiga Santander', 'Liga Portugal', 'Brazilian 1st Division',
-    'Argentine 1st Division', 'Chilean 1st Division', 'PEU League',
-    'PLA League', 'PAS League', 'English 2nd Division', 'Ligue 2',
-    'Italian 2nd Division', 'Spanish 2nd Division',
+    'English 1st Division', 'English 2nd Division', 'Ligue 1', 'Ligue 2',
+    'Italian 1st Division', 'Italian 2nd Division', 'Eredivisie',
+    'Spanish 1st Division', 'Spanish 2nd Division', 'Portuguese 1st Division',
+    'Brazilian 1st Division', 'Argentine 1st Division', 'PEU League',
+    'PLA League', 'PAS League', 'Other European Teams',
+    'Other Latin American Teams', 'Other Asian Teams',
 )
 # Blocks 12..15 are not at root + 12*2600: MLTE measured explicit offsets.
 STANDINGS_EXTRA = {
     12: 62488, 13: 65080, 14: 67680, 15: 70272,
 }
+# MLTE LeagueMaps: EDIT league-block index -> competition-name record index.
+LEAGUE_COMP_INDEX = (10, 37, -1, -1, 11, 39, -1, 12, 38, 13, 22, 20,
+                     29, 30, 31, -1, -1, -1)
+LEAGUE_COUNT = 18
+COMP_NAMES0 = 4333942        # EDIT competition-name table
+COMP_NAME_STRIDE = 124
+COMP_NAME_LEN = 64
+TEAM_ARRAY0 = 4782840        # EDIT league member arrays (18 x 80 B)
+EDIT_SENTINEL = 262143       # 0x3FFFF, unused standings/offer slot
+
+# Measured on a real t99p17v20 save (see pes2017/REAL_SAVE_REPORT.md):
+# the u32 at club+0 is a bit-packed value: (stable PES Team ID << 14) |
+# Master League record index.  Standings and EDIT league arrays use the
+# *stable* ID, so tid = cid >> 14 is the key that links the two tables.
+TEAM_ID_SHIFT = 14
+SHIRT_OFF = 512              # 32 one-byte shirt numbers, in squad-slot order
+SHIRT_SLOTS = 32
+
+# Transfer negotiation (offer) table -- audited by the MLTE project and
+# confirmed on the real t99p17v20 ML save.
+OFFERS0 = 9591148
+OFFERS_END = 9829596
+OFFER_BLOCK = 280            # 4 B buyer club id + 16 x 16 B slots + 20 B pad
+OFFER_SLOT = 16
+OFFER_SLOTS = 16
+OFFER_EMPTY = (6488064, 65535, 0, 1664)
+OFFER_ACTIVE = (0, 0, 0, 4210816)   # +4 source roster ptr, +8 player id
 
 # --------------------------------------------------------------------------
 # PES 2017 EDIT00000000 data.dat layout (Rigged Wiki + MLTE)
@@ -208,10 +236,18 @@ def _looks_pes17(head, size=0):
     for k in range(3):
         o = TEAM0 + k * TEAM_STRIDE
         cid = struct.unpack_from('<I', head, o)[0]
+        raw = head[o:o + 4]
+        tid = cid >> TEAM_ID_SHIFT
         name = _text(head[o + TEAM_NAME_OFF:o + TEAM_NAME_OFF + TEAM_NAME_LEN])
-        # A PES 2021 save has a club *name* at offset 84 but a zero/ASCII word
-        # at 80, so requiring a real team id here prevents false positives.
-        if 0 < cid < 1000000 and _plausible_name(name):
+        # PES 2021 / FL saves put the club *name* at 84 and a zero/ASCII word
+        # at 80.  Real PES 2017 (and patched PES 2017) uses either a small
+        # plain id or a bit-packed (tid << 14 | index) id -- never four
+        # printable ASCII bytes.  Requiring 2+ named rows at stride 1312 also
+        # rejects PES 2021's stride-1680 club table.
+        ascii_word = all(32 <= b < 127 for b in raw)
+        good_id = (0 < cid < 1000000) or (0 < tid < 20000)
+        if (cid not in (0, 0xFFFFFFFF) and good_id and not ascii_word
+                and _plausible_name(name)):
             ok += 1
     return ok >= 2
 
@@ -305,8 +341,12 @@ def team_records(data):
         name = _text(bytes(data[o + TEAM_NAME_OFF:o + TEAM_NAME_OFF + TEAM_NAME_LEN]))
         # Empty rows (national teams, unused slots) can sit between clubs.
         if _plausible_name(name):
+            # tid = stable PES Team ID (cid >> 14) for patched saves; for
+            # unpatched/synthetic saves the plain id is already the team id.
+            tid = (cid >> TEAM_ID_SHIFT) or cid
             # Stats fields are not mapped yet -- keep the shape mlsave returns.
-            out.append(dict(idx=k, off=o, id=cid, name=name, pts=0, pl=0, w=0, d=0,
+            out.append(dict(idx=k, off=o, id=cid, tid=tid, name=name,
+                            pts=0, pl=0, w=0, d=0,
                             l=0, gf=0, ga=0, gd=0, pos=0))
         k += 1
     return out
@@ -324,26 +364,88 @@ def squad(data, team, names=None):
     return out
 
 
-def standings(data, teams):
-    """Best-effort league membership/order from the standing structures.
+def competition_names(edit_data):
+    """Custom competition names from the user's EDIT00000000 (patch-aware)."""
+    out = list(STANDINGS_LEAGUES)
+    if not edit_data:
+        return out
+    for i, comp in enumerate(LEAGUE_COMP_INDEX):
+        if comp < 0 or i >= len(out):
+            continue
+        o = COMP_NAMES0 + comp * COMP_NAME_STRIDE
+        if o + COMP_NAME_LEN > len(edit_data):
+            continue
+        name = _text(bytes(edit_data[o:o + COMP_NAME_LEN]))
+        if name:
+            out[i] = name
+    return out
 
-    Each 2600 B block starts with 20 u32 team ids in table order.  Points,
-    wins and goals are NOT mapped for PES 2017 yet, so those fields stay 0.
+
+def standings_offsets(data, edit_data):
+    """Locate each league's standings block from the EDIT member arrays.
+
+    A patch (e.g. t99p17v20) moves and reorders these blocks, so the static
+    MLTE offsets are only a fallback.  Matching the first four member team
+    ids of each EDIT league array against the ML data finds the real block.
     """
-    by_id = {t['id']: t for t in teams}
+    offs = {}
+    if not edit_data:
+        return offs
+    for i in range(LEAGUE_COUNT):
+        o = TEAM_ARRAY0 + i * 80
+        if o + 80 > len(edit_data):
+            break
+        ids = [x for x in struct.unpack_from('<20I', edit_data, o)
+               if 0 < x < EDIT_SENTINEL]
+        if len(ids) < 4:
+            continue
+        seq = struct.pack('<4I', *ids[:4])
+        best, best_score = None, -1
+        start = 0
+        while True:
+            p = data.find(seq, start)
+            if p < 0:
+                break
+            start = p + 1
+            if p + 80 > len(data):
+                continue
+            row = struct.unpack_from('<20I', data, p)
+            score = sum(1 for x in row if 0 < x < EDIT_SENTINEL)
+            if score > best_score:
+                best, best_score = p, score
+        # A stray 4-id match inside another table scores low; the real
+        # standings block has most of its 20 member ids present.
+        if best is not None and best_score >= 8:
+            offs[i] = best
+    return offs
+
+
+def standings(data, teams, edit_data=None):
+    """League membership/order from the standing structures.
+
+    Each block starts with 20 u32 *stable* team ids in table order.  On
+    patched saves those ids are the club record's ``tid`` (cid >> 14), not
+    the raw bit-packed cid.  Points, wins and goals are NOT mapped for
+    PES 2017 yet, so those fields stay 0.
+    """
+    by_ref = {t['id']: t for t in teams}
+    by_ref.update({t['tid']: t for t in teams})
+    found = standings_offsets(data, edit_data)
     blocks = []
-    for i, league in enumerate(STANDINGS_LEAGUES):
-        off = STANDINGS0 + (STANDINGS_EXTRA.get(i, i * STANDINGS_STRIDE))
+    for i, league in enumerate(competition_names(edit_data)):
+        off = found.get(i)
+        if off is None:
+            off = STANDINGS0 + (STANDINGS_EXTRA.get(i, i * STANDINGS_STRIDE))
         if off + STANDINGS_TEAMS * 4 > len(data):
             continue
         ids = [struct.unpack_from('<I', data, off + 4 * j)[0]
                for j in range(STANDINGS_TEAMS)]
-        ids = [x for x in ids if 0 < x < 1000000]
+        ids = [x for x in ids if 0 < x < EDIT_SENTINEL]
         if not ids:
             continue
         rows = []
         for pos, cid in enumerate(ids, 1):
-            t = by_id.get(cid)
+            t = by_ref.get(cid)
             if not t:
                 continue
             rows.append(dict(pos=pos, club=t['name'], pl=0, w=0, d=0, l=0,
@@ -353,7 +455,7 @@ def standings(data, teams):
     return blocks
 
 
-def read_save(folder, names=None, date_order='dmy'):
+def read_save(folder, names=None, date_order='dmy', edit_data=None):
     """Same shape as mlsave.read_save(), for PES 2017 saves."""
     info = read_description(folder, date_order)
     with open(os.path.join(folder, 'data.dat'), 'rb') as f:
@@ -365,7 +467,7 @@ def read_save(folder, names=None, date_order='dmy'):
         info = dict(info, club=mine['name'], club_raw=info['club'])
         res['info'] = info
         res['squad'] = squad(data, mine, names)
-        blocks = standings(data, teams)
+        blocks = standings(data, teams, edit_data)
         blk = next((b for b in blocks if any(r['idx'] == mine['idx'] for r in b['rows'])), None)
         if blk:
             res['league_table'] = blk['rows']
@@ -417,7 +519,14 @@ def _edit_data(src):
 def parse_edit(data):
     """-> list of player dicts from the PES 2017 EDIT database."""
     n = struct.unpack_from('<H', data, EDIT_COUNT_OFF)[0] if len(data) > EDIT_COUNT_OFF + 2 else 0
-    n = min(n or 21000, 21000, (min(len(data), EDIT_END) - EDIT_HEADER) // EDIT_RECORD)
+    # Patches can carry far more than the vanilla 21,000 players, and EDIT
+    # data.dat is larger than the vanilla 3,948,120 B.  Trust the header count
+    # but bound it by the actual file length so a patched EDIT file is fully
+    # imported and a truncated one cannot read past the end.
+    by_len = max(0, (len(data) - EDIT_HEADER) // EDIT_RECORD)
+    if not (0 < n <= 100000):
+        n = by_len
+    n = min(n, by_len)
     out, seen = [], set()
     for k in range(n):
         o = EDIT_HEADER + k * EDIT_RECORD
@@ -485,10 +594,204 @@ def import_teams(folder, outdir):
     with open(os.path.join(folder, 'data.dat'), 'rb') as f:
         teams = team_records(f.read())
     os.makedirs(outdir, exist_ok=True)
+    ids = {}
+    for t in teams:
+        # Stable team id is what standings / EDIT league arrays / negotiations
+        # use; keep the raw bit-packed id as an alias too.
+        if t['tid']:
+            ids[str(t['tid'])] = t['name']
+        if t['id'] and str(t['id']) not in ids:
+            ids[str(t['id'])] = t['name']
     with open(os.path.join(outdir, 'teamids.json'), 'w', encoding='utf-8') as f:
-        json.dump({str(t['id']): t['name'] for t in teams if t['id']}, f,
-                  ensure_ascii=False, indent=1)
+        json.dump(ids, f, ensure_ascii=False, indent=1)
     return dict(teams=len(teams))
+
+
+# --------------------------------------------------------------------------
+# Measured write tables (used by lib/pes17_write.py)
+# --------------------------------------------------------------------------
+def club_by(teams, ref):
+    """Resolve a club by stable tid / raw id / name (or a loose name prefix)."""
+    if ref is None or ref == '':
+        return None
+    s = str(ref).strip()
+    try:
+        n = int(s)
+    except ValueError:
+        n = None
+    if n is not None:
+        for t in teams:
+            if n in (t['tid'], t['id']):
+                return t
+        for t in teams:
+            if n == t['idx']:
+                return t
+    key = _norm(s)
+    for t in teams:
+        if _norm(t['name']) == key:
+            return t
+    for t in teams:
+        if key and key in _norm(t['name']):
+            return t
+    return None
+
+
+def shirt_numbers(data, team):
+    """32 one-byte shirt numbers at club + SHIRT_OFF, in squad-slot order."""
+    o = team['off'] + SHIRT_OFF
+    return list(bytes(data[o:o + SHIRT_SLOTS]))
+
+
+def set_shirt_number(data, team, slot, number):
+    """Write one shirt number.  ``data`` must be a bytearray."""
+    slot, number = int(slot), int(number)
+    if not 0 <= slot < SHIRT_SLOTS:
+        raise ValueError('shirt slot must be 0..31')
+    if not 1 <= number <= 99:
+        raise ValueError('shirt number must be 1..99')
+    o = team['off'] + SHIRT_OFF + slot
+    old = data[o]
+    data[o] = number
+    return dict(offset=o, old=old, new=number)
+
+
+def offer_blocks(data, teams=None):
+    """-> [(block offset, raw buyer id, stable buyer tid), ...]
+
+    The buyer field is the *raw* bit-packed club id from the club table, not
+    the shifted team id.  Passing ``teams`` filters out the 0xFFFFFFFF
+    sentinel blocks and any garbage blocks.
+    """
+    raw_ids = {t['id'] for t in teams} if teams else None
+    out = []
+    end = min(OFFERS_END, len(data) - OFFER_BLOCK)
+    for off in range(OFFERS0, end + 1, OFFER_BLOCK):
+        cid = struct.unpack_from('<I', data, off)[0]
+        if 0 < cid < 0xFFFFFFFF and (raw_ids is None or cid in raw_ids):
+            out.append((off, cid, cid >> TEAM_ID_SHIFT))
+    return out
+
+
+def find_offer_block(data, teams, buyer, claim=False):
+    """Find the 280 B negotiation block of a club.
+
+    Human-controlled clubs normally have no AI negotiation block (the MLTE
+    project skips them).  With ``claim=True`` an unused 0xFFFFFFFF block is
+    claimed by writing the club's raw id at its start.  That step is a
+    structural inference, NOT in-game validated, and is reported as such.
+    """
+    club = club_by(teams, buyer)
+    if not club:
+        raise ValueError('unknown buyer club: %r' % buyer)
+    hits = [(o, cid) for o, cid, tid in offer_blocks(data, teams)
+            if cid == club['id']]
+    if len(hits) > 1:
+        raise ValueError('ambiguous negotiation blocks for %s' % club['name'])
+    if hits:
+        return hits[0][0], club, False
+    if not claim:
+        raise ValueError('no negotiation block for %s (tid %d). This is '
+                         'usually the human-controlled club; pass claim=true '
+                         'to use an unused block (experimental).' %
+                         (club['name'], club['tid']))
+    for off in range(OFFERS0, min(OFFERS_END, len(data) - OFFER_BLOCK) + 1,
+                     OFFER_BLOCK):
+        if struct.unpack_from('<I', data, off)[0] == 0xFFFFFFFF:
+            struct.pack_into('<I', data, off, club['id'])
+            return off, club, True
+    raise ValueError('no unused negotiation block available')
+
+
+def find_player_source(data, teams, pid):
+    """Roster pointer (first u32 of the 8 B squad slot) of a player."""
+    for t in teams:
+        o = t['off'] + SQUAD_OFF
+        for i in range(SQUAD_SLOTS):
+            ptr, p = struct.unpack_from('<II', data, o + i * 8)
+            if p == pid:
+                return ptr, t, i
+    return 0, None, None
+
+
+def read_offers(data, teams):
+    """Active negotiations currently in the save (garbage blocks excluded)."""
+    by_raw = {t['id']: t for t in teams}
+    out = []
+    for off, cid, tid in offer_blocks(data, teams):
+        club = by_raw.get(cid)
+        for i in range(OFFER_SLOTS):
+            s = off + 4 + i * OFFER_SLOT
+            status, source, pid, transfer = struct.unpack_from('<4I', data, s)
+            if 0 < pid < 1000000 and pid != 6488064:
+                out.append(dict(buyer=club['name'] if club else str(tid),
+                                buyer_tid=club['tid'] if club else tid,
+                                slot=i, offset=s, pid=pid,
+                                source=source, status=status, transfer=transfer))
+    return out
+
+
+def _offer_slot(data, teams, buyer, slot, claim=False):
+    off, club, claimed = find_offer_block(data, teams, buyer, claim)
+    slot = int(slot)
+    if not 0 <= slot < OFFER_SLOTS:
+        raise ValueError('offer slot must be 0..15')
+    return off + 4 + slot * OFFER_SLOT, club, claimed, off
+
+
+def write_offer(data, teams, buyer, slot, pid, source=None, claim=False):
+    """Inject an active transfer negotiation (MLTE-verified slot layout)."""
+    s, club, claimed, block = _offer_slot(data, teams, buyer, slot, claim)
+    pid = int(pid)
+    if pid <= 0:
+        raise ValueError('player id must be positive')
+    if source is None or source == 'auto':
+        source, owner, sq = find_player_source(data, teams, pid)
+        if owner is None:
+            raise ValueError('player %d is not in any PES 2017 squad' % pid)
+    else:
+        source, owner, sq = int(source), None, None
+    old = struct.unpack_from('<4I', data, s)
+    struct.pack_into('<4I', data, s, OFFER_ACTIVE[0], source, pid, OFFER_ACTIVE[3])
+    return dict(op='offer_add', offset=s, buyer=club['name'], buyer_tid=club['tid'],
+                slot=int(slot), pid=pid, source=source,
+                source_club=owner['name'] if owner else '', old=list(old),
+                claimed_block=block if claimed else None,
+                experimental=bool(claimed))
+
+
+def clear_offer(data, teams, buyer, slot, claim=False):
+    """Restore the exact empty-slot pattern seen in real PES 2017 saves."""
+    s, club, claimed, block = _offer_slot(data, teams, buyer, slot, claim)
+    old = struct.unpack_from('<4I', data, s)
+    struct.pack_into('<4I', data, s, *OFFER_EMPTY)
+    return dict(op='offer_clear', offset=s, buyer=club['name'], slot=int(slot),
+                old=list(old), claimed_block=block if claimed else None,
+                experimental=bool(claimed))
+
+
+def set_squad_slot(data, teams, club_ref, slot, pid, source=None, experimental=False):
+    """Experimental: edit one 8-byte squad slot (roster pointer, player id).
+
+    THIS IS NOT IN-GAME VALIDATED.  A real transfer also touches player
+    ownership/contract tables that are not mapped yet.  Kept behind an
+    explicit ``experimental`` flag so it cannot be triggered by accident.
+    """
+    if not experimental:
+        raise ValueError('squad edits are experimental (no before/after save '
+                         'pair was supplied); pass experimental=true')
+    club = club_by(teams, club_ref)
+    if not club:
+        raise ValueError('unknown club: %r' % club_ref)
+    slot, pid = int(slot), int(pid)
+    if not 0 <= slot < SQUAD_SLOTS:
+        raise ValueError('squad slot must be 0..31')
+    if source is None:
+        source = 65535 if pid == 0 else (pid * 0 + 0x1000 + slot)
+    o = club['off'] + SQUAD_OFF + slot * 8
+    old = struct.unpack_from('<II', data, o)
+    struct.pack_into('<II', data, o, int(source), pid)
+    return dict(op='squad', offset=o, club=club['name'], slot=slot, pid=pid,
+                source=int(source), old=list(old), experimental=True)
 
 
 # --------------------------------------------------------------------------

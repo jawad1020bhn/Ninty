@@ -5,18 +5,23 @@ Contents:
 * `TheGaffer_pc414_20261103.zip` — original Windows program (The Gaffer pc414,
   a Football Manager style companion for Football Life 26 / PES 2021 / FL27
   Master League).
+* `Needed files/` — the user's real PES 2017 saves (`ML00000011`,
+  `EDIT00000000`) and `info.txt` (patch `t99p17v20`, game folder path).
 * `pes2017/dist/TheGaffer_pes2017_pc414.zip` — **rebuilt program with PES 2017
-  support (read-only)**. Unzip on Windows and run `The Gaffer.vbs`.
+  read support + measured, round-trip-verified writes**. Unzip on Windows and
+  run `The Gaffer.vbs`, then open `/pes17.html`.
 * `pes2017/` — source of the compatibility pack, patcher, build script, tests
-  and documentation. Start with [`pes2017/README.md`](pes2017/README.md).
+  and documentation. Start with [`pes2017/README.md`](pes2017/README.md) and
+  [`pes2017/REAL_SAVE_REPORT.md`](pes2017/REAL_SAVE_REPORT.md).
 
 Quick summary: PES 2017 uses the same encrypted save *container* but a
-different 64-byte master key, and its decrypted Master League `data.dat` has a
-completely different table layout. This build adds the PES 2017 key, reads
-your club/squad/players/standings from the PES 2017 save and `EDIT00000000`,
-and blocks all writes (which would otherwise corrupt the save because they use
-PES 2021 offsets). See `pes2017/overlay/README_PES2017.txt` for setup and the
-roadmap to unlock writing.
+different master key **and a 176-byte file header** (the first, synthetic-only
+build wrongly assumed 208 B and could not open the real saves). It also has a
+completely different `data.dat` layout. This build fixes both, reads the real
+club / squad / EDIT player database / standings / shirt numbers, and writes
+only the tables measured on the supplied files: transfer negotiations and
+shirt numbers. All FL26-style writes (transfers, tactics, contracts...) remain
+blocked until before/after save pairs are supplied.
 
 Build / test:
 

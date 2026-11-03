@@ -1,114 +1,158 @@
-THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (READ-ONLY)
-==========================================================
+THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (REAL-SAVE BUILD)
+=================================================================
 
-This folder is The Gaffer pc414 with PES 2017 support added. It is a private,
+This folder is The Gaffer pc414 with PES 2017 support added.  It is a private,
 modified build for personal use; please respect the original FREE TO USE
 terms in README.txt (do not reupload or publish this as your own work).
 
+WHAT CHANGED SINCE THE FIRST (SYNTHETIC-ONLY) BUILD
+--------------------------------------------------
+The first build was tested only on self-generated saves.  You then supplied
+real files in "Needed files":  ML00000011 (13,342,176 B), EDIT00000000
+(5,303,749 B) and info.txt (patch t99p17v20, game folder
+D:\jawedfolder\Games\Pro Evolution Soccer 2017).  Those files exposed a
+critical bug and allowed real measurements:
 
-WHAT WORKS ON PES 2017
-----------------------
-* The app finds your PES 2017 save folder:
-    Documents\KONAMI\Pro Evolution Soccer 2017\save
-  (also numeric Steam subfolders). Setup > Save folder lists it as "PES 2017".
-* PES 2017 saves are decrypted and re-encrypted with their own master key.
-  The container format is the same as PES 2021, but the 64-byte key is not;
-  the app now tries the PES 2021, FL27 and PES 2017 keys and remembers the
-  one that opened each save.
-* Your career is read from the PES 2017 Master League save:
-    club, league, in-game date, next competition,
-    all clubs (651 records x 1312 B at offset 80),
-    your 32-player squad (offset +248 in the club record),
-    league standings membership/order (structures at 8617528).
-* Player names, ages, positions and attributes come from EDIT00000000.
-  On the first load the app builds data/pes17/players.json, ratings.json,
-  positions.json, playpos.json and teamids.json from your own edit file, so
-  the squad shows YOUR PES 2017 players (with any patch you installed).
-* The app-side career still runs: inbox, negotiations, board, press,
-  scouting, awards, calendar, newspaper, journal, finances in the app, etc.
-* Everything that would write into the save is refused with a clear message.
-  There are several independent guards (Save adapter, write endpoints and
-  the encryption step), so a PES 2017 save cannot be damaged by this build.
+* CRYPTO FIX: real PES 2017 saves use a 176-byte file header, not the
+  208-byte PES 2021 header.  The old build could not open your save at all.
+  decrypt_bytes() now tries both header sizes; encrypt_parts() detects the
+  header length.  Decrypt -> re-encrypt of BOTH of your real files is now
+  byte-for-byte identical to the originals (proved in tests).
+* READ FIXES: patched club ids are bit-packed (stable PES Team ID << 14 |
+  ML record index); standings/EDIT league arrays use the stable ID.  Standings
+  blocks are located dynamically from the EDIT league arrays because the
+  patch moved them.  Competition names are read from your EDIT file.  EDIT
+  player import now uses the header count instead of a vanilla 21,000 cap.
+* REAL WRITE ENGINE: a small, explicitly whitelisted set of writes, each
+  round-trip verified and backed up.  See below.
 
+WHAT THE APP READS FROM YOUR REAL SAVE
+--------------------------------------
+  club                Birmingham City FC
+  in-game date        10/01/2029  (D/M/YYYY)
+  next competition    Emirates FA Cup
+  clubs               624
+  your squad          26 players, with real EDIT names and shirt numbers
+  league table        20 rows, Sky Bet Championship (from your EDIT file)
+  player database     20,018 players from your EDIT00000000
+  negotiations        0 active (after filtering garbage blocks)
 
-WHAT DOES NOT WORK YET (AND WHY)
---------------------------------
-PES 2017 and PES 2021/FL26 store Master League data in completely different
-tables. Examples measured on real PES 2017 saves:
+Note: description.dat says "Premier League" while the standings/EDIT tables
+place Birmingham in the Sky Bet Championship.  Both values are shown (the
+description is authoritative for the save slot label; the table is the live
+league structure).  Points / played / goals are still shown as 0: those
+columns are not mapped yet.
 
-    club record start     80       (PES 2021: 84)
-    club record size      1312 B   (PES 2021: 1680 B)
-    squad list            +248, 32 slots, (roster ptr, player id)
-                                   (PES 2021: +332, 40 slots, (id, tag))
-    ML save size          ~9.9 MB  (PES 2021: 19.9 / 45 / 60 MB)
-    EDIT player record    188 B from offset 120
-                                   (PES 2021: different table entirely)
+WHAT CAN BE WRITTEN (MEASURED, ROUND-TRIP VERIFIED)
+---------------------------------------------------
+Open  http://localhost:8766/pes17.html  (or the "PES 2017 tools" link in the
+main app banner).  The page reads your real save and lets you queue ops:
 
-The app's write engine (mlwrite.py, ~6,000 lines) writes at hard-coded PES
-2021 offsets for transfers, loans, contracts, wages, budgets, formations,
-tactics, shirt numbers, youth players, AI transfers, etc. Those offsets are
-meaningless on a PES 2017 save. Writing them would corrupt the career, so
-writing is disabled until each PES 2017 table has been measured on real save
-pairs and verified in-game.
+  offer_add     inject an active transfer negotiation into a club's block
+  offer_clear   restore an empty negotiation slot
+  shirt         set one of the 32 shirt numbers of a club
+  squad         experimental, requires experimental=true (NOT in-game tested)
+  raw           u32 escape hatch for offsets you measured yourself
 
-Consequences: do transfers, renewals, loans, tactics, formations, training
-and shirt numbers inside PES 2017 itself. The app will still show your squad
-and career; it just will not push changes back into the save. The FL26 Sider
-modules (PlayerDump / GrowthBridge / regen fix) are PES 2021-only and are not
-used for PES 2017.
+Measured offsets (all confirmed on ML00000011):
 
-League table note: the standing structures give the member clubs and their
-order; points/goals/played fields are not mapped yet, so those columns show 0.
+  club table            80, 1312 B records, name at +4
+  shirt numbers         club + 512, 32 x 1 byte
+  squad slots           club + 248, 32 x 8 B (roster pointer, player id)
+  negotiation table     9,591,148 .. 9,829,596, 280 B blocks
+  negotiation slots     block + 4, 16 x 16 B
+  empty slot            (6488064, 65535, 0, 1664)
+  active slot           (0, source roster ptr, player id, 4210816)
+  buyer field           raw bit-packed club id (NOT team id >> 14)
+  unused blocks         buyer id = 0xFFFFFFFF (353 of them)
 
+The negotiation slot layout is the one published and in-game validated by the
+PES2017-Master-League-Transfer-Engine project.  The switch from 208 to 176
+byte headers, all read-side offsets, the shirt-number table, and the
+empty/active slot values were verified directly on YOUR files in this repo.
 
-HOW TO USE
-----------
+SAFETY MODEL
+------------
+* Every write goes through lib/pes17_write.py: decrypt -> edit a bytearray ->
+  re-encrypt with the PES 2017 key -> decrypt again -> compare ALL SIX parts
+  byte-for-byte -> write to a .tmp file -> os.replace -> load the file from
+  disk again and compare.  A timestamped backup of the original is kept in
+  work\backup.
+* Every changed byte is checked to be inside a measured table.  A bad op
+  (unknown club, offset outside the tables) raises and NOTHING is written.
+* All FL26-style write endpoints (transfers, loans, contracts, tactics,
+  formations, budgets, training, AI moves) are STILL REFUSED.  They would
+  write PES 2021 offsets into a PES 2017 save.  Do those in the game.
+* The dry-run checkbox proves the operation without touching the save.
+
+WHAT IS STILL NOT POSSIBLE
+--------------------------
+No "before/after" save pairs were supplied.  Without them these tables cannot
+be mapped, so they remain blocked (or show 0 / app-side data):
+
+  formations, lineup/XI, tactics, contracts + renewals, wages and budgets,
+  forced transfers, loans, youth players, training/growth, points/goals in
+  the league table, and the human club's own inbox negotiations.
+
+Human-controlled clubs normally have NO AI negotiation block in the save.
+The tools page has a "claim an unused block for my club" checkbox: it writes
+your club's id into an unused 0xFFFFFFFF block.  That is a structural
+inference, NOT in-game validated, and is flagged experimental in the result.
+Prefer an AI club (e.g. Arsenal, tid 101) for a fully published write.
+
+To map the remaining features, make ONE change in PES 2017, save again, and
+keep the before/after ML00000011 pair (plus EDIT00000000).  Then:
+
+    python\python.exe lib\pes17_layout.py diff before after --json diff.json
+    python\python.exe lib\pes17_write.py info ML00000011 --edit EDIT00000000
+    python\python.exe lib\pes17_layout.py info C:\dec\ML00000011
+
+HOW TO USE ON WINDOWS
+---------------------
 1. Unzip this build anywhere (not inside the zip) on Windows.
 2. Double-click "The Gaffer.vbs" (or "The Gaffer.bat").
-3. In Setup > Save folder pick
+3. In Setup > Save folder choose
       ...\Documents\KONAMI\Pro Evolution Soccer 2017\save
-   and click Save paths. The game process is detected as PES2017.exe.
-4. Pick your career slot (ML00000000, ...). A blue banner confirms PES 2017
-   read-only mode. Keep EDIT00000000 in the save folder (it always is) so the
-   player database can be imported. Back up your save folder anyway.
+   (or wherever your ML00000011 / EDIT00000000 live), then Save paths.
+   Keep EDIT00000000 in that folder (or set "edit_dat" in config.json).
+   A blue banner confirms PES 2017 mode; it links to /pes17.html.
+4. Back up your save folder anyway.  Close PES 2017 before writing.
 
-Optional config.json keys:
-    "pes17_date_order": "dmy"   default (day/month/year). Set "mdy" if
-                                your PES 2017 writes month/day/year dates.
-    "edit_dat": "C:\\...\\EDIT00000000"   override where the EDIT file is.
-    "pes17_allow_writes": false  DO NOT SET TO TRUE with this build. It only
-                                exists for a future version with mapped
-                                write tables.
+config.json keys (see config_pes2017.example.json):
+    "save_dir": "...\\save"
+    "edit_dat": "...\\save\\EDIT00000000"   (optional override)
+    "pes17_date_order": "dmy"              (default; "mdy" for US saves)
+    "pes_process": "PES2017"
+    "pes17_allow_writes": false             keep false: it only gates the
+                                            old FL26 write engine.  The
+                                            /pes17.html tools are separate.
 
+COMMAND LINE (portable Python included)
+--------------------------------------
+    python\python.exe lib\pes17_write.py roundtrip ML00000011
+    python\python.exe lib\pes17_write.py info ML00000011 --edit EDIT00000000
+    python\python.exe lib\pes17_write.py offers ML00000011
+    python\python.exe lib\pes17_write.py apply ML00000011 --ops ops.json --work work
 
-HELP MAP THE WRITE TABLES
--------------------------
-From the app folder (Windows, portable Python included):
+ops.json example:
+[
+  {"op":"offer_add","buyer":101,"slot":0,"pid":55246},
+  {"op":"shirt","club":201,"slot":0,"number":9},
+  {"op":"offer_clear","buyer":101,"slot":3}
+]
 
-    python\python.exe lib\pes17_layout.py info "C:\dec\ML00000000"
-    python\python.exe lib\pes17_layout.py diff "C:\dec\before" "C:\dec\after" --json diff.json
-    python\python.exe lib\pes17_layout.py edit "C:\path\EDIT00000000"
-
-Workflow: decrypt a save, change ONE thing in PES 2017 (e.g. formation), save
-again, decrypt that too, then run diff. The changed byte ranges identify the
-table and row. Two or three such pairs per feature are enough to add a PES
-2017 write profile for that feature. Send the diffs (and the two saves) to
-whoever is doing the port.
-
-To decrypt a save by hand:
-
-    python\python.exe lib\pescrypt.py dec ML00000000 C:\dec
-    python\python.exe lib\pescrypt.py enc C:\dec ML_new
-
-(pescrypt.py now auto-detects the key on decryption; pass the PES 2017 key
-file only if you need to force it.)
-
+TESTS
+-----
+    python3 -m unittest discover -s pes2017/tests -p 'test_*.py' -v
+25 tests pass, including tests that decrypt, read, modify and re-encrypt
+YOUR real ML00000011 / EDIT00000000 files (on copies only).
 
 TECHNICAL SOURCES
 -----------------
-* the4chancup/pesXdecrypter (public domain): container algorithm and the
-  PES 2017 master key (src/masterkey.c).
-* Rigged Wiki "Pro Evolution Soccer 2017/Edit file": 116 B player entry,
-  bit-packed attributes, 72 B appearance entry, 188 B pair.
-* irvantaufik28/PES2017-Master-League-Transfer-Engine: ML save club table
-  (80 / 1312 / +248), standings structures (8617528), EDIT offsets.
+* the4chancup/pesXdecrypter (public domain): container algorithm, PES 2017
+  master key (src/masterkey.c), 176 B FileHeader in crypt.h.
+* Rigged Wiki "Pro Evolution Soccer 2017/Edit file": player entry bitfields.
+* irvantaufik28/PES2017-Master-League-Transfer-Engine: club/squad/standings
+  offsets, negotiation layout, team-id bit shift, in-game validation checklist
+  (docs/TEAM_ID_MAPPING.md, TRANSFER_OFFER_*.md, ROUND_TRIP_VALIDATION.md).
+* Your own files in "Needed files" (t99p17v20) for every measurement above.
