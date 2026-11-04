@@ -57,7 +57,7 @@ pre{background:#0b111b;border:1px solid #26364c;border-radius:8px;padding:12px;o
 
 <div class="card">
   <h2>3. Write tools (backups are automatic)</h2>
-  <div class="muted" style="margin-bottom:10px">Only measured tables are writable. FL26-style transfers, tactics, contracts and budgets remain blocked. Uncheck "dry run" to actually write.</div>
+  <div class="muted" style="margin-bottom:10px">Only measured tables are writable. FL26-style transfers, contracts, AI moves and revalues remain blocked; formation, tactics, XI and budget are now writable through the measured tables below. Uncheck "dry run" to actually write.</div>
   <div class="grid">
     <div>
       <h2>Add a transfer negotiation</h2>
@@ -88,6 +88,40 @@ pre{background:#0b111b;border:1px solid #26364c;border-radius:8px;padding:12px;o
   </div>
   <h2 style="margin-top:14px">Queued operations</h2>
   <pre id="queue">[]</pre>
+</div>
+
+<div class="card">
+  <h2>3b. Tables measured from your before/after saves</h2>
+  <div class="muted" style="margin-bottom:10px">Each <code>pair</code> op writes exactly the bytes PES 2017 itself wrote for one change (formation, tactics, XI, budget). Offsets are fixed to this save and the before-state is checked first. The custom ops let you write your own values into those same measured tables.</div>
+  <div class="grid">
+    <div>
+      <h2>Reproduce one measured change</h2>
+      <div class="row"><label>Pair<select id="pairName"><option>formation</option><option>tactics</option><option>xi</option><option>budget</option></select></label></div>
+      <button id="queuePair" class="ghost">Queue: pair</button>
+    </div>
+    <div>
+      <h2>Formation record (33-byte hex)</h2>
+      <div class="row"><input id="formationHex" style="width:100%" placeholder="00 01 01 01 04 05 05 07 ... (33 bytes)"></div>
+      <button id="queueFormation" class="ghost">Queue: formation</button>
+    </div>
+    <div>
+      <h2>One tactic byte</h2>
+      <div class="row"><label>Offset<input type="number" id="tacOff" value="1256356"></label>
+      <label>Value 0-255<input type="number" id="tacVal" value="3" min="0" max="255"></label></div>
+      <button id="queueTactic" class="ghost">Queue: tactics</button>
+    </div>
+    <div>
+      <h2>XI order (26 comma-separated squad slots)</h2>
+      <div class="row"><input id="xiOrder" style="width:100%" value="9,15,4,12,13,22,19,17,5,3,6,25,16,18,10,21,8,24,11,2,7,23,20,14,0,1"></div>
+      <button id="queueXi" class="ghost">Queue: xi</button>
+    </div>
+    <div>
+      <h2>Budget u32</h2>
+      <div class="row"><label>Value<input type="number" id="budgetVal" value="3088641"></label>
+      <label>Wage (optional)<input type="number" id="wageVal" placeholder="10247281"></label></div>
+      <button id="queueBudget" class="ghost">Queue: budget</button>
+    </div>
+  </div>
 </div>
 
 <div class="card">
@@ -130,6 +164,11 @@ $('load').onclick=loadInfo;
 $('addOffer').onclick=()=>{QUEUE.push({op:'offer_add',buyer:Number($('buyer').value),slot:Number($('oslot').value),pid:Number($('pid').value),source:'auto',claim:$('claim').checked});qsync()};
 $('clearOffer').onclick=()=>{QUEUE.push({op:'offer_clear',buyer:Number($('buyer2').value),slot:Number($('cslot').value)});qsync()};
 $('setShirt').onclick=()=>{QUEUE.push({op:'shirt',club:Number($('club3').value),slot:Number($('sslot').value),number:Number($('num').value)});qsync()};
+$('queuePair').onclick=()=>{QUEUE.push({op:'pair',name:$('pairName').value});qsync()};
+$('queueFormation').onclick=()=>{QUEUE.push({op:'formation',index:0,record:$('formationHex').value.trim()});qsync()};
+$('queueTactic').onclick=()=>{QUEUE.push({op:'tactics',values:{[Number($('tacOff').value)]:Number($('tacVal').value)}});qsync()};
+$('queueXi').onclick=()=>{QUEUE.push({op:'xi',order:$('xiOrder').value.split(',').map(x=>Number(x.trim()))});qsync()};
+$('queueBudget').onclick=()=>{const o={op:'budget',value:Number($('budgetVal').value)};if($('wageVal').value)o.wage=Number($('wageVal').value);QUEUE.push(o);qsync()};
 $('clearq').onclick=()=>{QUEUE=[];qsync()};
 $('apply').onclick=async()=>{try{const r=await post('/api/pes17/write',{slot:SLOT,ops:QUEUE,dry:$('dry').checked});out(r);if(!r.dry)await loadInfo()}catch(e){out({error:String(e)})}};
 loadSlots().then(loadInfo);

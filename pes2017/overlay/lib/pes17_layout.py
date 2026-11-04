@@ -5,8 +5,10 @@ Use this when you want to unlock *more* writing to PES 2017 saves.  It reads a
 decrypted Master League save and reports the structures that are known, and it
 can diff two decrypted saves so that one in-game action can be traced to the
 exact bytes that changed.  The tables already measured (negotiations, shirt
-numbers, squad slots) are writable through lib/pes17_write.py; everything else
-still needs a before/after pair.
+numbers, squad slots, plus formation/tactics/XI/budget from four real
+before/after pairs) are writable through lib/pes17_write.py; everything else
+still needs a before/after pair.  pes2017/tools/diff_saves.py diffs two
+encrypted saves directly; tools/verify_pairs.py proves the measured patches.
 
 Examples
 --------
@@ -29,6 +31,7 @@ import os
 import struct
 
 import pes17
+import pes17_pairs
 
 
 def _read(folder, name='data.dat'):
@@ -70,11 +73,26 @@ def info(folder, edit_src=None):
             dict(name='squad slots (experimental)',
                  offset='club+' + str(pes17.SQUAD_OFF),
                  size=pes17.SQUAD_SLOTS * 8),
+            dict(name='formation records (measured pair)',
+                 offset=pes17_pairs.FORMATION0,
+                 size=pes17_pairs.FORMATION_STRIDE * pes17_pairs.FORMATION_RECORDS),
+            dict(name='tactics block (measured pair)', offset=pes17_pairs.TACTICS0,
+                 size=pes17_pairs.TACTICS_LEN),
+            dict(name='XI / squad order (measured pair)', offset=pes17_pairs.XI_ORDER,
+                 size=pes17_pairs.XI_ORDER_BLOCK),
+            dict(name='XI formation sliders (measured pair)',
+                 offset=pes17_pairs.XI_FLOATS, size=pes17_pairs.XI_FLOATS_LEN),
+            dict(name='budget u32 (measured pair)', offset=pes17_pairs.BUDGET_MAIN,
+                 size=4),
+            dict(name='wage budget u32 (measured pair)',
+                 offset=pes17_pairs.BUDGET_WAGE, size=4),
         ],
-        note=('Measured writes: negotiations, shirt numbers and (experimental) '
-              'squad slots. Points/goals/played, budget, contracts, forced '
-              'transfers and formation/tactics blocks still need before/after '
-              'PES 2017 save pairs. All FL26-style writes remain refused.'),
+        note=('Measured writes: negotiations, shirt numbers, (experimental) '
+              'squad slots, and four tables mapped from the user\'s real '
+              'before/after save pairs (formation, tactics, XI, budget). '
+              'Points/goals/played, contracts, loans, youth, forced transfers '
+              'and AI transfers still need pairs. All FL26-style writes remain '
+              'refused. In-game load validation is still required.'),
     )
     return out
 

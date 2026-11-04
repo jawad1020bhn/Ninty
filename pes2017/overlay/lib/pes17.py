@@ -854,9 +854,11 @@ class Pes17Save:
         self.PLAN0 = 0
         self.known_format = False
         self.layout_ok = False
-        self.layout_note = ('PES 2017 save (read-only): club, squad, players and '
-                            'standings are read; writing is disabled until the '
-                            'PES 2017 save tables are mapped.')
+        self.layout_note = ('PES 2017 save: club, squad, players and standings '
+                            'are read; FL26-style writes are blocked. Limited '
+                            'measured writes (offers, shirts, formation, '
+                            'tactics, XI, budget) are on the PES 2017 tools '
+                            'page.')
         self.dx = 0
         self.dxa = 0
         self.sh = 0

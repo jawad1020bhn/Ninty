@@ -7,11 +7,15 @@ validated by the MLTE project) are writable here:
   * the encrypted container itself (176 B file header, PES 2017 master key),
   * transfer negotiation slots at 9,591,148 (280 B blocks / 16 B slots),
   * the 32 shirt numbers at club+512 (one byte per squad slot),
-  * (experimental) one 8-byte squad slot at club+248.
+  * (experimental) one 8-byte squad slot at club+248,
+  * four tables measured from real before/after save pairs supplied by the
+    user: formation records (1,256,248), tactics (1,256,348), XI/squad order
+    (1,256,728) and the budget u32 words (8,812,904 / 8,812,936) -- see
+    lib/pes17_pairs.py.
 
-Everything else -- formations, tactics, contracts, budgets, loans, youth,
-AI transfers, forced transfers -- is still refused by the read-only
-Pes17Save adapter used by the FL26 write endpoints.  See README_PES2017.txt.
+Contracts, wages (other than the measured u32), loans, youth players, AI
+transfers and forced transfers are still refused by the read-only Pes17Save
+adapter used by the FL26 write endpoints.  See README_PES2017.txt.
 
 Every write is done on a decrypted copy, re-encrypted with the PES 2017 key,
 decrypted again in memory and compared byte-for-byte before the original
@@ -25,6 +29,7 @@ import tempfile
 import time
 
 import pes17
+import pes17_pairs
 import pescrypt
 
 KEY = pescrypt.KEY_PES17
@@ -119,6 +124,9 @@ def info(container, edit_container=None, date_order=None):
             league_name=r.get('league_name', ''),
             offers=pes17.read_offers(data, teams),
             teams=[dict(tid=t['tid'], name=t['name']) for t in teams],
+            measured_pairs={k: dict(offsets=len(v),
+                                    first_offset=v[0][0], last_offset=v[-1][0])
+                            for k, v in pes17_pairs.PAIRS.items()},
         )
         return out
     finally:
@@ -132,6 +140,8 @@ def _allowed_ranges(teams):
                        t['off'] + pes17.SHIRT_OFF + pes17.SHIRT_SLOTS))
         ranges.append((t['off'] + pes17.SQUAD_OFF,
                        t['off'] + pes17.SQUAD_OFF + pes17.SQUAD_SLOTS * 8))
+    # Tables measured from the user's four real before/after save pairs.
+    ranges.extend(pes17_pairs.writable_ranges())
     return ranges
 
 
@@ -143,6 +153,11 @@ def apply_ops(container, ops, edit_data=None):
       {"op":"offer_clear", "buyer":"Birmingham City FC", "slot":3}
       {"op":"shirt",       "club":201, "slot":3, "number":9}
       {"op":"squad",       "club":201, "slot":3, "pid":0, "experimental":true}
+      {"op":"pair",        "name":"formation|tactics|xi|budget"}
+      {"op":"formation",   "index":0, "record":"<33-byte hex>"}
+      {"op":"tactics",     "values":{"1256356":3}}
+      {"op":"xi",          "order":[0,15,4,12,23,21,8,18,5,1,25, ...26 ints]}
+      {"op":"budget",      "value":3088641, "wage":10247281}
 
     Returns (list of results, changed byte count).  No disk write occurs here.
     """
@@ -172,6 +187,19 @@ def apply_ops(container, ops, edit_data=None):
                 results.append(pes17.set_squad_slot(
                     d, teams, op.get('club'), op.get('slot', 0), op.get('pid'),
                     op.get('source'), bool(op.get('experimental', False))))
+            elif kind == 'pair':
+                results.append(pes17_pairs.apply_pair(
+                    d, str(op.get('name')), strict=bool(op.get('strict', True))))
+            elif kind == 'formation':
+                results.append(pes17_pairs.set_formation_record(
+                    d, op.get('record'), int(op.get('index', 0))))
+            elif kind in ('tactics', 'tactic'):
+                results.append(pes17_pairs.set_tactic_bytes(d, op.get('values')))
+            elif kind in ('xi', 'lineup', 'xi_order'):
+                results.append(pes17_pairs.set_xi_order(d, op.get('order')))
+            elif kind == 'budget':
+                results.append(pes17_pairs.set_budget(d, op.get('value'),
+                                                      op.get('wage')))
             elif kind == 'raw':
                 # Escape hatch for offsets the user measured with
                 # pes17_layout.py diff.  Values are little-endian u32 words.
