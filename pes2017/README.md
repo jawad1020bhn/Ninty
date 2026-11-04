@@ -1,4 +1,4 @@
-# The Gaffer — PES 2017 compatibility pack (r5: measured writes + layout guard)
+# The Gaffer — PES 2017 compatibility pack (r8: CPK harvest + safe cleanup)
 
 Source of the PES 2017 port of `TheGaffer_pc414_20261103.zip` (a Football
 Manager style companion for Football Life 26 / PES 2021 / FL27 Master League).
@@ -39,6 +39,13 @@ pes2017/
   overlay/lib/pes17_layout.py        diagnostic CLI: info / diff / edit (maps before/after save pairs)
   overlay/lib/pes17_write.py         real-save container I/O + whitelisted, round-trip-verified writes
   overlay/lib/pes17_pairs.py         four tables measured from real before/after save pairs
+  overlay/lib/pes17_crests.py       offline club-crest reader for the local patch folder
+  overlay/lib/pes17_assets.py       offline CPK asset inventory + harvester
+  overlay/static/pes17-dashboard.html  dedicated PES 2017 landing page
+  prune.py                          curated r8 cleanup of FL26/FL27/Sider leftovers
+  CLEANUP_REPORT.md                 what r8 removed, what it kept and why
+  tools/harvest_cpk.py              standalone offline CLI for the harvester
+  CPK_ASSET_INVENTORY.md            what can be extracted from PES 2021 CPK files
   tools/diff_saves.py                diff two encrypted saves directly (future pairs)
   tools/verify_pairs.py              prove the four measured patches against the after files
   tools/analyze_save_noise.py        classify the 211 bytes the game rewrites on every save
@@ -48,14 +55,15 @@ pes2017/
   overlay/static/pes17.html          PES 2017 tools page (read + write UI)
   overlay/README_PES2017.txt         user docs, shipped in the zip
   overlay/config_pes2017.example.json
-  patch.py                           42 asserted text patches for pc414 sources
-  build.py                           extract original zip -> patch -> dist/TheGaffer_pes2017_pc414.zip
+  patch.py                           52 asserted text patches + 2 asserted regexes
+  build.py                           extract original zip -> patch -> prune -> dist/TheGaffer_pes2017_pc414.zip
+  tests/test_prune.py                13 r8 cleanup / shipped-zip / offline-guard tests
   tests/sample.py                    synthetic but structurally faithful PES 2017 saves
   tests/test_pes17.py                15 unit tests (crypto, detection, parsing, EDIT DB, write guard)
   tests/test_pes17_write.py          10 tests: 176 B header, container round-trip, real-file reads/writes
   tests/test_pes17_pairs.py          15 tests: measured pairs, custom ops, engine integration, real after files
   REAL_SAVE_REPORT.md                measurements + validation status
-  dist/TheGaffer_pes2017_pc414.zip   the ready-to-unzip Windows build
+  dist/TheGaffer_pes2017_pc414.zip   the ready-to-unzip Windows build (28,090,107 B, SHA 8383d70e...)
 ```
 
 Rebuild / test:
@@ -112,13 +120,19 @@ in memory and contains no `__pycache__` / `.pyc`.
 
 ## Verified
 
-* **76 unit tests pass**, including tests that decrypt, read, modify and
+* **127 unit tests pass**, including tests that decrypt, read, modify and
   re-encrypt the user's real `ML00000011` / `EDIT00000000` (on copies only),
   tests proving all four measured pair patches against the game-generated
   after files, r2 regression tests for the budget read side
   (`Pes17Save.budget()` / `/api/pes17/info`), r3/r4 static checks for the
-  game-HUD skin and its SVG icon pack (including 100% glyph coverage), and r5
-  tests for the layout guard, real shirt numbers / XI and RAW budget labels.
+  game-HUD skin and its SVG icon pack (including 100% glyph coverage), r5
+  tests for the layout guard, real shirt numbers / XI and RAW budget labels,
+  r6 tests for offline patch-folder crests (loose files, CPK/WESYS, DDS
+  decoding, stable-id mapping, read-only behaviour), and r7 tests for the CPK
+  asset inventory/harvester (all 8 classes, DDS/WESYS conversion, source
+  read-only, CLI, no network) plus the PES 2017-only offline wiring, and r8
+  tests for the curated cleanup rules, the shipped zip contents/manifest and
+  the offline guard that replaces the removed FL26 transfer cache.
 * **r3: GAME UI.** `static/game-skin.css` + `static/game-skin.js` turn the
   website look into a console-style HUD (dark grid backdrop, angled mission
   panels, glowing stats, HUD strip) on both `index.html` and `/pes17.html`.
@@ -132,6 +146,53 @@ in memory and contains no `__pycache__` / `.pyc`.
   arrows, `🅰`/`🆕`/`🃏` squared badges and ZWJ family sequences. A
   Unicode `u`-flag catch-all converts any unknown or future emoji to a
   neutral vector badge, so no color glyph can reappear in app content.
+* **r7: harvest before cleanup + PES 2017-only mode.** There is no real
+  `.cpk` archive in this workspace, so `pes17/CPK_ASSET_INVENTORY.md` lists
+  everything the shipped `cpkread`/`dds`/`ftex`/`bc7` readers can pull from a
+  PES 2021 / FL2x CPK (crests, competition emblems, kit textures, player and
+  coach portraits, pesdb tables, generic art) and marks each class
+  `YES` / `MAP` / `NO` for PES 2017. `lib/pes17_assets.py` +
+  `tools/harvest_cpk.py` produce a read-only manifest and can copy selected
+  assets into the app folder, converting DDS/FTEX/WESYS to PNG; the app also
+  exposes `GET /api/pes17/assets` and owner-only
+  `POST /api/pes17/assets/extract`. Cleanup: `/` now serves a dedicated
+  `pes17-dashboard.html`, the 7 Google Fonts links and 4 flagcdn references
+  are stripped at build time, `flag_img()` no longer downloads, and
+  `_wiki_web()` defaults to false. `pes17_only:false` restores the FL26
+  landing page; `/index.html` always remains reachable. **Not a full
+  rewrite** — the 20,074-line FL26 UI and its endpoints still exist.
+  42/42 HTTP checks with the real save + synthetic patch folder.
+* **r8: conservative cleanup, not a rewrite.** `prune.py` removes 111
+  FL26/FL27/Sider-only files (10.01 MB) from the shipped build:
+  `addons/regenfix/`, `addons/michele/`, `lua/`, `FL_key.bin`,
+  `FL_key_README.txt`, and the five FL26 databases that PES 2017 regenerates
+  into `data/pes17/` from the real `EDIT00000000`. Every deletion is listed in
+  `CLEANUP_MANIFEST.txt`; `prune.apply()` asserts that all 43 required paths
+  survive. Kept on purpose: the classic FL26 UI at `/index.html` and the
+  art/scenes/stadiums/i18n/small metadata it serves, all `lib/*.py` and the
+  portable `python/*`. Because the FL26 `data/realmoves.json` cache is gone,
+  `patch.py` also guards `realmoves_fetch_bg()` with `_wiki_web()` so the
+  build stays offline by default. **Verification:** 76/76 HTTP checks on a
+  live server built from the pruned zip, plus a differential sweep of all 132
+  GET endpoints against the unpruned r7 build — 132 identical status pairs,
+  zero new 5xx, no timeouts. The PES 2017 player database is regenerated from
+  `EDIT00000000` (20,018 players) despite the FL26 databases being absent.
+  See [`CLEANUP_REPORT.md`](CLEANUP_REPORT.md).
+* **r6: patch-folder club crests.** `overlay/lib/pes17_crests.py` walks a
+  configurable local folder (`pes17_patch_dir`; blank = auto-detect folders
+  next to `pes_exe`) for crest-like PNG/JPG/DDS/FTEX files and for
+  `common/render/symbol/flag/e_<id>_<variant>.(png|dds)` entries inside `*.cpk`
+  archives, using the shipped `cpkread` / `dds` / `ftex` / `bc7` readers.
+  Club names are resolved with `data/pes17/teamids.json`, preferring the stable
+  team ID over the raw bit-packed ID (the FL26 `_save_team_ids()` stride is
+  wrong for PES 2017). `crest_img()` tries this source first on a PES 2017
+  save; `crest_prefetch()` skips Wikipedia when patch crests exist. New
+  `/api/pes17/crests` (diagnostic) and `/api/pes17/crests/dir` (owner-only
+  config setter) endpoints and a card on `/pes17.html` show the result.
+  Read-only, offline, no external dependency; nothing is written to the game
+  folder. Verified with 32/32 HTTP checks on the real save plus a synthetic
+  patch folder. Real patch CPK archives were not available in this sandbox, so
+  CPK reading is covered by a mocked reader and the shipped `cpkread.Cpk` API.
 * **r5: layout guard.** `apply_ops()` calls `pes17_pairs.verify_layout()`
   before any op: exact 13,304,607 B data size, four structural table markers
   (formation record prefixes, XI permutation, tactics invariant bytes,

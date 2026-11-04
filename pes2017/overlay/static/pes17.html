@@ -32,6 +32,10 @@ pre{background:#0b111b;border:1px solid #26364c;border-radius:8px;padding:12px;o
 .warnbox{background:#2a1c16;border:1px solid #8a5a24;color:#ffd9a0;border-radius:8px;padding:10px 12px;font-size:12px;margin:10px 0}
 .goodbox{background:#142a1e;border:1px solid #2f7a52;color:#b6f2cd;border-radius:8px;padding:10px 12px;font-size:12px;margin:10px 0}
 .langbtn{font-size:12px;background:#20304a}
+.crest-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px;margin-top:10px}
+.crest-cell{background:#0e1622;border:1px solid #2c3e55;border-radius:8px;padding:9px 6px;text-align:center;font-size:11px;color:#b9c9dc}
+.crest-cell img{width:64px;height:64px;object-fit:contain;display:block;margin:0 auto 6px}
+.crest-cell span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 <link rel="stylesheet" href="/game-skin.css">
 </head>
@@ -151,6 +155,32 @@ pre{background:#0b111b;border:1px solid #26364c;border-radius:8px;padding:12px;o
 </div>
 
 <div class="card">
+  <h2 data-ar="3c. شعارات الأندية من مجلد الباتش">3c. Club logos from your PES 2017 patch folder</h2>
+  <div class="muted" data-ar="قراءة شعارات الأندية من ملفات الباتش محليا دون إنترنت: صور PNG/JPG/DDS مفكوكة أو ملفات flag/e_&lt;id&gt;_r.dds داخل أرشيف CPK. لا يكتب التطبيق أي شيء داخل مجلد اللعبة.">Reads club crests offline from the patch folder: loose PNG/JPG/DDS files or flag/e_&lt;id&gt;_r.dds entries inside CPK archives. Nothing is ever written into the game folder.</div>
+  <div class="row">
+    <label style="flex:1;min-width:280px"><span data-ar="مجلد الباتش">Patch folder</span>
+      <input id="patchDir" style="width:100%" placeholder="D:\...\Pro Evolution Soccer 2017\download   (blank = auto-detect from pes_exe)"></label>
+    <button id="setCrestsDir" data-ar="حفظ المجلد ومسح الشعارات">Set folder &amp; scan</button>
+    <button id="rescanCrests" class="ghost" data-ar="إعادة المسح">Rescan</button>
+    <button id="clearCrestsDir" class="ghost" data-ar="إلغاء المجلد">Clear</button>
+  </div>
+  <div id="crestReport" class="muted">Not scanned yet.</div>
+  <div id="crestGrid" class="crest-grid"></div>
+</div>
+
+<div class="card">
+  <h2 data-ar="3d. محتويات أرشيف CPK في مجلد الباتش">3d. CPK assets in the patch folder</h2>
+  <div class="muted" data-ar="جرد لكل ما يستطيع قارئ CPK المرفق مع البرنامج رؤيته محليا: شعارات الأندية وشعارات البطولات وأقمصة الفرق وصور اللاعبين والمدربين وجداول pesdb والصور العامة. لا شيء يكتب داخل مجلد اللعبة، ولا اتصال بالإنترنت.">Offline inventory of everything the shipped CPK readers can see locally: club crests, competition emblems, kit textures, player/coach portraits, pesdb tables and generic art. Nothing is written into the game folder and no network request is made.</div>
+  <div class="row">
+    <button id="scanAssets" data-ar="فحص المحتويات">Scan assets</button>
+    <button id="harvestAssets" class="ghost" data-ar="نسخ الشعارات والصور القابلة للاستخدام">Harvest crests / logos / art</button>
+    <span id="assetSummary" class="muted">Not scanned yet.</span>
+  </div>
+  <div id="assetBars" class="crest-grid"></div>
+  <div id="assetReport" class="muted"></div>
+</div>
+
+<div class="card">
   <h2 data-ar="4. النتيجة / المعلومات الخام">4. Result / raw info</h2>
   <pre id="out">-</pre>
 </div>
@@ -228,6 +258,75 @@ $('apply').onclick=async()=>{try{
     layout:$('verifyLayout').checked});
   out(r);renderLayout(r.layout);if(!r.dry)await loadInfo();
 }catch(e){out({error:String(e)})}};
+
+/* ------------------------------------------------------------------ *
+ * r7: CPK asset inventory + harvest (offline, read-only source).
+ * ------------------------------------------------------------------ */
+function renderAssets(r){
+  if(!r||!r.ok){show('assetReport','<span class="err">'+esc(r&&r.error||'asset scan failed')+'</span>');return}
+  const c=r.counts||{},u=r.usable||{};
+  show('assetSummary','Archives: '+esc(r.archives)+' · CPK entries: '+esc(r.cpk_entries)+' · loose: '+esc(r.loose_files)+' · total: '+esc(r.files));
+  $('assetBars').innerHTML=Object.keys(c).filter(k=>c[k]).map(k=>
+    '<div class="crest-cell"><span style="font-size:15px;color:#8fc7ff;font-weight:700">'+esc(c[k])+'</span><span>'+esc(k)+'</span></div>').join('')
+    +'<div class="crest-cell"><span style="font-size:15px;color:#8ce6a8;font-weight:700">'+esc(u.YES||0)+'</span><span>PES17-ready</span></div>'
+    +'<div class="crest-cell"><span style="font-size:15px;color:#ffc352;font-weight:700">'+esc(u.MAP||0)+'</span><span>needs ID map</span></div>';
+  const bits=[r.files?'<span class="ok">Catalogued read-only.</span>':'<span class="err">Nothing found — set a patch folder in card 3c.</span>',
+    'YES = ID-independent art (keep). MAP = needs a PES 2017 team/player ID map. NO = version-specific pesdb.',
+    esc(r.hint||'')];
+  if(r.errors&&r.errors.length)bits.push('<span class="err">Errors: '+esc(r.errors.slice(0,3).join(' | '))+'</span>');
+  show('assetReport',bits.join('<br>'));
+}
+async function loadAssets(rescan){
+  try{renderAssets(await get('/api/pes17/assets'+(rescan?'?rescan=1':'')))}
+  catch(e){show('assetReport','<span class="err">'+esc(e)+'</span>')}
+}
+$('scanAssets').onclick=()=>loadAssets(true);
+$('harvestAssets').onclick=async()=>{
+  $('harvestAssets').disabled=true;
+  try{const r=await post('/api/pes17/assets/extract',{classes:['crest','emblem','art'],limit:200});
+    show('assetReport','<span class="ok">Harvested '+esc(r.written)+' files ('+esc(r.bytes)+' B) into '+esc(r.out)+'. Source untouched.</span>');
+  }catch(e){show('assetReport','<span class="err">'+esc(e)+'</span>')}
+  finally{$('harvestAssets').disabled=false}
+};
+loadAssets(false);
+
+/* ------------------------------------------------------------------ *
+ * PES 2017 patch-folder crests (r6).  Diagnostic + offline crest previews.
+ * ------------------------------------------------------------------ */
+function renderCrests(r){
+  if(!r||!r.ok){show('crestReport','<span class="err">'+esc(r&&r.error||'crest scan failed')+'</span>');$('crestGrid').innerHTML='';return}
+  const bits=[
+    'Source: '+(r.auto?'auto-detected from pes_exe':'explicit patch folder')+'.',
+    'Folders: '+((r.roots||[]).length?esc((r.roots||[]).join(' | ')):'none'),
+    'Files scanned: '+esc(r.files_scanned)+', CPK archives: '+esc(r.cpk_archives)+', CPK crest entries: '+esc(r.cpk_entries)+'.',
+    'Logos found: '+esc(r.logos_found)+', clubs matched: '+esc(r.clubs_matched)+', skipped: '+esc(r.skipped)+'.'
+  ];
+  if(r.errors&&r.errors.length)bits.push('<span class="err">Errors: '+esc(r.errors.slice(0,3).join(' | '))+'</span>');
+  if(!r.available)bits.push('<span class="err">'+esc(r.hint||'No crests found.')+'</span>');
+  else bits.push('<span class="ok">Crests are now served by /api/crest from this folder, with no network request.</span>');
+  show('crestReport',bits.join('<br>'));
+  const sm=r.sample||[];
+  $('crestGrid').innerHTML=sm.length?sm.map(x=>{
+    const nm=x.name||('#'+x.id);
+    return '<div class="crest-cell"><img alt="" src="/api/crest?club='+encodeURIComponent(nm)+'">'+
+      '<span title="'+esc(nm)+'">'+esc(nm)+'</span><span class="muted">#'+esc(x.id)+' '+esc(x.source)+'</span></div>';
+  }).join(''):'<span class="muted">no sample crests</span>';
+}
+async function loadCrests(rescan){
+  try{renderCrests(await get('/api/pes17/crests'+(rescan?'?rescan=1':'')))}
+  catch(e){show('crestReport','<span class="err">'+esc(e)+'</span>')}
+}
+$('setCrestsDir').onclick=async()=>{
+  try{renderCrests(await post('/api/pes17/crests/dir',{dir:$('patchDir').value.trim()}))}
+  catch(e){show('crestReport','<span class="err">'+esc(e)+'</span>')}
+};
+$('clearCrestsDir').onclick=async()=>{
+  $('patchDir').value='';
+  try{renderCrests(await post('/api/pes17/crests/dir',{dir:''}))}
+  catch(e){show('crestReport','<span class="err">'+esc(e)+'</span>')}
+};
+$('rescanCrests').onclick=()=>loadCrests(true);
+loadCrests(false);
 
 /* ------------------------------------------------------------------ *
  * Bilingual tools page (r5).  Only direct text nodes are translated, so

@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Gaffer — PES 2017</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1119;--panel:#131c28;--panel2:#182434;--line:#26364b;--txt:#e6eef8;--dim:#8fa3bb;--accent:#5ad1b0;--accent2:#f4b454;--bad:#ff8f8f;--ok:#7fe0a8}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 600px at 15% -10%,#16283a 0%,var(--bg) 60%) fixed;color:var(--txt);font:14px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 20px 70px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:16px 20px;background:linear-gradient(100deg,#14263a,#101a26);border:1px solid var(--line);border-radius:14px}
+.brand{display:flex;align-items:center;gap:13px}
+.mark{width:42px;height:42px;border-radius:11px;background:linear-gradient(145deg,#1d4d5c,#0e2a35);border:1px solid #2e6b78;display:grid;place-items:center;flex:none}
+.mark svg{width:24px;height:24px;fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+h1{margin:0;font-size:17px;letter-spacing:.055em;text-transform:uppercase;font-weight:750}
+.sub{color:var(--dim);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase}
+.hdr-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#0e1824;border-radius:999px;padding:6px 12px;font-size:11px;letter-spacing:.06em;color:var(--dim);white-space:nowrap}
+.chip b{color:var(--accent);font-weight:700}
+.chip.amber b{color:var(--accent2)}
+button{font:inherit;cursor:pointer;border:1px solid #35566b;background:#17384a;color:var(--txt);border-radius:8px;padding:8px 13px;font-size:12.5px;transition:.15s}
+button:hover{background:#1e4c63;border-color:#4d819d}
+button.ghost{background:#16222f;border-color:var(--line);color:var(--dim)}
+button.ghost:hover{color:var(--txt);background:#1d2c3c}
+button:disabled{opacity:.5;cursor:default}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;margin-top:16px}
+.card{background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:17px 18px;min-width:0}
+.card h2{margin:0 0 12px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:700;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.hero{grid-column:span 12;display:flex;align-items:center;gap:20px;flex-wrap:wrap;background:linear-gradient(105deg,#173043,#111c29 65%)}
+.crest{width:92px;height:92px;flex:none;border-radius:16px;background:#0c1621;border:1px solid #2b4257;display:grid;place-items:center;overflow:hidden}
+.crest img{width:82px;height:82px;object-fit:contain}
+.crest span{font-size:26px;font-weight:800;color:#3f6c85;letter-spacing:.06em}
+.hero-main{flex:1;min-width:220px}
+.hero-main .club{font-size:25px;font-weight:750;letter-spacing:-.01em;margin:0}
+.hero-main .meta{color:var(--dim);font-size:13px;margin-top:4px}
+.pills{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+.pill{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;border:1px solid #2a4d59;background:#10262c;color:var(--accent);border-radius:6px;padding:4px 9px}
+.pill.warn{border-color:#5a4526;background:#241d12;color:var(--accent2)}
+.c4{grid-column:span 4}.c6{grid-column:span 6}.c8{grid-column:span 8}.c12{grid-column:span 12}
+@media(max-width:860px){.c4,.c6,.c8{grid-column:span 12}}
+.big{font-size:29px;font-weight:760;letter-spacing:-.02em;color:#f2f9ff}
+.badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.1em;border:1px solid #8a6124;background:#3a2810;color:#ffc861;border-radius:5px;padding:2px 8px;margin-left:8px;vertical-align:middle}
+.muted{color:var(--dim);font-size:12px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th{text-align:left;color:var(--dim);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:6px 8px;border-bottom:1px solid #1d2b3b}
+tr:last-child td{border-bottom:0}
+[dir=rtl] th,[dir=rtl] td{text-align:right}
+.num{color:var(--accent);font-variant-numeric:tabular-nums;font-weight:650}
+.scroll{max-height:280px;overflow:auto}
+.crestgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:9px}
+.crestgrid div{background:#0d1722;border:1px solid var(--line);border-radius:9px;padding:8px 5px;text-align:center;font-size:10.5px;color:var(--dim);overflow:hidden}
+.crestgrid img{width:52px;height:52px;object-fit:contain;display:block;margin:0 auto 5px}
+.crestgrid span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid #1d2b3b;font-size:12.5px}
+.kv:last-child{border-bottom:0}.kv b{font-weight:650;color:#dbe9f7}
+.bars{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+.bar{border:1px solid var(--line);background:#0e1a26;border-radius:7px;padding:5px 9px;font-size:11px;color:var(--dim)}
+.bar b{color:var(--txt)}
+.foot{margin-top:20px;padding:14px 16px;border:1px dashed #3a4a5e;border-radius:12px;color:var(--dim);font-size:12px;background:#0e1722}
+.err{color:var(--bad)}.ok{color:var(--ok)}
+.skel{height:13px;background:linear-gradient(90deg,#1c2a3a,#243549,#1c2a3a);background-size:200% 100%;animation:sh 1.3s infinite;border-radius:4px}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.langbtn{background:#16222f;border-color:var(--line);color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div class="brand">
+    <div class="mark"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></svg></div>
+    <div><h1 data-ar="ذا جافر — بي إس 2017">The Gaffer — PES 2017</h1>
+      <div class="sub" data-ar="لوحة تحكم محلية · بدون إنترنت">Local Master League dashboard · offline</div></div>
+  </div>
+  <div class="hdr-actions">
+    <span class="chip" data-ar="الإصدار: <b>r7</b>">Build <b>r7</b></span>
+    <span class="chip amber" data-ar="القراءة من ملف الحفظ <b>محلية</b>">Save reads <b>local</b></span>
+    <button id="langBtn" class="langbtn" type="button">العربية</button>
+    <button id="refresh" data-ar="تحديث">Refresh</button>
+    <a class="chip" href="/pes17.html" data-ar="أدوات الكتابة والفحص">Tools &amp; diagnostics ↗</a>
+    <a class="chip" href="/index.html" data-ar="واجهة FL26 القديمة">Classic app ↗</a>
+  </div>
+</header>
+
+<div class="grid">
+  <section class="card hero">
+    <div class="crest" id="crestBox"><span>TG</span></div>
+    <div class="hero-main">
+      <p class="club" id="clubName">Loading your save…</p>
+      <div class="meta" id="clubMeta">Reading the local Master League file.</div>
+      <div class="pills">
+        <span class="pill">PES 2017 · t99p17v20</span>
+        <span class="pill" id="offlinePill">Offline by default</span>
+        <span class="pill warn">Writes: measured only</span>
+      </div>
+    </div>
+    <div style="min-width:190px">
+      <label class="sub" for="slot" style="display:block;margin-bottom:6px">Save slot</label>
+      <select id="slot" style="width:100%;background:#0d1824;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px"></select>
+      <div class="muted" id="container" style="margin-top:8px">-</div>
+    </div>
+  </section>
+
+  <section class="card c4">
+    <h2 data-ar="الميزانية (قيمة خام)">Transfer budget <span class="badge">RAW</span></h2>
+    <div class="big" id="budgetNum">—</div>
+    <div class="muted" id="budgetNote" style="margin-top:6px">Raw u32 save units. NOT confirmed EUR.</div>
+    <div class="kv" style="margin-top:10px"><span>Wage word</span><b id="wageNum">—</b></div>
+    <div class="kv"><span>Scale</span><b>not verified in game</b></div>
+  </section>
+
+  <section class="card c4">
+    <h2 data-ar="التشكيلة (أرقام القمصان الحقيقية)">Squad · real shirt numbers</h2>
+    <div class="scroll" id="squad"><div class="skel"></div><div class="skel" style="margin-top:8px;width:80%"></div></div>
+  </section>
+
+  <section class="card c4">
+    <h2 data-ar="ترتيب الدوري">League table</h2>
+    <div class="scroll" id="table"><div class="skel"></div><div class="skel" style="margin-top:8px;width:70%"></div></div>
+  </section>
+
+  <section class="card c6">
+    <h2 data-ar="شعارات الأندية من مجلد الباتش">Club crests from your patch folder <span id="crestCount" class="muted">—</span></h2>
+    <div class="muted" id="crestReport">Scanning locally…</div>
+    <div class="crestgrid" id="crestGrid" style="margin-top:12px"></div>
+  </section>
+
+  <section class="card c6">
+    <h2 data-ar="محتويات أرشيف CPK">CPK asset inventory <span id="assetCount" class="muted">—</span></h2>
+    <div class="muted" id="assetReport">Scanning locally…</div>
+    <div class="bars" id="assetBars"></div>
+    <div style="margin-top:13px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button id="harvest" data-ar="نسخ الأصول القابلة للاستخدام">Harvest crests / logos / art</button>
+      <span class="muted" id="harvestOut"></span>
+    </div>
+    <div class="muted" style="margin-top:10px" id="assetHint"></div>
+  </section>
+
+  <section class="card c12">
+    <h2 data-ar="الحدود والسلامة">Safety &amp; limits</h2>
+    <div class="kv"><span>Save container</span><b>176 B header · PES 2017 master key · byte-identical re-encryption</b></div>
+    <div class="kv"><span>Writes</span><b>measured pairs only · dry run by default · automatic backup · layout guard</b></div>
+    <div class="kv"><span>Network</span><b>no CDN fonts · no flag CDN · Wikipedia off by default · crests from your patch folder</b></div>
+    <div class="kv"><span>In-game status</span><b class="warn" style="color:var(--accent2)">written save not yet loaded in PES 2017 — user test still required</b></div>
+  </section>
+</div>
+
+<div class="foot" data-ar="هذه اللوحة تقرأ ملفاتك المحلية فقط: شعارات الأندية وأصول CPK من مجلد الباتش، والفرق والميزانية من ملف الماستر ليج. لا تثبت أن اللعبة تقبل ملف حفظ مكتوب، ولا تعرف مقياس العملة داخل اللعبة. احتفظ بنسخة احتياطية دائما.">This dashboard only reads local files: club crests and CPK assets from your patch folder, club/squad/budget from your Master League save. It does not prove a written save is accepted by PES 2017, and the in-game currency scale is still unknown. Always keep a backup.</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>Number(n||0).toLocaleString('en-US');
+async function get(u){const r=await fetch(u);const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
+async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
+function tbl(rows,cols){if(!rows||!rows.length)return '<span class="muted">none</span>';return '<table><tr>'+cols.map(c=>'<th>'+esc(c[1])+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+cols.map(c=>'<td>'+(c[2]?'<span class="num">'+esc(r[c[0]])+'</span>':esc(r[c[0]]))+'</td>').join('')+'</tr>').join('')+'</table>'}
+function fail(el,e){$(el).innerHTML='<span class="err">'+esc(e)+'</span>'}
+
+let SLOT='';
+async function slots(){
+  try{const s=await get('/api/slots');$('slot').innerHTML=(s||[]).map(x=>'<option value="'+esc(x.slot)+'">'+esc(x.slot)+'</option>').join('');if(s&&s.length)SLOT=s[0].slot}
+  catch(e){fail('clubMeta',e)}
+}
+async function info(){
+  try{
+    SLOT=$('slot').value||SLOT;
+    const r=await get('/api/pes17/info?slot='+encodeURIComponent(SLOT));
+    const c=r.club||'',i=r.info||{};
+    $('clubName').textContent=i.club||c||'Unknown club';
+    $('clubMeta').textContent=(i.league||'-')+' · '+(i.date||'-')+' · '+(r.league_name||'');
+    $('container').textContent=r.container?(r.container.data_size+' B data.dat · '+r.container.file_header+' B header'):'-';
+    const b=r.budget||{};
+    $('budgetNum').textContent=fmt(b.transfer!=null?b.transfer:b.value);
+    $('wageNum').textContent=fmt(b.salary!=null?b.salary:b.wage);
+    $('budgetNote').textContent=b.currency_verified===false?'RAW u32 save units. NOT confirmed EUR; display scale is unverified.':'Raw save units.';
+    $('crestBox').innerHTML='<img alt="" src="/api/crest?club='+encodeURIComponent(i.club||c)+'" onerror="this.parentNode.innerHTML=\'<span>TG</span>\'">';
+    $('squad').innerHTML=tbl(r.squad,[['shirt','#',1],['name','Player'],['id','ID']]);
+    $('table').innerHTML=tbl(r.league_table,[['pos','Pos',1],['club','Club'],['pts','Pts']]);
+  }catch(e){fail('clubName',e);fail('squad',e);fail('table',e)}
+}
+async function crests(){
+  try{
+    const r=await get('/api/pes17/crests');
+    $('crestCount').textContent=r.logos_found+' logos / '+r.clubs_matched+' clubs';
+    $('crestReport').innerHTML=r.available
+      ? '<span class="ok">Read locally from '+(r.auto?'folders next to pes_exe':'your patch folder')+'. No network request for crests.</span>'
+      : '<span class="err">No crests found. Set a patch folder in Tools → card 3c.</span>';
+    const sm=r.sample||[];
+    $('crestGrid').innerHTML=sm.length?sm.map(x=>{const n=x.name||('#'+x.id);
+      return '<div><img alt="" src="/api/crest?club='+encodeURIComponent(n)+'"><span title="'+esc(n)+'">'+esc(n)+'</span></div>'}).join('')
+      : '<span class="muted">no sample crests</span>';
+  }catch(e){fail('crestReport',e)}
+}
+async function assets(){
+  try{
+    const r=await get('/api/pes17/assets');
+    $('assetCount').textContent=r.files+' entries / '+r.archives+' archives';
+    const c=r.counts||{},u=r.usable||{};
+    $('assetBars').innerHTML=Object.keys(c).filter(k=>c[k]).map(k=>'<span class="bar">'+esc(k)+' <b>'+c[k]+'</b></span>').join('')
+      +'<span class="bar">PES17-ready <b>'+(u.YES||0)+'</b></span><span class="bar">needs ID map <b>'+(u.MAP||0)+'</b></span>';
+    $('assetReport').innerHTML=r.files
+      ? '<span class="ok">Catalogued '+r.cpk_entries+' CPK entries and '+r.loose_files+' loose files, read-only.</span>'
+      : '<span class="err">Nothing found. Point pes17_patch_dir at the patch folder, then Refresh.</span>';
+    $('assetHint').textContent=r.hint||'';
+  }catch(e){fail('assetReport',e)}
+}
+$('harvest').onclick=async()=>{
+  $('harvest').disabled=true;$('harvestOut').textContent='working…';
+  try{const r=await post('/api/pes17/assets/extract',{classes:['crest','emblem','art'],limit:200});
+    $('harvestOut').innerHTML='<span class="ok">'+r.written+' files, '+fmt(r.bytes)+' B → '+esc(r.out)+'</span>';
+  }catch(e){fail('harvestOut',e)}finally{$('harvest').disabled=false}
+};
+$('refresh').onclick=()=>{info();crests();assets()};
+$('slot').onchange=info;
+
+/* Bilingual: only elements with a direct text node are translated. */
+const LK='gaffer_pes17_dash_lang';
+function setLang(ar){
+  document.documentElement.lang=ar?'ar':'en';document.documentElement.dir=ar?'rtl':'ltr';
+  document.querySelectorAll('[data-ar]').forEach(el=>{
+    const t=Array.from(el.childNodes).filter(n=>n.nodeType===3);
+    if(el.dataset.en===undefined)el.dataset.en=t.map(n=>n.textContent).join('').trim();
+    const v=ar?el.dataset.ar:el.dataset.en;
+    if(t.length){t[0].textContent=v+' ';for(let i=1;i<t.length;i++)t[i].textContent=''}else el.textContent=v;
+  });
+  $('langBtn').textContent=ar?'English':'العربية';
+  try{localStorage.setItem(LK,ar?'ar':'en')}catch(e){}
+}
+$('langBtn').onclick=()=>setLang(document.documentElement.lang!=='ar');
+try{setLang(localStorage.getItem(LK)==='ar')}catch(e){setLang(false)}
+slots().then(()=>{info();crests();assets()});
+</script>
+</body>
+</html>

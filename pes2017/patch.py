@@ -8,6 +8,7 @@ substitutions: if the upstream pc414 source drifts, patch.py fails loudly
 instead of silently producing a broken program.
 """
 import os
+import re
 import shutil
 import sys
 
@@ -644,6 +645,123 @@ def players_data(slot):
      """    game = dict(v='fl27' if g27 else 'fl26')""",
      """    game = dict(v='pes17' if _GAME['v'] == 'pes17' else ('fl27' if g27 else 'fl26'))""", 1),
 
+    # --------------------------------------------------- PES 2017 crests (r6)
+    # The FL26/FL27 crest pipeline (Sider livecpk + CPK next to pes_exe) uses a
+    # 1680 B club stride and can resolve a PES 2017 club name to the raw
+    # bit-packed id instead of the stable team id.  pes17_crests reads the
+    # patch folder directly and is tried FIRST on a PES 2017 save.
+    ('server.py',
+     """LAN_POST_BLOCK = ('/api/setup/save', '/api/setup/pick', '/api/setup/sider', '/api/setup/michele', '/api/setup/injuries',
+                  '/api/setup/regen', '/api/setup/check', '/api/package', '/api/quit', '/api/lan/set', '/api/dbimport/faces',
+                  '/api/backups/keep', '/api/backups/clean', '/api/dev/')""",
+     """LAN_POST_BLOCK = ('/api/setup/save', '/api/setup/pick', '/api/setup/sider', '/api/setup/michele', '/api/setup/injuries',
+                  '/api/setup/regen', '/api/setup/check', '/api/package', '/api/quit', '/api/lan/set', '/api/dbimport/faces',
+                  '/api/backups/keep', '/api/backups/clean', '/api/dev/',
+                  '/api/pes17/crests/dir', '/api/pes17/assets/extract')""", 1),
+
+    ('server.py',
+     """def crest_img(name):
+    b = game_logo(name)""",
+     """def crest_img(name):
+    if _GAME['v'] == 'pes17' or CFG.get('pes17_patch_dir'):
+        try:
+            import pes17_crests
+            _b17 = pes17_crests.crest_img(name, CFG)
+            if _b17:
+                return _b17
+        except Exception as _ex:
+            print('[pes17 crests]', _ex)
+    b = game_logo(name)""", 1),
+
+    ('server.py',
+     """        return len(_game_logo_index()) >= 50""",
+     """        if _GAME['v'] == 'pes17' or CFG.get('pes17_patch_dir'):
+            try:
+                import pes17_crests
+                if pes17_crests.count(CFG) >= 1:
+                    return True
+            except Exception as _ex:
+                print('[pes17 crests]', _ex)
+        return len(_game_logo_index()) >= 50""", 1),
+
+    ('server.py',
+     """            if u.path == '/api/pes17/info':
+                return self.send(200, pes17_tools_info(parse_qs(u.query).get('slot', [''])[0]))""",
+     """            if u.path == '/api/pes17/info':
+                return self.send(200, pes17_tools_info(parse_qs(u.query).get('slot', [''])[0]))
+            if u.path == '/api/pes17/crests':
+                import pes17_crests
+                return self.send(200, pes17_crests.report(
+                    CFG, bool(parse_qs(u.query).get('rescan'))))""", 1),
+
+    ('server.py',
+     """            if self.path == '/api/pes17/write':""",
+     """            if self.path == '/api/pes17/crests/dir':
+                import pes17_crests
+                _pd = (body.get('dir') or '').strip()
+                if _pd and not os.path.isdir(_pd):
+                    return self.send(400, dict(error='Not a folder: %s' % _pd))
+                _cfg_update(pes17_patch_dir=_pd)
+                pes17_crests.clear()
+                return self.send(200, pes17_crests.report(CFG, True))
+            if self.path == '/api/pes17/write':""", 1),
+
+    # ------------------------------------------- r7: harvest + PES 2017-only cleanup
+    ('server.py',
+     """    if os.path.isfile(fp):
+        return open(fp, 'rb').read()
+    try:
+        import urllib.request""",
+     """    if os.path.isfile(fp):
+        with open(fp, 'rb') as _f:
+            return _f.read()
+    if CFG.get('pes17_only', True):   # r7: PES 2017 edition is offline by default
+        return None
+    try:
+        import urllib.request""", 1),
+
+    ('server.py',
+     """    return bool(CFG.get('wiki_web', True))   # pc357: za javni test zadano UKLJUCENO (slike igraca, karijere za povratke kuci); iskljuci s \"wiki_web\": false""",
+     """    return bool(CFG.get('wiki_web', False))  # r7: offline by default in the PES 2017 edition; set wiki_web:true to allow Wikipedia lookups""", 1),
+
+    ('server.py',
+     """            name = 'index.html' if u.path in ('/', '') else u.path.lstrip('/').replace('\\\\', '/')""",
+     """            name = 'index.html' if u.path in ('/', '') else u.path.lstrip('/').replace('\\\\', '/')
+            if u.path in ('/', '') and CFG.get('pes17_only', True) and os.path.isfile(
+                    os.path.join(HERE, 'static', 'pes17-dashboard.html')):
+                name = 'pes17-dashboard.html'   # r7: PES 2017 dashboard is the landing page""", 1),
+
+    ('server.py',
+     """            if u.path == '/api/pes17/crests':
+                import pes17_crests
+                return self.send(200, pes17_crests.report(
+                    CFG, bool(parse_qs(u.query).get('rescan'))))""",
+     """            if u.path == '/api/pes17/crests':
+                import pes17_crests
+                return self.send(200, pes17_crests.report(
+                    CFG, bool(parse_qs(u.query).get('rescan'))))
+            if u.path == '/api/pes17/assets':
+                import pes17_assets
+                return self.send(200, pes17_assets.manifest(
+                    CFG, bool(parse_qs(u.query).get('rescan'))))
+            if u.path == '/api/pes17/mode':
+                return self.send(200, dict(pes17=(_GAME['v'] == 'pes17'),
+                                          only=bool(CFG.get('pes17_only', True)),
+                                          offline=not bool(CFG.get('wiki_web', False))))""", 1),
+
+    ('server.py',
+     """            if self.path == '/api/pes17/crests/dir':""",
+     """            if self.path == '/api/pes17/assets/extract':
+                import pes17_assets
+                _src = pes17_assets.source_for(CFG)
+                _out = os.path.join(HERE, 'data', 'pes17', 'harvest')
+                _lim = min(500, max(1, int(body.get('limit') or 200)))
+                return self.send(200, pes17_assets.harvest(
+                    _src, _out, classes=(body.get('classes') or
+                                         list(pes17_assets.DEFAULT_EXTRACT)),
+                    limit=_lim))
+            if self.path == '/api/pes17/crests/dir':""", 1),
+
     # ------------------------------------------------------------------- UI
     ('static/index.html',
      """if(S.layout&&S.layout.game27){let seen=false;""",
@@ -661,7 +779,32 @@ def players_data(slot):
      """</body>""",
      """<script src="/game-skin.js"></script>
 </body>""", 1),
+
+    # ------------------------------------------- r8: offline guard after cleaning realmoves.json
+    # The shipped FL26 Wikipedia transfer cache is removed by prune.py.  Without
+    # this guard real_moves() would immediately spawn a background Wikipedia
+    # fetch on first use, which contradicts wiki_web:false (offline by default).
+    ('server.py',
+     """    if _RM['busy']:
+        return
+    try:
+        st = json.load(open(REALMOVES_FILE, encoding='utf-8')) if os.path.exists(REALMOVES_FILE) else {}""",
+     """    if not _wiki_web():
+        return   # r8: offline by default; the FL26 Wikipedia transfer cache was cleaned out, never refetch it
+    if _RM['busy']:
+        return
+    try:
+        st = json.load(open(REALMOVES_FILE, encoding='utf-8')) if os.path.exists(REALMOVES_FILE) else {}""", 1),
 ]
+
+
+# Build-time removal of the two external CDNs that pc414 fetches on every page
+# load.  Exact asserted regexes: if the upstream HTML changes, the build fails
+# loudly rather than silently leaving a network dependency behind.
+REGEX_PATCHES = (
+    ('static/index.html', r'<link[^>]+fonts\.googleapis\.com[^>]*>', '', 7),
+    ('static/index.html', r'https://flagcdn\.com', '', 4),
+)
 
 
 def apply(target):
@@ -679,6 +822,15 @@ def apply(target):
             raise RuntimeError('%s: expected %d occurrence(s) of %r, found %d' %
                                (fn, count, old[:90], n))
         changes[fn] = data.replace(old, new, count)
+    for fn, pattern, repl, expected in REGEX_PATCHES:
+        if fn not in changes:
+            with open(os.path.join(target, fn), encoding='utf-8') as f:
+                changes[fn] = f.read()
+        new_data, n = re.subn(pattern, repl, changes[fn])
+        if n != expected:
+            raise RuntimeError('%s: expected %d regex matches of %r, found %d' %
+                               (fn, expected, pattern, n))
+        changes[fn] = new_data
     for fn, data in changes.items():
         with open(os.path.join(target, fn), 'w', encoding='utf-8', newline='') as f:
             f.write(data)
@@ -689,7 +841,10 @@ def apply(target):
         ('lib/pes17_layout.py', 'lib/pes17_layout.py'),
         ('lib/pes17_write.py', 'lib/pes17_write.py'),
         ('lib/pes17_pairs.py', 'lib/pes17_pairs.py'),
+        ('lib/pes17_crests.py', 'lib/pes17_crests.py'),
+        ('lib/pes17_assets.py', 'lib/pes17_assets.py'),
         ('static/pes17.html', 'static/pes17.html'),
+        ('static/pes17-dashboard.html', 'static/pes17-dashboard.html'),
         ('static/game-skin.css', 'static/game-skin.css'),
         ('static/game-skin.js', 'static/game-skin.js'),
         ('README_PES2017.txt', 'README_PES2017.txt'),
@@ -700,14 +855,26 @@ def apply(target):
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copy2(src, dst)
 
+    # Repo-root extras (docs + the standalone offline harvester CLI).
+    for rel, dest in (
+        ('tools/harvest_cpk.py', 'tools/harvest_cpk.py'),
+        ('CPK_ASSET_INVENTORY.md', 'CPK_ASSET_INVENTORY.md'),
+        ('CLEANUP_REPORT.md', 'CLEANUP_REPORT.md'),
+    ):
+        src = os.path.join(ROOT, rel)
+        dst = os.path.join(target, dest)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.copy2(src, dst)
+
     with open(os.path.join(target, 'VERSION.txt'), 'w', encoding='utf-8') as f:
-        f.write('pc414-pes17-gameui-r5 (2026-11-04)\n')
+        f.write('pc414-pes17-clean-r8 (2026-11-04)\n')
 
     # Syntax-check all patched Python files in memory (no __pycache__ in the
     # shipped package, no execution of the app).
     for fn in ('server.py', 'lib/pescrypt.py', 'lib/mlwrite.py',
                'lib/pes17.py', 'lib/pes17_layout.py', 'lib/pes17_write.py',
-               'lib/pes17_pairs.py'):
+               'lib/pes17_pairs.py', 'lib/pes17_crests.py',
+               'lib/pes17_assets.py', 'tools/harvest_cpk.py'):
         with open(os.path.join(target, fn), encoding='utf-8') as f:
             compile(f.read(), fn, 'exec')
     print('PES 2017 patch applied to', target, '(%d replacements)' %

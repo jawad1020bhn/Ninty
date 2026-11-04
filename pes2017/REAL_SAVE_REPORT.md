@@ -562,6 +562,245 @@ raw budget word, and more before/after pairs for arbitrary values, contracts,
 loans, youth, training, points/goals and offer injection. The r5 guard makes
 wrong-save writes safer; it does not make a written save game-accepted.
 
+## 6g. r6 — club crests from the local PES 2017 patch folder (2026-11-04)
+
+Asked "can we make it read club logos from the game patch foldeer".  The
+shipped pc414 already has a game-crest pipeline (`_game_logo_index()`,
+`game_logo()`, `/api/crest`, `crest_prefetch()`, `lib/cpkread.py`,
+`lib/dds.py`, `lib/bc7.py`, `lib/ftex.py`), but it is built for FL26/FL27:
+`_save_team_ids()` parses the club table with FL26's 1680 B stride (PES 2017
+uses 1312 B), and `data/pes17/teamids.json` contains BOTH the stable team id
+and the raw bit-packed club id for each name, so a club name can resolve to an
+id in the millions that no `e_<id>_r.dds` file uses.  It also only looks in
+Sider `livecpk` folders and CPK archives next to `pes_exe`.
+
+r6 adds `overlay/lib/pes17_crests.py`: a separate, explicit, offline,
+read-only source that is tried FIRST by `crest_img()` on a PES 2017 save.
+
+* `pes17_patch_dir` in `config.json` (blank = auto-detect `download/`,
+  `Data/`, `patch/`, `content/`, `livecpk/` next to `pes_exe`).  Walk is
+  capped at 8 levels / 30,000 files / 40 CPK archives; kit, face, stadium and
+  boot folders are ignored.  Nothing is written into the game folder.
+* Loose `*.png / *.jpg / *.dds / *.ftex / *.bmp / *.webp` files:
+  `e_<id>_<variant>.png`, `<id>.png`, `logo_<id>.png`, `flag_<id>.png`,
+  club-name filenames (`Birmingham City FC.png`, `Arsenal_FC.png`), and an
+  optional `map.txt` / `teams.txt` (`201=Birmingham City FC`).  Emblem variant
+  preference is the game's own `r, r_l, r_w, r_b, ...`.
+* `*.cpk` archives: TOC-only `cpkread.Cpk` scan for
+  `common/render/symbol/flag/e_<id>_<variant>.(png|dds)`; `WESYS`/zlib
+  wrappers are unwrapped, CRILAYLA is handled by the shipped reader.
+* Decoding uses the shipped `lib/dds.py` (DDS -> PNG), `lib/ftex.py` +
+  `lib/bc7.py`, with an 8 MB cap.  No Pillow / CDN / Wikipedia / new network
+  call is added; the module contains no `urllib`, `requests`, `socket` or URL.
+* Name -> id uses `data/pes17/teamids.json` built from the user's REAL ML file
+  (624 clubs), always preferring the smallest (= stable) id over the raw
+  `tid << 14 | index` alias, with Unicode normalization, FC/AFC/CF suffix
+  stripping and a conservative `difflib` fallback.
+* On a PES 2017 save `crest_img()` tries the patch folder before
+  `game_logo()`; when any patch crest is found `_game_crests_on()` returns
+  True, so `crest_prefetch()` does NOT fetch Wikipedia crests.  Clubs with no
+  patch crest show the app's initials badge instead of a possibly wrong
+  FL26-era crest.
+* New endpoints: `GET /api/pes17/crests` (diagnostic: roots, files scanned,
+  CPK archives/entries, logos found, clubs matched, sample) and
+  `POST /api/pes17/crests/dir` (owner-only config setter, added to
+  `LAN_POST_BLOCK`, rejects a non-existent folder, calls
+  `pes17_crests.clear()` and returns a fresh report).  `pes17.html` card 3c
+  sets/clears the folder, rescans and shows crest thumbnails through the
+  existing `/api/crest?club=...` endpoint; bilingual (AR/EN).
+
+### Verification (save-file / HTTP facts; NOT in-game confirmation)
+
+* **99 unit tests OK** (23 new: 19 for the crest reader + 4 static wiring
+  checks).  Cover stable-id preference, name/ID/plain-number/flag filenames,
+  `map.txt`, variant ranking, loose file over CPK, DDS -> PNG with the real
+  shipped `dds.py`, WESYS-wrapped CPK entries, graceful failure on broken
+  DDS/oversized files, auto-detection from `pes_exe`, report/count/clear,
+  no-network imports and read-only behaviour (patch folder unchanged).
+* `node --check` clean for the expanded `pes17.html` inline script.
+* **32/32 HTTP checks** against a live server with the REAL `ML00000011` and
+  a synthetic patch folder: tools page + crest card served,
+  `/api/pes17/crests` report, `/api/crest?club=Birmingham City FC` and
+  `?club=201` return the id-variant PNG, a loose name-named logo works,
+  an unknown club is not served, `crest_prefetch` returns
+  `{queued:0, game:true}` (no Wikipedia), set/clear/bad-dir config endpoint,
+  plus r5 regressions (`/api/pes17/info` club + RAW budget, dry `pair` with
+  `layout.mode:'verified'`) and the real save SHA still `41202a91...`.
+* `verify_pairs.py`: **PASS** — every measured byte reproduced, no extras.
+* Final deliverable: `pes2017/dist/TheGaffer_pes2017_pc414.zip`,
+  **30,888,104 B**, SHA-256
+  `4bf03e564cb5692910958cac75195cbf66ad4b324b29dc7464f035d1da11e155`,
+  290 entries, 0 `__pycache__`, no `config.json`, `VERSION.txt`
+  `pc414-pes17-crests-r6 (2026-11-04)`. `patch.py` now asserts 47 text
+  replacements.
+
+**Limits.** The user's actual patch folder was NOT provided, so no real
+`t99p17v20` CPK emblem file was decoded here; CPK reading is covered by a
+mocked archive implementing the shipped `cpkread.Cpk` API.  The folder
+layout, emblem naming and team-id numbering of a specific patch vary — the
+`/api/pes17/crests` diagnostic card is the confirmation step on the user's
+Windows machine.  This is a local file reader, not an in-game test; the
+outstanding PES 2017 save-load / header-hash / budget-scale checks from §6f
+are unchanged.
+
+## 6h. r7 — CPK asset harvest + PES 2017-only mode (2026-11-04)
+
+Asked "what else you can extract and fetch from these cpk pes 2021 files
+before clean them and make it 100% pes 2017 version".
+
+**Fact first:** `find . -iname '*.cpk'` returns **0**.  There is no PES 2021
+CPK archive in this workspace — only the original pc414 zip with its CPK
+readers (`lib/cpkread.py`, `lib/dds.py`, `lib/ftex.py`, `lib/bc7.py`), the
+FL26 `data/*.json` databases extracted from those games, and the real PES 2017
+saves.  Nothing was (or could be) fetched from a real CPK here.
+
+### Inventory of what the shipped readers can reach
+
+`pes2017/CPK_ASSET_INVENTORY.md` records every class with exact internal
+paths, shipped consumer and PES 2017 usability:
+
+| class | path | PES 2017 |
+|---|---|---|
+| crests | `common/render/symbol/flag/e_<id>_<variant>.(png\|dds)` | MAP (r6 does the team-id map) |
+| competition emblems | `common/render/symbol/emblem*/emb_<id>_<variant>.(png\|dds)` | MAP |
+| kit textures | `Asset/model/character/uniform/texture/.../u<tid>p<k>.ftex` | MAP |
+| player / coach portraits | `common/render/symbol/player/<pid>.dds`, `coach/coach_<id>.png` | MAP |
+| competition DB | `common/etc/pesdb/*.bin` | NO (version-specific) |
+| generic art | any other PNG/JPG/DDS | YES (ID-independent) |
+
+The shipped `data/*.json` FL26 databases are classified too: ~6.6 MB of
+player/rating/position/team/venue data is keyed to FL26 IDs and must be DROPPED
+for a pure PES 2017 build (r1 already builds `data/pes17/*.json` from the real
+`EDIT00000000`); ~7.5 MB of art, scenes, stadium photos and i18n strings is
+ID-independent and can be KEPT.
+
+### What r7 implemented
+
+* `overlay/lib/pes17_assets.py` — `classify()` for all 8 classes, TOC-only
+  `cpkread.Cpk` inventory, `manifest()`, `harvest()` (DDS/FTEX/WESYS -> PNG
+  with the shipped decoders, 8 MB cap, refuses to extract into the source),
+  `source_for(cfg)` auto-detection.  No network API in the module.
+* `tools/harvest_cpk.py` — standalone offline CLI shipped in the zip; writes a
+  JSON manifest and optionally copies selected classes into the app folder.
+* `GET /api/pes17/assets`, `POST /api/pes17/assets/extract` (owner-only, in
+  `LAN_POST_BLOCK`), `GET /api/pes17/mode`.  Tools page card 3d + dashboard
+  card show the inventory and trigger a harvest.
+* **PES 2017-only cleanup:** `/` now serves a purpose-built
+  `static/pes17-dashboard.html` (club crest, RAW budget, real squad / league
+  table, crest grid, CPK inventory, safety card, AR/EN toggle, no external
+  assets) when `pes17_only` (default true).  `/index.html` remains reachable;
+  `pes17_only:false` restores the FL26 landing page.
+* **Offline by default:** 7 Google Fonts `<link>` tags and 4 `flagcdn.com`
+  references are removed from `index.html` at build time by **asserted regex
+  patches** (build fails loudly if upstream drifts); `flag_img()` returns None
+  instead of downloading; `_wiki_web()` defaults to `False`.  `config_pes2017
+  .example.json` documents `pes17_only:true` and `wiki_web:false`.
+
+### Verification (save-file / HTTP facts; NOT in-game confirmation)
+
+* **114 unit tests OK** (10 harvester + 5 r7 wiring checks added), one skipped
+  (after saves absent from this checkout); `verify_pairs.py` **PASS**.
+* `node --check` clean for the tools page and dashboard inline scripts.
+* **42/42 HTTP checks** on a live server with the real `ML00000011` and a
+  synthetic patch folder: dashboard landing / classic app still reachable /
+  no Google Fonts or flagcdn / mode endpoint / assets report with classes and
+  usability / harvest writes into app data while the patch folder stays
+  byte-for-byte unchanged / rescan / r6 crest + prefetch regressions / r5
+  info, RAW budget, dry `pair` and `layout.mode:'verified'` / shipped CLI,
+  docs and VERSION / real save SHA still `41202a91...`.
+* `patch.py` now asserts **52** exact replacements + **2** regex patches
+  (was 42 in r5, 47 in r6).
+* Final deliverable: `pes2017/dist/TheGaffer_pes2017_pc414.zip`,
+  **30,907,458 B**, SHA-256
+  `9f087d10d67acb7d20923eb0e397a90213a19cf354e18e8b9543fd07a40ebdf5`,
+  294 entries, 0 `__pycache__`, no `config.json`, `VERSION.txt`
+  `pc414-pes17-only-r7 (2026-11-04)`.
+
+**Still NOT "100% PES 2017".** The 20,074-line FL26 `index.html`, its 29 `p-*`
+pages and all FL26 app-side endpoints still exist; r7 makes them opt-in, not
+gone.  A real PES 2021 -> `t99p17v20` team / player / competition ID map cannot
+be produced without the user's actual patch folder, so `kit`, `face`, `coach`,
+`emblem` are labelled `MAP` rather than claimed working.  CPK reading is
+covered by a mocked `cpkread.Cpk` API plus the real shipped DDS decoder on
+synthetic DDS/WESYS — no real PES 2021 CPK was decoded.  This is a local file
+reader and a UI shell, **not** a game-accepted save test: the Windows
+in-game load / header-hash / budget-scale checks from §6f remain outstanding.
+
+
+## 6i. r8 — conservative cleanup of safely removable files (2026-11-04)
+
+User correction, verbatim: `"no, clean things that can be removedd safelynow
+clean things that can be removedd safely"`. This rejects the offered full
+deletion/rewrite of the FL26 pages and endpoints. r8 therefore only removes
+files proven unreferenced (or shadowed) by an audit, and patches the one
+reference that needed it. No save, patch or game file was touched.
+
+### Removed from the shipped build only (111 files, 10,013,776 B)
+
+| Group | Files | Reason |
+|---|---|---|
+| `addons/regenfix/` | 94 | FL26 Sider regen fix (DLL/Lua/bin + 90 regen DDS faces); no Sider in this build; `_regen_src()` / `put()` guard on `isfile`. |
+| `addons/michele/` | 8 | FL26 Sider Master League Realism Lua mods; `_mich_src()` guards. |
+| `lua/` | 2 | Sider F7 `PlayerDump.lua` / `GrowthBridge.lua`; `_lua_ver()` try/except. |
+| `FL_key.bin`, `FL_key_README.txt` | 2 | FL27 save key; PES 2017 uses `KEY_PES17`; `_fl_key()` tolerates absence. |
+| `data/players.json`, `positions.json`, `playpos.json`, `ratings.json`, `realmoves.json` | 5 | FL26 databases shadowed by `data/pes17/*` regenerated from the real `EDIT00000000`; startup loaders are guarded. |
+
+`prune.apply()` asserts all **43 KEEP paths** still exist and writes
+`CLEANUP_MANIFEST.txt` with every deletion. Kept on purpose: the classic
+FL26 UI at `/index.html` (20,074-line `index.html`, `static/art`,
+`static/leagues`, `game-skin.*`), ID-independent `data/art`, `data/myscenes`,
+`data/stadiums`, `data/i18n`, `fm_text.json`, `scenes.json`, `teamids.json`
+and the small FL26 metadata JSONs, all `lib/*.py`, portable `python/*`, and
+every PES 2017 file. Rationale in `pes2017/CLEANUP_REPORT.md`.
+
+### One code change (required by the cleanup)
+
+`real_moves()` spawns `realmoves_fetch_bg()` when its cache is missing. With
+`data/realmoves.json` gone that would have attempted a background Wikipedia
+GET, contradicting the r7 `wiki_web:false` offline default. `patch.py` adds
+one asserted guard at the top of `realmoves_fetch_bg()`: `if not _wiki_web():
+return`. `patch.py` now asserts **53** exact replacements + **2** regex
+patches (42 in r5, 47 in r6, 52 in r7). Live check after hitting all 132 GET
+endpoints: `data/realmoves.json` was **not** recreated.
+
+### Verification (save-file / HTTP facts; NOT in-game confirmation)
+
+* **127 unit tests OK** (1 skipped) — 114 from r7 plus 13 new
+  `test_prune.py` checks (rules, `plan()`/`apply()` on a synthetic tree,
+  offline guard, shipped zip contents/manifest); `verify_pairs.py` **PASS**;
+  `node --check` clean for both HTML inline scripts.
+* **76/76 HTTP checks PASS** on a live server extracted from the **pruned**
+  zip, with the real `ML00000011` and a synthetic patch folder: every r7
+  regression (dashboard, offline classic app, mode/assets/extract, read-only
+  harvest, crest regressions, r5 info/RAW budget/dry `pair`/layout
+  `verified`), plus cleanup/manifest checks, classic-app endpoints
+  (`/api/state`, `/api/fmtext`, `/api/venue`, `/api/setup/status`,
+  `/api/flag`, `/api/art`, `/api/myscene`), and the unchanged real save SHA
+  `41202a91...`.
+* **PES 2017 database regenerated despite the deletions:** after `/api/state`,
+  `data/pes17/players.json` (20,018 players), `positions.json`,
+  `playpos.json` and `ratings.json` were rebuilt from the real
+  `EDIT00000000`. No FL26 `data/*.json` was needed.
+* **Differential sweep:** all **132 GET endpoints** called on both the pruned
+  r8 build (port 8767) and a freshly extracted unpruned r7 build (port 8768)
+  with identical config/save/patch: **132 identical status pairs, zero new
+  5xx, zero timeouts.** Pre-existing 500s (e.g. `/api/teamsquad`,
+  `/api/dev/mix`, `/api/kitsp/files`) occur identically in both builds; this
+  cleanup introduces none.
+* Final deliverable: `pes2017/dist/TheGaffer_pes2017_pc414.zip`,
+  **28,090,107 B**, SHA-256
+  `8383d70ebaa7221eb8cd3e58d66cb59835eb10d144cb9ac1429d322929837a99`,
+  **185 entries**, 0 `__pycache__`, no `config.json`, `VERSION.txt`
+  `pc414-pes17-clean-r8 (2026-11-04)`. Ships `CLEANUP_MANIFEST.txt` and
+  `CLEANUP_REPORT.md`.
+
+**Limits unchanged.** FL26 `index.html` and its endpoints still exist;
+`pes17_only:false` restores the FL26 landing page. Still no real `.cpk`
+archive, no real CPK/CRILAYLA/FTEX verification, no PES 2021 -> `t99p17v20`
+ID map, no Windows execution, no in-game save load, no header-hash or
+budget-scale confirmation. **Nothing in r8 proves a written save is accepted
+by PES 2017.**
+
 ## 7. Sources
 
 * `the4chancup/pesXdecrypter` — `src/masterkey.c`, `src/crypt.c` (`struct FileHeader` = 176 B for PES 2016–2017).

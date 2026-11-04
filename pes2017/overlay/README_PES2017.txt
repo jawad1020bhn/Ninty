@@ -1,4 +1,4 @@
-THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (GAME UI BUILD r5)
+THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (PES 2017 CLEAN BUILD r8)
 ===================================================================
 
 This folder is The Gaffer pc414 with PES 2017 support added.  It is a private,
@@ -30,6 +30,28 @@ BUILD HISTORY
    and ZWJ family sequences were the last gaps.  A Unicode catch-all with
    the 'u' flag also converts any unknown / future emoji to a neutral
    vector badge.  NO app logic, save code or endpoint was changed.
+7. r6: PATCH-FOLDER CLUB CRESTS.  The app can now read club logos straight
+   from the local PES 2017 patch folder, offline, instead of downloading
+   crests from Wikipedia.  Loose PNG/JPG/DDS/FTEX logos and
+   common/render/symbol/flag/e_<id>_r.dds entries inside *.cpk archives are
+   decoded with the readers already shipped with the program.  See the
+   CLUB CRESTS FROM THE PATCH FOLDER section below.
+8. r7: CPK HARVEST + PES 2017-ONLY MODE.  An offline inventory of everything
+   the shipped CPK readers can reach (competition emblems, kit textures,
+   player/coach portraits, pesdb tables, generic art), a harvester that can
+   copy them before you delete the PES 2021 files, a dedicated PES 2017
+   dashboard at /, and no external CDNs by default.  See the CPK ASSET
+   INVENTORY / HARVEST and PES 2017-ONLY MODE sections below and the shipped
+   CPK_ASSET_INVENTORY.md.
+9. r8: SAFE CLEANUP (not a rewrite).  111 FL26/FL27/Sider-only files
+   (10.01 MB) are removed from this shipped build only: addons/regenfix,
+   addons/michele, lua, FL_key.bin + its readme, and the five FL26 player
+   databases that PES 2017 regenerates into data/pes17/ from your real
+   EDIT00000000.  CLEANUP_MANIFEST.txt lists every deletion and
+   CLEANUP_REPORT.md explains what was kept and why.  The classic FL26 page
+   at /index.html, its art/scenes/stadiums and all lib/*.py are KEPT because
+   they are still referenced.  realmoves_fetch_bg() is now blocked offline so
+   removing the FL26 transfer cache does not trigger a Wikipedia fetch.
 
 WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------
@@ -209,11 +231,118 @@ The "claim an unused block for my club" checkbox is a structural inference,
 NOT in-game validated, and is flagged experimental.  Prefer an AI club
 (e.g. Arsenal, tid 101) for a fully published write.
 
+CLUB CRESTS FROM THE PATCH FOLDER (r6)
+--------------------------------------
+Set "pes17_patch_dir" in config.json to the folder that holds your patch's
+logos, e.g.
+
+    "pes17_patch_dir": "D:\jawedfolder\Games\Pro Evolution Soccer 2017\download"
+
+or leave it blank ("") and the app auto-detects download/, Data/, patch/,
+content/ and livecpk/ next to "pes_exe".  On the PES 2017 tools page, card
+"3c. Club logos from your PES 2017 patch folder" can also set/clear the folder
+without editing JSON by hand; press "Set folder & scan".
+
+Recognised crest files (case-insensitive, read-only):
+
+    common/render/symbol/flag/e_201_r.png       game emblem, team id 201
+    common/render/symbol/flag/e_201_r_l.dds     DDS emblem (converted to PNG)
+    logos/201.png  logos/logo_201.png  logos/flag_201.png
+    logos/Birmingham City FC.png                named after the club
+    map.txt / teams.txt with lines like "201=Birmingham City FC"
+    <patch>/download/T99_v20.cpk                CPK archive containing
+       common/render/symbol/flag/e_201_r.dds    (CPK TOC read only)
+
+Preferred emblem variants are r, r_l, r_w, r_b, ... (same order the game
+uses).  Club names are matched against data/pes17/teamids.json, which the app
+builds from YOUR real ML/EDIT files; the stable team id wins over the raw
+bit-packed id.  When patch crests are found they are served FIRST by the
+existing /api/crest?club=... endpoint and the Wikipedia crest prefetch is
+skipped, so no network request is made for club logos.
+
+GET  /api/pes17/crests           diagnostic: folders scanned, files, CPK
+                                archives, logos found, clubs matched, sample
+POST /api/pes17/crests/dir       set/clear the folder (PC only, saves
+                                config.json). {"dir": ""} clears it.
+
+Nothing is ever written into the game or patch folder.  No CDN, font, API or
+external library is added.  If the report says "Logos found: 0", point the
+folder at the place where your patch keeps emblems (often download/*.cpk) and
+press Rescan.  Kit textures, player faces and stadium images are ignored.
+
+LIMIT: the user's real patch folder was not available in this sandbox.  Loose
+files, DDS/WESYS decoding, ID/name mapping and the HTTP endpoints were tested
+against a synthetic patch folder and the REAL save; CPK reading was tested
+with the shipped cpkread.Cpk API via a mocked archive.  Try it on your patch
+and read the diagnostic card -- that is the confirmation step for your layout.
+
+CPK ASSET INVENTORY / HARVEST (r7)
+----------------------------------
+There is NO .cpk archive in this repository -- only the CPK readers shipped
+with pc414 and the FL26 databases extracted from those games.  The harvester
+must be pointed at YOUR patch folder on Windows.  It reads the CPK table of
+contents only, never modifies the source, and has no network access.
+
+  python tools\harvest_cpk.py "D:\...\Pro Evolution Soccer 2017\download" ^
+      -o manifest.json --extract "data\pes17\harvest" ^
+      --classes crest,emblem,art
+
+Or use /pes17.html card "3d. CPK assets in the patch folder" (Scan assets /
+Harvest crests / logos / art), or the dashboard card.  Manifest fields:
+CLASS, id, size, PES 2017 usability (YES / MAP / NO) and the reason.
+
+  crest   common/render/symbol/flag/e_<id>_r.png|dds        MAP (team ids)
+  emblem  common/render/symbol/emblem*/emb_<id>_*.png|dds   MAP (comp ids)
+  kit     .../uniform/texture/.../u<tid>p1.ftex             MAP (team ids)
+  face    common/render/symbol/player/<pid>.dds             MAP (player ids)
+  coach   common/render/symbol/coach/coach_<id>.png         MAP (staff ids)
+  pesdb   common/etc/pesdb/Competition.bin                  NO (version-specific)
+  art     any other PNG/JPG/DDS                            YES (ID-independent)
+
+DDS/FTEX/WESYS are converted to PNG with the shipped dds/ftex/bc7 readers.
+Harvested files go into the APP folder (data\pes17\harvest), never into the
+game folder.  Full keep/drop list for the FL26 data/*.json databases:
+CPK_ASSET_INVENTORY.md.
+
+GET  /api/pes17/assets             diagnostic inventory
+POST /api/pes17/assets/extract     harvest selected classes (PC only)
+GET  /api/pes17/mode               reports PES 2017 / offline / dashboard mode
+
+PES 2017-ONLY MODE (r7)
+-----------------------
+"pes17_only": true in config.json (default) makes / serve the dedicated PES
+2017 dashboard instead of the 20,074-line FL26 website.  The classic app is
+still at /index.html and the write tools at /pes17.html; set pes17_only to
+false to restore the old landing page.  Build-time cleanup removes the 7
+Google Fonts links and 4 flagcdn references from index.html, flag_img() no
+longer downloads flags, and wiki_web defaults to false -- so club crests and
+all other assets come from YOUR local patch folder with no CDN, font or
+Wikipedia request.  Set "wiki_web": true only if you want those lookups back.
+
+LIMIT: the FL26 UI and its app-side endpoints still exist; this build makes
+them opt-in, it does NOT delete them.  A true 100% PES 2017 rewrite, and a
+real PES 2021 -> t99p17v20 team/player/competition ID map, are still needed.
+
+SAFE CLEANUP (r8)
+-----------------
+CLEANUP_MANIFEST.txt in this folder lists the 111 removed files and their
+sizes.  Removed: the FL26 Sider regen fix (94 files), Michele & Claude Lua
+mods (8), F7 dump Lua modules (2), the FL27 save key + readme (2), and
+data/players.json, positions.json, playpos.json, ratings.json and
+realmoves.json (5 FL26 databases, 6.8 MB).  On a PES 2017 save the app
+rebuilds data/pes17/players.json etc. from EDIT00000000 (20,018 players),
+so those FL26 IDs are never used.  Nothing in your save, patch or game
+folder is touched.  Kept: the classic FL26 UI (still at /index.html), its
+art, scenes, stadium photos, i18n strings, teamids.json and small metadata
+JSONs, all lib/*.py, and the portable python/ folder.  All 132 GET endpoints
+were compared against the unpruned r7 build: 132 identical status pairs,
+zero new errors.
+
 HOW TO USE ON WINDOWS
 ---------------------
 1. Unzip this build anywhere (not inside the zip) on Windows.
    Check VERSION.txt in that folder: it must say
-   "pc414-pes17-gameui-r5 (2026-11-04)".  If it says
+   "pc414-pes17-clean-r8 (2026-11-04)".  If it says
    "pc414 (2026-11-01)" you unzipped the ORIGINAL program, which cannot
    decrypt a PES 2017 save at all.
    Both builds use port 8766, so close the old one first (or run
@@ -269,14 +398,23 @@ DIFF TOOLS (on the development machine)
 TESTS
 -----
     python3 -m unittest discover -s pes2017/tests -p 'test_*.py' -v
-76 tests pass, including tests that decrypt, read, modify and re-encrypt
+127 tests pass, including tests that decrypt, read, modify and re-encrypt
 YOUR real ML00000011 / EDIT00000000 files (on copies only), tests that
 prove all four measured pair patches against the game-generated after files,
 r2 regression tests for the budget read side, r3/r4 checks for the game
 skin / SVG icon pack (100% symbolic-glyph coverage, ZWJ sequences,
 catch-all, offline, JS syntax), and r5 tests for the layout guard
 (refusal on a different-size or broken-table save, all four custom ops,
-report/opt-out modes, real shirt numbers / XI, RAW budget labels).
+report/opt-out modes, real shirt numbers / XI, RAW budget labels), and r6
+tests for the offline crest reader (loose files, CPK/WESYS, DDS -> PNG,
+stable-id mapping, auto-detection, read-only, no network API).  A live HTTP
+smoke on the real save with a synthetic patch folder passed 32/32 checks
+(r6), plus r7 tests for the CPK asset inventory / harvester (8 classes,
+DDS/WESYS -> PNG, source read-only, CLI, no network) and the offline /
+dashboard wiring.  A live r7 HTTP smoke passed 42/42 checks.  r8 adds 13
+cleanup / shipped-zip / offline-guard tests; a live HTTP smoke of the PRUNED
+build passed 76/76 checks, including all 132 GET endpoints returning exactly
+the same status as the unpruned r7 build (zero new 5xx, no timeouts).
 
 TECHNICAL SOURCES
 -----------------
