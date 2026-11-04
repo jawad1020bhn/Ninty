@@ -169,6 +169,18 @@ pre{background:#0b111b;border:1px solid #26364c;border-radius:8px;padding:12px;o
 </div>
 
 <div class="card">
+  <h2 data-ar="3d. محتويات أرشيف CPK في مجلد الباتش">3d. CPK assets in the patch folder</h2>
+  <div class="muted" data-ar="جرد لكل ما يستطيع قارئ CPK المرفق مع البرنامج رؤيته محليا: شعارات الأندية وشعارات البطولات وأقمصة الفرق وصور اللاعبين والمدربين وجداول pesdb والصور العامة. لا شيء يكتب داخل مجلد اللعبة، ولا اتصال بالإنترنت.">Offline inventory of everything the shipped CPK readers can see locally: club crests, competition emblems, kit textures, player/coach portraits, pesdb tables and generic art. Nothing is written into the game folder and no network request is made.</div>
+  <div class="row">
+    <button id="scanAssets" data-ar="فحص المحتويات">Scan assets</button>
+    <button id="harvestAssets" class="ghost" data-ar="نسخ الشعارات والصور القابلة للاستخدام">Harvest crests / logos / art</button>
+    <span id="assetSummary" class="muted">Not scanned yet.</span>
+  </div>
+  <div id="assetBars" class="crest-grid"></div>
+  <div id="assetReport" class="muted"></div>
+</div>
+
+<div class="card">
   <h2 data-ar="4. النتيجة / المعلومات الخام">4. Result / raw info</h2>
   <pre id="out">-</pre>
 </div>
@@ -246,6 +258,37 @@ $('apply').onclick=async()=>{try{
     layout:$('verifyLayout').checked});
   out(r);renderLayout(r.layout);if(!r.dry)await loadInfo();
 }catch(e){out({error:String(e)})}};
+
+/* ------------------------------------------------------------------ *
+ * r7: CPK asset inventory + harvest (offline, read-only source).
+ * ------------------------------------------------------------------ */
+function renderAssets(r){
+  if(!r||!r.ok){show('assetReport','<span class="err">'+esc(r&&r.error||'asset scan failed')+'</span>');return}
+  const c=r.counts||{},u=r.usable||{};
+  show('assetSummary','Archives: '+esc(r.archives)+' · CPK entries: '+esc(r.cpk_entries)+' · loose: '+esc(r.loose_files)+' · total: '+esc(r.files));
+  $('assetBars').innerHTML=Object.keys(c).filter(k=>c[k]).map(k=>
+    '<div class="crest-cell"><span style="font-size:15px;color:#8fc7ff;font-weight:700">'+esc(c[k])+'</span><span>'+esc(k)+'</span></div>').join('')
+    +'<div class="crest-cell"><span style="font-size:15px;color:#8ce6a8;font-weight:700">'+esc(u.YES||0)+'</span><span>PES17-ready</span></div>'
+    +'<div class="crest-cell"><span style="font-size:15px;color:#ffc352;font-weight:700">'+esc(u.MAP||0)+'</span><span>needs ID map</span></div>';
+  const bits=[r.files?'<span class="ok">Catalogued read-only.</span>':'<span class="err">Nothing found — set a patch folder in card 3c.</span>',
+    'YES = ID-independent art (keep). MAP = needs a PES 2017 team/player ID map. NO = version-specific pesdb.',
+    esc(r.hint||'')];
+  if(r.errors&&r.errors.length)bits.push('<span class="err">Errors: '+esc(r.errors.slice(0,3).join(' | '))+'</span>');
+  show('assetReport',bits.join('<br>'));
+}
+async function loadAssets(rescan){
+  try{renderAssets(await get('/api/pes17/assets'+(rescan?'?rescan=1':'')))}
+  catch(e){show('assetReport','<span class="err">'+esc(e)+'</span>')}
+}
+$('scanAssets').onclick=()=>loadAssets(true);
+$('harvestAssets').onclick=async()=>{
+  $('harvestAssets').disabled=true;
+  try{const r=await post('/api/pes17/assets/extract',{classes:['crest','emblem','art'],limit:200});
+    show('assetReport','<span class="ok">Harvested '+esc(r.written)+' files ('+esc(r.bytes)+' B) into '+esc(r.out)+'. Source untouched.</span>');
+  }catch(e){show('assetReport','<span class="err">'+esc(e)+'</span>')}
+  finally{$('harvestAssets').disabled=false}
+};
+loadAssets(false);
 
 /* ------------------------------------------------------------------ *
  * PES 2017 patch-folder crests (r6).  Diagnostic + offline crest previews.

@@ -1,4 +1,4 @@
-THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (CRESTS BUILD r6)
+THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (PES 2017-ONLY BUILD r7)
 ===================================================================
 
 This folder is The Gaffer pc414 with PES 2017 support added.  It is a private,
@@ -36,6 +36,13 @@ BUILD HISTORY
    common/render/symbol/flag/e_<id>_r.dds entries inside *.cpk archives are
    decoded with the readers already shipped with the program.  See the
    CLUB CRESTS FROM THE PATCH FOLDER section below.
+8. r7: CPK HARVEST + PES 2017-ONLY MODE.  An offline inventory of everything
+   the shipped CPK readers can reach (competition emblems, kit textures,
+   player/coach portraits, pesdb tables, generic art), a harvester that can
+   copy them before you delete the PES 2021 files, a dedicated PES 2017
+   dashboard at /, and no external CDNs by default.  See the CPK ASSET
+   INVENTORY / HARVEST and PES 2017-ONLY MODE sections below and the shipped
+   CPK_ASSET_INVENTORY.md.
 
 WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------
@@ -260,11 +267,58 @@ against a synthetic patch folder and the REAL save; CPK reading was tested
 with the shipped cpkread.Cpk API via a mocked archive.  Try it on your patch
 and read the diagnostic card -- that is the confirmation step for your layout.
 
+CPK ASSET INVENTORY / HARVEST (r7)
+----------------------------------
+There is NO .cpk archive in this repository -- only the CPK readers shipped
+with pc414 and the FL26 databases extracted from those games.  The harvester
+must be pointed at YOUR patch folder on Windows.  It reads the CPK table of
+contents only, never modifies the source, and has no network access.
+
+  python tools\harvest_cpk.py "D:\...\Pro Evolution Soccer 2017\download" ^
+      -o manifest.json --extract "data\pes17\harvest" ^
+      --classes crest,emblem,art
+
+Or use /pes17.html card "3d. CPK assets in the patch folder" (Scan assets /
+Harvest crests / logos / art), or the dashboard card.  Manifest fields:
+CLASS, id, size, PES 2017 usability (YES / MAP / NO) and the reason.
+
+  crest   common/render/symbol/flag/e_<id>_r.png|dds        MAP (team ids)
+  emblem  common/render/symbol/emblem*/emb_<id>_*.png|dds   MAP (comp ids)
+  kit     .../uniform/texture/.../u<tid>p1.ftex             MAP (team ids)
+  face    common/render/symbol/player/<pid>.dds             MAP (player ids)
+  coach   common/render/symbol/coach/coach_<id>.png         MAP (staff ids)
+  pesdb   common/etc/pesdb/Competition.bin                  NO (version-specific)
+  art     any other PNG/JPG/DDS                            YES (ID-independent)
+
+DDS/FTEX/WESYS are converted to PNG with the shipped dds/ftex/bc7 readers.
+Harvested files go into the APP folder (data\pes17\harvest), never into the
+game folder.  Full keep/drop list for the FL26 data/*.json databases:
+CPK_ASSET_INVENTORY.md.
+
+GET  /api/pes17/assets             diagnostic inventory
+POST /api/pes17/assets/extract     harvest selected classes (PC only)
+GET  /api/pes17/mode               reports PES 2017 / offline / dashboard mode
+
+PES 2017-ONLY MODE (r7)
+-----------------------
+"pes17_only": true in config.json (default) makes / serve the dedicated PES
+2017 dashboard instead of the 20,074-line FL26 website.  The classic app is
+still at /index.html and the write tools at /pes17.html; set pes17_only to
+false to restore the old landing page.  Build-time cleanup removes the 7
+Google Fonts links and 4 flagcdn references from index.html, flag_img() no
+longer downloads flags, and wiki_web defaults to false -- so club crests and
+all other assets come from YOUR local patch folder with no CDN, font or
+Wikipedia request.  Set "wiki_web": true only if you want those lookups back.
+
+LIMIT: the FL26 UI and its app-side endpoints still exist; this build makes
+them opt-in, it does NOT delete them.  A true 100% PES 2017 rewrite, and a
+real PES 2021 -> t99p17v20 team/player/competition ID map, are still needed.
+
 HOW TO USE ON WINDOWS
 ---------------------
 1. Unzip this build anywhere (not inside the zip) on Windows.
    Check VERSION.txt in that folder: it must say
-   "pc414-pes17-crests-r6 (2026-11-04)".  If it says
+   "pc414-pes17-only-r7 (2026-11-04)".  If it says
    "pc414 (2026-11-01)" you unzipped the ORIGINAL program, which cannot
    decrypt a PES 2017 save at all.
    Both builds use port 8766, so close the old one first (or run
@@ -320,7 +374,7 @@ DIFF TOOLS (on the development machine)
 TESTS
 -----
     python3 -m unittest discover -s pes2017/tests -p 'test_*.py' -v
-99 tests pass, including tests that decrypt, read, modify and re-encrypt
+114 tests pass, including tests that decrypt, read, modify and re-encrypt
 YOUR real ML00000011 / EDIT00000000 files (on copies only), tests that
 prove all four measured pair patches against the game-generated after files,
 r2 regression tests for the budget read side, r3/r4 checks for the game
@@ -330,7 +384,10 @@ catch-all, offline, JS syntax), and r5 tests for the layout guard
 report/opt-out modes, real shirt numbers / XI, RAW budget labels), and r6
 tests for the offline crest reader (loose files, CPK/WESYS, DDS -> PNG,
 stable-id mapping, auto-detection, read-only, no network API).  A live HTTP
-smoke on the real save with a synthetic patch folder passed 32/32 checks.
+smoke on the real save with a synthetic patch folder passed 32/32 checks
+(r6), plus r7 tests for the CPK asset inventory / harvester (8 classes,
+DDS/WESYS -> PNG, source read-only, CLI, no network) and the offline /
+dashboard wiring.  A live r7 HTTP smoke passed 42/42 checks.
 
 TECHNICAL SOURCES
 -----------------

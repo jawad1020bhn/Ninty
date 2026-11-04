@@ -12,7 +12,7 @@ Contents:
   `after/ML00000011` files, one per in-game change.
 * `pes2017/dist/TheGaffer_pes2017_pc414.zip` — **rebuilt program with PES 2017
   reads + measured, round-trip-verified writes**. `VERSION.txt` says
-  `pc414-pes17-crests-r6 (2026-11-04)`. Unzip on Windows and run
+  `pc414-pes17-only-r7 (2026-11-04)`. Unzip on Windows and run
   `The Gaffer.vbs`, then open `/pes17.html`. r2 fixed the "Budget €0" display
   (the two measured budget u32 words are read from the save, in raw units;
   PES 2017 currency scale not confirmed in game). r3 adds a **game-style HUD
@@ -26,7 +26,14 @@ Contents:
   PNG/JPG/DDS/FTEX logos and `flag/e_<teamid>_r.dds` entries inside CPK
   archives are decoded with the shipped readers and served by the existing
   `/api/crest` endpoint. A diagnostic card on `/pes17.html` shows how many
-  logos were found; no Wikipedia/CDN crest fetch is needed.
+  logos were found; no Wikipedia/CDN crest fetch is needed. r7 adds an
+  **offline CPK asset harvester** (`pes2017/tools/harvest_cpk.py`,
+  `/api/pes17/assets`, card 3d) that inventories club crests, competition
+  emblems, kit textures, player/coach portraits, pesdb tables and generic
+  art, and a **dedicated PES 2017 dashboard** at `/`. Google Fonts, flagcdn,
+  Wikipedia and the FL26 landing page are removed/disabled by default
+  (`pes17_only`); see [`pes2017/CPK_ASSET_INVENTORY.md`](pes2017/CPK_ASSET_INVENTORY.md)
+  for what can be salvaged from the PES 2021 CPK files before cleaning them.
 * `pes2017/` — source of the compatibility pack, patcher, build script, tests
   and documentation. Start with [`pes2017/README.md`](pes2017/README.md) and
   [`pes2017/REAL_SAVE_REPORT.md`](pes2017/REAL_SAVE_REPORT.md).
@@ -53,7 +60,10 @@ python3 pes2017/tools/fetch_after_pairs.py
 python3 pes2017/tools/verify_pairs.py --before "Needed files/ML00000011" --after-dir build/pairs
 ```
 
-r6 adds 23 tests (19 for the crest reader + 4 static wiring checks): 99 unit
-tests total, plus 32/32 HTTP checks against the real save with a synthetic
-patch folder. Set `pes17_patch_dir` in `config.json` (or leave it blank to
+r6 adds 23 tests (19 for the crest reader + 4 static wiring checks); r7 adds
+15 more (10 harvester + 5 wiring). 114 unit tests total, plus 42/42 HTTP
+checks against the real save with a synthetic patch folder. Note: this repo
+contains **no real `.cpk` archives** — only the shipped readers and FL26
+databases — so the harvester must be pointed at your patch folder on Windows
+to get a true inventory. Set `pes17_patch_dir` in `config.json` (or leave it blank to
 auto-detect `download/`, `Data/`, `livecpk/`, `content/` next to `pes_exe`).

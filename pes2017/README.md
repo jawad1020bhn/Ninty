@@ -1,4 +1,4 @@
-# The Gaffer — PES 2017 compatibility pack (r6: club crests from the patch folder)
+# The Gaffer — PES 2017 compatibility pack (r7: CPK harvest + PES 2017-only mode)
 
 Source of the PES 2017 port of `TheGaffer_pc414_20261103.zip` (a Football
 Manager style companion for Football Life 26 / PES 2021 / FL27 Master League).
@@ -40,6 +40,10 @@ pes2017/
   overlay/lib/pes17_write.py         real-save container I/O + whitelisted, round-trip-verified writes
   overlay/lib/pes17_pairs.py         four tables measured from real before/after save pairs
   overlay/lib/pes17_crests.py       offline club-crest reader for the local patch folder
+  overlay/lib/pes17_assets.py       offline CPK asset inventory + harvester
+  overlay/static/pes17-dashboard.html  dedicated PES 2017 landing page
+  tools/harvest_cpk.py              standalone offline CLI for the harvester
+  CPK_ASSET_INVENTORY.md            what can be extracted from PES 2021 CPK files
   tools/diff_saves.py                diff two encrypted saves directly (future pairs)
   tools/verify_pairs.py              prove the four measured patches against the after files
   tools/analyze_save_noise.py        classify the 211 bytes the game rewrites on every save
@@ -49,7 +53,7 @@ pes2017/
   overlay/static/pes17.html          PES 2017 tools page (read + write UI)
   overlay/README_PES2017.txt         user docs, shipped in the zip
   overlay/config_pes2017.example.json
-  patch.py                           47 asserted text patches for pc414 sources
+  patch.py                           52 asserted text patches + 2 asserted regexes
   build.py                           extract original zip -> patch -> dist/TheGaffer_pes2017_pc414.zip
   tests/sample.py                    synthetic but structurally faithful PES 2017 saves
   tests/test_pes17.py                15 unit tests (crypto, detection, parsing, EDIT DB, write guard)
@@ -113,15 +117,17 @@ in memory and contains no `__pycache__` / `.pyc`.
 
 ## Verified
 
-* **99 unit tests pass**, including tests that decrypt, read, modify and
+* **114 unit tests pass**, including tests that decrypt, read, modify and
   re-encrypt the user's real `ML00000011` / `EDIT00000000` (on copies only),
   tests proving all four measured pair patches against the game-generated
   after files, r2 regression tests for the budget read side
   (`Pes17Save.budget()` / `/api/pes17/info`), r3/r4 static checks for the
   game-HUD skin and its SVG icon pack (including 100% glyph coverage), r5
   tests for the layout guard, real shirt numbers / XI and RAW budget labels,
-  and r6 tests for offline patch-folder crests (loose files, CPK/WESYS, DDS
-  decoding, stable-id mapping, read-only behaviour).
+  r6 tests for offline patch-folder crests (loose files, CPK/WESYS, DDS
+  decoding, stable-id mapping, read-only behaviour), and r7 tests for the CPK
+  asset inventory/harvester (all 8 classes, DDS/WESYS conversion, source
+  read-only, CLI, no network) plus the PES 2017-only offline wiring.
 * **r3: GAME UI.** `static/game-skin.css` + `static/game-skin.js` turn the
   website look into a console-style HUD (dark grid backdrop, angled mission
   panels, glowing stats, HUD strip) on both `index.html` and `/pes17.html`.
@@ -135,6 +141,22 @@ in memory and contains no `__pycache__` / `.pyc`.
   arrows, `🅰`/`🆕`/`🃏` squared badges and ZWJ family sequences. A
   Unicode `u`-flag catch-all converts any unknown or future emoji to a
   neutral vector badge, so no color glyph can reappear in app content.
+* **r7: harvest before cleanup + PES 2017-only mode.** There is no real
+  `.cpk` archive in this workspace, so `pes17/CPK_ASSET_INVENTORY.md` lists
+  everything the shipped `cpkread`/`dds`/`ftex`/`bc7` readers can pull from a
+  PES 2021 / FL2x CPK (crests, competition emblems, kit textures, player and
+  coach portraits, pesdb tables, generic art) and marks each class
+  `YES` / `MAP` / `NO` for PES 2017. `lib/pes17_assets.py` +
+  `tools/harvest_cpk.py` produce a read-only manifest and can copy selected
+  assets into the app folder, converting DDS/FTEX/WESYS to PNG; the app also
+  exposes `GET /api/pes17/assets` and owner-only
+  `POST /api/pes17/assets/extract`. Cleanup: `/` now serves a dedicated
+  `pes17-dashboard.html`, the 7 Google Fonts links and 4 flagcdn references
+  are stripped at build time, `flag_img()` no longer downloads, and
+  `_wiki_web()` defaults to false. `pes17_only:false` restores the FL26
+  landing page; `/index.html` always remains reachable. **Not a full
+  rewrite** — the 20,074-line FL26 UI and its endpoints still exist.
+  42/42 HTTP checks with the real save + synthetic patch folder.
 * **r6: patch-folder club crests.** `overlay/lib/pes17_crests.py` walks a
   configurable local folder (`pes17_patch_dir`; blank = auto-detect folders
   next to `pes_exe`) for crest-like PNG/JPG/DDS/FTEX files and for

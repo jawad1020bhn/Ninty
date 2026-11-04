@@ -131,7 +131,7 @@ class ToolsPageR6Tests(unittest.TestCase):
         self.assertIn('_cfg_update(pes17_patch_dir=_pd)', self.patch)
         self.assertIn('pes17_crests.clear()', self.patch)
         self.assertIn('lib/pes17_crests.py', self.patch)
-        self.assertIn('pc414-pes17-crests-r6', self.patch)
+        self.assertIn('pc414-pes17-', self.patch)   # r6/r7 VERSION is set in patch.py
 
     def test_reader_is_offline_and_read_only(self):
         for bad in ('urllib', 'requests', 'socket.', 'http.client', 'https://', 'http://'):
@@ -145,3 +145,61 @@ class ToolsPageR6Tests(unittest.TestCase):
     def test_config_documents_the_optional_patch_folder(self):
         self.assertIn('"pes17_patch_dir": ""', self.config)
         self.assertIn('never modifies the game', self.config)
+
+
+class ToolsPageR7Tests(unittest.TestCase):
+    """r7: CPK harvest + PES 2017-only / offline cleanup."""
+    @classmethod
+    def setUpClass(cls):
+        cls.patch = read(PATCH)
+        cls.tools = read(TOOLS)
+        cls.dash = read(os.path.join(OVERLAY, 'static', 'pes17-dashboard.html'))
+        cls.module = read(os.path.join(OVERLAY, 'lib', 'pes17_assets.py'))
+        cls.config = read(os.path.join(OVERLAY, 'config_pes2017.example.json'))
+        cls.inv = read(os.path.join(OVERLAY, '..', 'CPK_ASSET_INVENTORY.md'))
+
+    def test_harvest_endpoints_and_dashboard_landing_are_wired(self):
+        for needle in ("if u.path == '/api/pes17/assets':",
+                       "if self.path == '/api/pes17/assets/extract':",
+                       "if u.path == '/api/pes17/mode':",
+                       "name = 'pes17-dashboard.html'",
+                       "'/api/pes17/assets/extract'",
+                       'lib/pes17_assets.py', 'static/pes17-dashboard.html',
+                       'tools/harvest_cpk.py', 'CPK_ASSET_INVENTORY.md',
+                       'pc414-pes17-only-r7'):
+            self.assertIn(needle, self.patch)
+
+    def test_offline_cleanup_is_asserted(self):
+        self.assertIn('REGEX_PATCHES', self.patch)
+        self.assertIn(r"fonts\.googleapis\.com", self.patch)
+        self.assertIn(r"https://flagcdn\.com", self.patch)
+        self.assertIn("CFG.get('wiki_web', False)", self.patch)
+        self.assertIn("CFG.get('pes17_only', True)", self.patch)
+        self.assertIn('"pes17_only": true', self.config)
+        self.assertIn('"wiki_web": false', self.config)
+
+    def test_tools_page_has_asset_card(self):
+        for needle in ('3d. CPK assets in the patch folder', 'id="scanAssets"',
+                       'id="harvestAssets"', 'id="assetBars"',
+                       '/api/pes17/assets', '/api/pes17/assets/extract'):
+            self.assertIn(needle, self.tools)
+
+    def test_dashboard_is_self_contained_and_honest(self):
+        self.assertIn('/api/pes17/info', self.dash)
+        self.assertIn('/api/crest?club=', self.dash)
+        self.assertIn('/api/pes17/crests', self.dash)
+        self.assertIn('/api/pes17/assets', self.dash)
+        for bad in ('fonts.googleapis', 'flagcdn', 'https://'):
+            self.assertNotIn(bad, self.dash)
+        self.assertIn('NOT confirmed EUR', self.dash)
+        self.assertIn('not yet loaded in PES 2017', self.dash)
+
+    def test_asset_reader_and_inventory_are_offline(self):
+        for bad in ('urllib', 'requests', 'socket.', 'https://', 'http://'):
+            self.assertNotIn(bad, self.module)
+        self.assertIn('def harvest(', self.module)
+        self.assertIn('def classify(', self.module)
+        self.assertIn('Refusing to extract into the source folder', self.module)
+        self.assertIn('common/render/symbol/flag', self.inv)
+        self.assertIn('common/render/symbol/emblem', self.inv)
+        self.assertIn('common/etc/pesdb', self.inv)
