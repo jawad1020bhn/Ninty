@@ -85,10 +85,26 @@ with no game-version assumptions: **KEEP**, and r7 reuses them in the harvester.
 | `_wiki_web()` defaulted to `True` → Wikipedia GETs | default changed to `False`; set `wiki_web:true` to opt back in. |
 | Wikipedia crest prefetch | already skipped in r6 when patch crests exist. |
 | FL26 write endpoints | still blocked by `pes17_readonly()` / `write_guard()` from r1. |
-| FL26 player/club databases | still on disk for `/index.html`, but the PES 2017 dashboard reads only `data/pes17/*.json` built from the real save. |
+| FL26 player/club databases | r8 removes the five shadowed FL26 databases (`players/positions/playpos/ratings/realmoves.json`); the PES 2017 build regenerates the first four into `data/pes17/` from the real `EDIT00000000`. Small metadata JSONs and `teamids.json` stay for `/index.html`. |
 
 `config_pes2017.example.json` documents `pes17_only` (default `true`) and
 `wiki_web` (default `false`).
+
+### 4b. r8 conservative cleanup (the user said NO to a full rewrite)
+
+`pes2017/prune.py` runs inside `build.py` and removes **111 files / 10.01 MB**
+from the shipped build only: `addons/regenfix/` (94), `addons/michele/` (8),
+`lua/` (2), `FL_key.bin` + `FL_key_README.txt` (2), and the five FL26
+databases above (5). All are FL26 / FL27 / Sider-only, or shadowed by
+`data/pes17/*`. `CLEANUP_MANIFEST.txt` in the program folder lists every
+deletion; `pes2017/CLEANUP_REPORT.md` explains the keep list. Kept on purpose:
+the classic FL26 UI (`/index.html`), its `static/art`, `static/leagues`,
+`data/art`, `data/myscenes`, `data/stadiums`, `data/i18n`, `fm_text.json`,
+`scenes.json`, `teamids.json`, `venue_metadata.json`, `club_identity.json`,
+`owners.json`, `fl26_installed_league_counts.json`, all `lib/*.py` and
+`python/*`. Because the FL26 `realmoves.json` cache is gone, `patch.py` now
+guards `realmoves_fetch_bg()` with `_wiki_web()` so no Wikipedia GET is
+attempted by default. **This is cleanup, not deletion of the FL26 UI.**
 
 ## 5. What "100% PES 2017" still needs (not claimed)
 
@@ -109,12 +125,14 @@ with no game-version assumptions: **KEEP**, and r7 reuses them in the harvester.
 
 ## 6. Verification status
 
-* **114 unit tests OK** (10 new for the harvester + 5 r7 wiring checks),
-  `verify_pairs.py` **PASS**, `node --check` clean for both HTML inline
-  scripts, and **42/42 HTTP checks** against a live server with the real
-  `ML00000011` and a synthetic patch folder (dashboard landing, offline
-  classic app, mode/assets/extract endpoints, read-only harvest, r6 crest
-  regressions, r5 info/dry-pair/layout regressions, save SHA unchanged).
+* **127 unit tests OK** (10 for the harvester + 5 r7 wiring + 13 r8 cleanup
+  checks), `verify_pairs.py` **PASS**, `node --check` clean for both HTML
+  inline scripts, and **76/76 HTTP checks** against a live server built from
+  the pruned zip with the real `ML00000011` and a synthetic patch folder
+  (r7 checks above, cleanup/manifest checks, regenerated `data/pes17/` player
+  database, classic-app endpoint guards, save SHA unchanged). A differential
+  sweep of all **132 GET endpoints** against the unpruned r7 build produced
+  132 identical status pairs — zero new 5xx, zero timeouts.
 * No real CPK archive, no Windows execution, no in-game save load. **Nothing
   here proves a written save is accepted by PES 2017**; the header-hash and
   budget-scale checks from `REAL_SAVE_REPORT.md` §6f remain outstanding.

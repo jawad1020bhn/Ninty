@@ -32,7 +32,11 @@ def main():
 
     sys.path.insert(0, HERE)
     import patch
+    import prune
     patch.apply(program)
+    clean = prune.apply(program)
+    print('Safe cleanup: removed %d FL26/FL27/Sider-only files (%.2f MB), kept %d required paths' %
+          (clean['removed'], clean['bytes'] / 1e6, clean['kept']))
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with zipfile.ZipFile(OUT, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as z:

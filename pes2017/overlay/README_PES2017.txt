@@ -1,4 +1,4 @@
-THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (PES 2017-ONLY BUILD r7)
+THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (PES 2017 CLEAN BUILD r8)
 ===================================================================
 
 This folder is The Gaffer pc414 with PES 2017 support added.  It is a private,
@@ -43,6 +43,15 @@ BUILD HISTORY
    dashboard at /, and no external CDNs by default.  See the CPK ASSET
    INVENTORY / HARVEST and PES 2017-ONLY MODE sections below and the shipped
    CPK_ASSET_INVENTORY.md.
+9. r8: SAFE CLEANUP (not a rewrite).  111 FL26/FL27/Sider-only files
+   (10.01 MB) are removed from this shipped build only: addons/regenfix,
+   addons/michele, lua, FL_key.bin + its readme, and the five FL26 player
+   databases that PES 2017 regenerates into data/pes17/ from your real
+   EDIT00000000.  CLEANUP_MANIFEST.txt lists every deletion and
+   CLEANUP_REPORT.md explains what was kept and why.  The classic FL26 page
+   at /index.html, its art/scenes/stadiums and all lib/*.py are KEPT because
+   they are still referenced.  realmoves_fetch_bg() is now blocked offline so
+   removing the FL26 transfer cache does not trigger a Wikipedia fetch.
 
 WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------
@@ -314,11 +323,26 @@ LIMIT: the FL26 UI and its app-side endpoints still exist; this build makes
 them opt-in, it does NOT delete them.  A true 100% PES 2017 rewrite, and a
 real PES 2021 -> t99p17v20 team/player/competition ID map, are still needed.
 
+SAFE CLEANUP (r8)
+-----------------
+CLEANUP_MANIFEST.txt in this folder lists the 111 removed files and their
+sizes.  Removed: the FL26 Sider regen fix (94 files), Michele & Claude Lua
+mods (8), F7 dump Lua modules (2), the FL27 save key + readme (2), and
+data/players.json, positions.json, playpos.json, ratings.json and
+realmoves.json (5 FL26 databases, 6.8 MB).  On a PES 2017 save the app
+rebuilds data/pes17/players.json etc. from EDIT00000000 (20,018 players),
+so those FL26 IDs are never used.  Nothing in your save, patch or game
+folder is touched.  Kept: the classic FL26 UI (still at /index.html), its
+art, scenes, stadium photos, i18n strings, teamids.json and small metadata
+JSONs, all lib/*.py, and the portable python/ folder.  All 132 GET endpoints
+were compared against the unpruned r7 build: 132 identical status pairs,
+zero new errors.
+
 HOW TO USE ON WINDOWS
 ---------------------
 1. Unzip this build anywhere (not inside the zip) on Windows.
    Check VERSION.txt in that folder: it must say
-   "pc414-pes17-only-r7 (2026-11-04)".  If it says
+   "pc414-pes17-clean-r8 (2026-11-04)".  If it says
    "pc414 (2026-11-01)" you unzipped the ORIGINAL program, which cannot
    decrypt a PES 2017 save at all.
    Both builds use port 8766, so close the old one first (or run
@@ -374,7 +398,7 @@ DIFF TOOLS (on the development machine)
 TESTS
 -----
     python3 -m unittest discover -s pes2017/tests -p 'test_*.py' -v
-114 tests pass, including tests that decrypt, read, modify and re-encrypt
+127 tests pass, including tests that decrypt, read, modify and re-encrypt
 YOUR real ML00000011 / EDIT00000000 files (on copies only), tests that
 prove all four measured pair patches against the game-generated after files,
 r2 regression tests for the budget read side, r3/r4 checks for the game
@@ -387,7 +411,10 @@ stable-id mapping, auto-detection, read-only, no network API).  A live HTTP
 smoke on the real save with a synthetic patch folder passed 32/32 checks
 (r6), plus r7 tests for the CPK asset inventory / harvester (8 classes,
 DDS/WESYS -> PNG, source read-only, CLI, no network) and the offline /
-dashboard wiring.  A live r7 HTTP smoke passed 42/42 checks.
+dashboard wiring.  A live r7 HTTP smoke passed 42/42 checks.  r8 adds 13
+cleanup / shipped-zip / offline-guard tests; a live HTTP smoke of the PRUNED
+build passed 76/76 checks, including all 132 GET endpoints returning exactly
+the same status as the unpruned r7 build (zero new 5xx, no timeouts).
 
 TECHNICAL SOURCES
 -----------------

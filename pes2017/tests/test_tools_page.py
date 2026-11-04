@@ -166,7 +166,7 @@ class ToolsPageR7Tests(unittest.TestCase):
                        "'/api/pes17/assets/extract'",
                        'lib/pes17_assets.py', 'static/pes17-dashboard.html',
                        'tools/harvest_cpk.py', 'CPK_ASSET_INVENTORY.md',
-                       'pc414-pes17-only-r7'):
+                       'pc414-pes17-clean-r8'):
             self.assertIn(needle, self.patch)
 
     def test_offline_cleanup_is_asserted(self):

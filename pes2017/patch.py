@@ -779,6 +779,22 @@ def players_data(slot):
      """</body>""",
      """<script src="/game-skin.js"></script>
 </body>""", 1),
+
+    # ------------------------------------------- r8: offline guard after cleaning realmoves.json
+    # The shipped FL26 Wikipedia transfer cache is removed by prune.py.  Without
+    # this guard real_moves() would immediately spawn a background Wikipedia
+    # fetch on first use, which contradicts wiki_web:false (offline by default).
+    ('server.py',
+     """    if _RM['busy']:
+        return
+    try:
+        st = json.load(open(REALMOVES_FILE, encoding='utf-8')) if os.path.exists(REALMOVES_FILE) else {}""",
+     """    if not _wiki_web():
+        return   # r8: offline by default; the FL26 Wikipedia transfer cache was cleaned out, never refetch it
+    if _RM['busy']:
+        return
+    try:
+        st = json.load(open(REALMOVES_FILE, encoding='utf-8')) if os.path.exists(REALMOVES_FILE) else {}""", 1),
 ]
 
 
@@ -843,6 +859,7 @@ def apply(target):
     for rel, dest in (
         ('tools/harvest_cpk.py', 'tools/harvest_cpk.py'),
         ('CPK_ASSET_INVENTORY.md', 'CPK_ASSET_INVENTORY.md'),
+        ('CLEANUP_REPORT.md', 'CLEANUP_REPORT.md'),
     ):
         src = os.path.join(ROOT, rel)
         dst = os.path.join(target, dest)
@@ -850,7 +867,7 @@ def apply(target):
         shutil.copy2(src, dst)
 
     with open(os.path.join(target, 'VERSION.txt'), 'w', encoding='utf-8') as f:
-        f.write('pc414-pes17-only-r7 (2026-11-04)\n')
+        f.write('pc414-pes17-clean-r8 (2026-11-04)\n')
 
     # Syntax-check all patched Python files in memory (no __pycache__ in the
     # shipped package, no execution of the app).
