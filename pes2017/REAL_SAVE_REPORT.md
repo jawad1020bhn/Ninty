@@ -95,15 +95,50 @@ The human-controlled club (Birmingham) has **no** AI negotiation block;
 blocks. That step is a structural inference, **not** in-game validated, and is
 flagged `experimental` in the API result.
 
+## 4b. Cheat Engine table (`Needed files/cheat engine variations.CT`)
+
+The user also supplied a 38,029 B Cheat Engine table. Assessment:
+
+* It is a **live process memory** table, not a save-file map: one Auto
+  Assembler script (`aobscanmodule(data,PES2017.exe,0F B6 01 8B 4D 0C)`),
+  a `data_ptr` symbol, 98 entries with addresses like `+3`, `+b0`, `+c4`
+  relative to the selected player's RAM struct, plus absolute symbols
+  (`funds=01324B3E`, `data=038278C6`, `data_ptr=08960011`). It contains **no**
+  `data.dat` / `ML00000000` / formation / tactics / budget / standings /
+  transfer keywords and no file offsets at all (checked).
+* What it does give: exact bit positions and meanings for one player's
+  attributes, skills, playable positions, COM styles, contract year/month/day,
+  affection, form, stamina, team role and nickname, plus a `Comments` section
+  with the team-role / nickname value tables. It only works with a matching
+  `PES2017.exe` build while the game is running.
+* Concrete gain: using its field semantics we located a **232 B-stride ML
+  player-record table** in the real `data.dat` at `2,221,628` (Birmingham's
+  26 players): `pid u32` at `+0`, `pid` again at `+4`, 46 B name at `+8`.
+  With a shift of `-0x30`, the CT contract offsets line up across all 26
+  records: year `2029..2032`, month `8`, day `31` — plausible PES contract
+  expiries. Reproduce with `pes2017/tools/ct_player_table.py`.
+* Limits: other CT fields do **not** align with that shift (affection 149,
+  form 96, stamina 228, team role 128 are implausible). So the CT is a
+  semantic hint + a way to find the table, not a 1:1 file layout. RAM layout
+  is not the encrypted save layout; writing CT offsets straight into the file
+  would corrupt it. One before/after pair is still needed to confirm that a
+  contract write actually takes effect in-game.
+* It does **not** help with club-level tables: formation, XI, tactics,
+  budget, forced transfers, loans, standings points. Those still need pairs.
+
 ## 5. Still impossible with the supplied files
 
 No before/after pairs ⇒ these cannot be mapped and remain blocked / zero:
 
 * formations, lineup/XI, tactics, club instructions;
-* contracts / renewals, wages, budgets, transfer fees;
+* wages, budgets, transfer fees;
 * forced transfers, loans, youth players, training/growth;
 * points / played / wins / goals in the league table;
 * the human club's own inbox negotiations (a separate table).
+
+**Partially mapped by the CT:** contracts / renewals — the player-record table
+and its year/month/day fields are located (section 4b), but one before/after
+pair is still needed to confirm that writing them changes the game.
 
 All FL26-style write endpoints still raise the read-only message, so the app
 cannot corrupt the save with PES 2021 offsets.
@@ -116,6 +151,8 @@ cannot corrupt the save with PES 2021 offsets.
 | 176-byte header / byte-identical re-encryption | **proven** |
 | club, date, squad, EDIT names, shirt numbers, standings parsing | **proven on real files** |
 | negotiation block + slot layout on the real file | **proven structurally + published in-game checklist** |
+| CT file = live RAM table, not save-file offsets | **proven** (98 entries, AOB hook, no file offsets) |
+| 232 B ML player-record table + contract year/month/day | **located on real files via CT; needs 1 pair to confirm writes** |
 | injected offer appears in the user's PES 2017 inbox | **NOT validated** (no Windows/game run) |
 | claimed block for the human club | **experimental, NOT validated** |
 | all other write features | **blocked** |
