@@ -64,7 +64,9 @@ def main():
     diffs = {n: {i for i, (x, y) in enumerate(zip(before, p['data.dat']))
                  if x != y} for n, p in afters.items()}
     common = set.intersection(*diffs.values())
-    report = dict(before_sha256=hashlib.sha256(open(a.before, 'rb').read()).hexdigest(),
+    with open(a.before, 'rb') as f:
+        before_sha = hashlib.sha256(f.read()).hexdigest()
+    report = dict(before_sha256=before_sha,
                   data_size=len(before), common_changed=len(common), pairs={})
     ok = True
     for n in NAMES:

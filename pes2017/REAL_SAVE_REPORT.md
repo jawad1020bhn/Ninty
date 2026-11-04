@@ -445,6 +445,123 @@ and whether a written save loads in the game (64-byte header hash preserved).
 Both require the user's Windows in-game check; the UI skin does not affect
 either.
 
+## 6f. r5 — layout guard, honest budget labels, real reads and noise analysis (2026-11-04)
+
+Asked "what to improve next?", then "do what you can do". r5 implements every
+item that does NOT need the user's Windows machine or new before/after saves.
+No save code, endpoint set, container format or FL26 write guard was loosened.
+
+### Layout guard (the main safety fix)
+
+Before r5, only `pair` checked the measured before-state. The four custom ops
+(`formation`, `tactics`, `xi`, `budget`) wrote arbitrary values using ABSOLUTE
+offsets measured on ONE 13,304,607 B `t99p17v20` save, with no layout check --
+a save from a different season/patch could be silently corrupted.
+
+`lib/pes17_pairs.py::verify_layout()` now runs once in `apply_ops()` BEFORE any
+op:
+
+* `data.dat` must be exactly **13,304,607 B**;
+* four season-tolerant structural markers: the three formation record prefixes
+  (`00 01 01 01`, `00 01 01 03`, `00 01 01 03`), two invariant zero bytes in
+  the tactics block, the 26-byte XI table must be a permutation of `0..25`, and
+  both budget u32 words must be plausible (`0 < v < 2^24`, high byte zero);
+* **50 anchors** sampled near the tables and across the file, identical in
+  BEFORE and ALL FOUR after saves, outside every writable range; at least 60%
+  must match.
+
+Synthetic buffers (<10 MB) are reported as `synthetic` and never refused; the
+HTTP and CLI callers force `require_real=True`, so a small-but-real container
+cannot slip through as "synthetic". `/api/pes17/write` returns the `layout`
+report; the tools page has a checked **verify save layout** box, shows the
+result, and can disable the check only with an explicit unchecked box (the
+response then carries `mode:'skipped'` plus a `DISABLED` warning). `layout_check='report'`
+runs the checks without refusing. Verified over HTTP: a 5,266,180 B EDIT
+container used as a slot is now refused **by the guard itself** with
+`PES 2017 layout verification FAILED: data.dat is 5266180 bytes, expected 13304607`.
+
+### Budget is RAW, not confirmed EUR
+
+`/api/pes17/info` now returns `currency_verified=false`,
+`unit='raw u32 save units'`, `label='RAW (not confirmed EUR)'` and a
+`scale_note`. The tools page shows a `RAW` + `NOT CONFIRMED EUR` badge, both
+words with their offsets, and a **display-only** x1/x10/x100/x1000 selector
+that never writes. The blue banner in the main app now says the EUR figure is
+a raw save word and that the tools page checks the layout first. The original
+FL26 UI still prints `€` because that is its own formatting; it is explicitly
+labelled as presentation, not a currency conversion.
+
+### More real read-side data
+
+`Pes17Save.squad_numbers()` now returns the 32 real shirt numbers from
+`club+512` (K. Vasilj = 2), and `lineup()` returns the measured 26-slot XI
+permutation from `data.dat[1256728]` padded to the app's 35-slot shape with
+`0xFF`. A malformed table falls back to the previous neutral placeholder.
+Both are strictly read-only.
+
+### Noise analysis (new tool, and `diff_saves.py` finally executed)
+
+`tools/analyze_save_noise.py` decrypts BEFORE + all four AFTERs and classifies
+the **211 bytes that change in EVERY save** (`build/analysis/noise_report.json`,
+gitignored):
+
+| group | count | finding |
+|---|---|---|
+| `data.dat[48:80]` token | 29 of 32 bytes changed | high entropy, unique per save; likely a seed/MAC, algorithm unknown |
+| non-token varying offsets | 12 | two copies of a 5-byte `0a 08 04 05 01` state at 2,210,104 / 8,361,540 and a 2-byte word at 8,433,234 |
+| stable delta | 170 | **152** follow `before == after + 0x4C` (76) at a fixed stride in the player/team arrays: a per-save counter, not an action table |
+| budget companion bytes | 15 | **14** are small counters/flags (±8 or zeroed); none holds a copy of the budget u32, so the custom `budget` op correctly writes only the two words |
+
+`header.dat[80:144]` (64 B hash) changes in all four saves while **every other
+header byte is identical**; the hash algorithm is still unknown and the writer
+keeps the original. `tools/diff_saves.py` was run on all four pairs:
+47/47/49/56 changed ranges, header hash + token changed in every pair.
+
+A targeted scan of `8,610,000..8,720,000` for a 20-row u16 standings-stats
+array (`w + d + l == played`, plausible points) found **no match**. Points /
+played / goals therefore stay `0` instead of showing guessed numbers; more
+before/after pairs or a fixture/results table are still needed.
+
+### UI polish
+
+* HUD accent picker: ICE / AMBER / PITCH (`data-gi-theme`, CSS variables,
+  remembered in `localStorage`), plus an `INTRO: ON/OFF` chip.
+* The boot intro is now **OFF by default** and can be enabled from the HUD.
+* `/pes17.html` has an Arabic toggle (`data-ar` on 41 static strings, `dir=rtl`,
+  remembered); only direct text nodes are translated so inputs, selects and
+  dynamically rendered tables are untouched.
+
+### Verification (all save-file / HTTP facts; NOT in-game confirmation)
+
+* **76 unit tests OK** (11 new r5 tests: guard pass/refuse, all four custom
+  ops with the guard, report/opt-out modes, small-real-container refusal, real
+  shirt numbers + XI, RAW budget labels, tools-page static checks).
+* `node --check` clean for `game-skin.js` and the tools-page inline script.
+* jsdom smokes: 16/16 tools page checks (RAW badge, no `€` in the budget
+  panel, display scale, Arabic RTL toggle + restore, inputs preserved, queue,
+  `layout:true` / `layout:false` payloads, layout box); 13/13 skin checks
+  (theme cycle/wrap, intro off by default and enableable, icon injection,
+  toggle off/on), no JS errors.
+* **35/35 HTTP checks** on the real save: static files 200 with new content,
+  `/api/state` `pes17:true`, `/api/pes17/info` budget `2535240` +
+  `currency_verified:false`, dry `pair` writes 17/13/30/21 B with
+  `layout.mode:'verified'`, all four custom ops in one request verified,
+  explicit opt-out reports `skipped` + warning, wrong-size save refused by the
+  guard, unknown pair / unmeasured `raw` / `/api/apply` all 400, and the save
+  SHA stays `41202a91…` (dry runs only).
+* `verify_pairs.py`: **PASS** — every measured byte reproduced, no extras.
+* Final deliverable: `pes2017/dist/TheGaffer_pes2017_pc414.zip`,
+  **30,879,476 B**, SHA-256
+  `cf01803fabe0dad1d77a9522174343f4bc0add62dd74f86796e80b6e5249e10d`,
+  289 entries, 0 `__pycache__`, no `config.json`, `VERSION.txt`
+  `pc414-pes17-gameui-r5 (2026-11-04)`.
+
+**Still unconfirmed / needs the user:** a written save loaded in PES 2017 on
+Windows (64-byte header hash preserved), the in-game currency scale for the
+raw budget word, and more before/after pairs for arbitrary values, contracts,
+loans, youth, training, points/goals and offer injection. The r5 guard makes
+wrong-save writes safer; it does not make a written save game-accepted.
+
 ## 7. Sources
 
 * `the4chancup/pesXdecrypter` — `src/masterkey.c`, `src/crypt.c` (`struct FileHeader` = 176 B for PES 2016–2017).

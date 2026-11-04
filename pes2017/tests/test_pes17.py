@@ -14,6 +14,7 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 LIB = os.environ.get('GAFFER_LIB', os.path.join(ROOT, 'build', 'TheGaffer', 'TheGaffer', 'lib'))
 sys.path.insert(0, LIB)
+sys.path.insert(0, os.path.join(ROOT, 'pes2017', 'overlay', 'lib'))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import pes17          # noqa: E402
@@ -114,10 +115,13 @@ class Pes17Reading(unittest.TestCase):
         out = os.path.join(self.tmp, 'db')
         st = pes17.import_edit(self.edit, out)
         self.assertEqual(st['players'], len(sample.PLAYERS))
-        players = json.load(open(os.path.join(out, 'players.json'), encoding='utf-8'))
-        pos = json.load(open(os.path.join(out, 'positions.json'), encoding='utf-8'))
-        pp = json.load(open(os.path.join(out, 'playpos.json'), encoding='utf-8'))
-        rat = json.load(open(os.path.join(out, 'ratings.json'), encoding='utf-8'))
+        def load(name):
+            with open(os.path.join(out, name), encoding='utf-8') as f:
+                return json.load(f)
+        players = load('players.json')
+        pos = load('positions.json')
+        pp = load('playpos.json')
+        rat = load('ratings.json')
         self.assertEqual(players[0][1], 'P. Check')
         self.assertEqual(pos[str(sample.PLAYERS[0][0])], 0)
         self.assertEqual(pp[str(sample.PLAYERS[0][0])][0], '2')
@@ -129,7 +133,8 @@ class Pes17Reading(unittest.TestCase):
         out = os.path.join(self.tmp, 'db2')
         st = pes17.import_teams(self.dec, out)
         self.assertEqual(st['teams'], len(sample.CLUBS))
-        ids = json.load(open(os.path.join(out, 'teamids.json'), encoding='utf-8'))
+        with open(os.path.join(out, 'teamids.json'), encoding='utf-8') as f:
+            ids = json.load(f)
         self.assertEqual(ids['100'], 'Arsenal FC')
 
 

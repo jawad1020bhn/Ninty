@@ -1,4 +1,4 @@
-THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (GAME UI BUILD r4)
+THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (GAME UI BUILD r5)
 ===================================================================
 
 This folder is The Gaffer pc414 with PES 2017 support added.  It is a private,
@@ -24,7 +24,7 @@ BUILD HISTORY
    the main app and /pes17.html, and colorful emoji are swapped at runtime
    for a hand-drawn SVG vector pack.  A short boot intro, a HUD strip and a
    GAME UI / CLASSIC UI toggle were added.
-6. r4 (this build): EXHAUSTIVE ICONS.  All 926 symbolic glyph occurrences
+6. r4: EXHAUSTIVE ICONS.  All 926 symbolic glyph occurrences
    (170 distinct characters) in pc414 are now explicitly mapped to SVG
    icons: the X close buttons, plain arrows, squared A / NEW / joker badges
    and ZWJ family sequences were the last gaps.  A Unicode catch-all with
@@ -44,7 +44,10 @@ WHAT THE APP READS FROM YOUR REAL SAVE
 
 Note: description.dat says "Premier League" while the standings/EDIT tables
 place Birmingham in the Sky Bet Championship.  Both values are shown.
-Points / played / goals are still shown as 0: not mapped yet.
+Points / played / goals are still shown as 0: not mapped yet.  r5 scanned
+8,610,000..8,720,000 for a 20-row stats array (w+d+l == played, plausible
+points) and found none, so zeros are kept instead of guessed values.
+Real shirt numbers and the starting XI order are now read (r5).
 
 BUDGET DISPLAY (r2)
 -------------------
@@ -64,6 +67,38 @@ number with what PES 2017 shows on screen.  If the game shows a multiple
 (e.g. 10x or 100x), report the figure and the scale can be added.  The
 PES 2017 tools page ("Load info") shows both words and their offsets.
 
+BUDGET LABELLING (r5)
+---------------------
+The tools page now shows a RAW / NOT CONFIRMED EUR badge instead of a bare
+currency amount, and /api/pes17/info reports currency_verified=false plus
+unit="raw u32 save units".  A "Display scale (view only)" selector (x1, x10,
+x100, x1000) lets you compare the raw word with the number PES 2017 shows on
+screen; it is display-only and NEVER writes to the save.  The blue banner in
+the main app says the same.  Report the in-game figure and the correct scale
+can be applied -- until then the EUR sign in the original FL26 UI is only
+presentation.
+
+LAYOUT GUARD (r5)
+-----------------
+The four custom ops (formation, tactics, xi, budget) used to write arbitrary
+values without checking the save layout.  apply_ops() now calls
+pes17_pairs.verify_layout() first:
+
+  * data.dat must be exactly 13,304,607 B (the measured save);
+  * formation record markers, the 26-slot XI permutation, two invariant
+    tactics bytes and plausible budget u32 words must all be present;
+  * 50 stable anchor bytes sampled around the tables and across the file
+    (identical in BEFORE and all four AFTERs, outside every writable range)
+    must match at least 60%.
+
+A save from another season/patch is REFUSED before a single byte changes;
+the response includes the layout report.  The tools page has a checked
+"verify save layout" box -- unchecking it disables the guard with a loud
+warning, for advanced users only.  `layout_check='report'` runs the checks
+without refusing.  Synthetic test buffers (<10 MB) are reported, never
+written to a user's save.  This is a save-file comparison, NOT in-game
+validation.
+
 GAME UI (r3)
 ------------
 The app now opens with a console-style HUD instead of a plain website:
@@ -73,8 +108,10 @@ The app now opens with a console-style HUD instead of a plain website:
     glowing numeric stats, beveled buttons and HUD-style tables;
   * a top status strip: THE GAFFER // PES 2017 - MASTER LEAGUE, with a
     green "SAVE LINK LOCAL" LED;
-  * a short boot intro (once per browser tab, click/any key to skip,
-    "SKIP & DON'T SHOW AGAIN" disables it permanently);
+  * r5: a HUD accent picker (ICE / AMBER / PITCH, remembered locally)
+    and an INTRO: ON/OFF chip.  The boot intro is now OFF by default;
+    turning it on plays it once per tab, and "SKIP & DON'T SHOW AGAIN"
+    disables it again;
   * a 69-icon vector pack (static/game-skin.js) replaces EVERY one of the
     926 symbolic glyph occurrences (170 distinct characters) in pc414 with
     crisp SVG icons: colorful emoji, dingbats, stars, arrows, X close
@@ -176,7 +213,7 @@ HOW TO USE ON WINDOWS
 ---------------------
 1. Unzip this build anywhere (not inside the zip) on Windows.
    Check VERSION.txt in that folder: it must say
-   "pc414-pes17-gameui-r4 (2026-11-04)".  If it says
+   "pc414-pes17-gameui-r5 (2026-11-04)".  If it says
    "pc414 (2026-11-01)" you unzipped the ORIGINAL program, which cannot
    decrypt a PES 2017 save at all.
    Both builds use port 8766, so close the old one first (or run
@@ -226,16 +263,20 @@ DIFF TOOLS (on the development machine)
     python3 pes2017/tools/diff_saves.py  BEFORE AFTER --json diff.json
     python3 pes2017/tools/verify_pairs.py --before "Needed files/ML00000011" \
         --after-dir build/pairs
+    python3 pes2017/tools/analyze_save_noise.py \
+        --json build/analysis/noise_report.json
 
 TESTS
 -----
     python3 -m unittest discover -s pes2017/tests -p 'test_*.py' -v
-55 tests pass, including tests that decrypt, read, modify and re-encrypt
+76 tests pass, including tests that decrypt, read, modify and re-encrypt
 YOUR real ML00000011 / EDIT00000000 files (on copies only), tests that
 prove all four measured pair patches against the game-generated after files,
-r2 regression tests for the budget read side, and r3/r4 checks for the game
-skin / SVG icon pack (icon map consistency, 100% symbolic-glyph coverage,
-ZWJ sequences, catch-all safety net, offline, JS syntax via node --check).
+r2 regression tests for the budget read side, r3/r4 checks for the game
+skin / SVG icon pack (100% symbolic-glyph coverage, ZWJ sequences,
+catch-all, offline, JS syntax), and r5 tests for the layout guard
+(refusal on a different-size or broken-table save, all four custom ops,
+report/opt-out modes, real shirt numbers / XI, RAW budget labels).
 
 TECHNICAL SOURCES
 -----------------

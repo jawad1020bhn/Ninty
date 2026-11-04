@@ -104,6 +104,139 @@ BLOCKS = (
 )
 
 
+# ---------------------------------------------------------------------------
+# r5 layout guard
+# ---------------------------------------------------------------------------
+# The measured offsets above are ABSOLUTE and belong to ONE save: 13,304,607 B
+# of decrypted data.dat from t99p17v20.  `pair` already refuses a save whose
+# before-bytes differ, but the custom ops (formation/tactics/xi/budget) used to
+# write arbitrary values with no layout check at all.  A save from another
+# season or patch could therefore be silently corrupted.
+#
+# The guard below runs once, before any op is applied.  It checks:
+#   * the exact data size (a hard requirement for real-sized saves),
+#   * four season-tolerant structural markers inside the measured tables,
+#   * a fingerprint of stable bytes sampled around those tables and across the
+#     file (bytes identical in BEFORE and in ALL FOUR game-generated AFTERs,
+#     and outside every writable range).
+#
+# The structural markers are deliberately generic (record prefixes, a
+# permutation, plausible u32 words) so that a save the game has legitimately
+# advanced still passes.  Synthetic test buffers (<10 MB) are reported as
+# "synthetic" and are not user saves, so they are never written to disk.
+MIN_REAL_SAVE = 10000000
+MIN_ANCHOR_RATIO = 0.6
+
+# (offset, expected byte) -- sampled from the five real saves, outside all
+# writable ranges.  These never change between BEFORE and the four AFTERs.
+TABLE_ANCHORS = {
+    'formation': [(1255737, 203), (1255753, 203), (1255777, 1), (1255793, 13),
+                  (1255810, 1), (1255826, 13), (1255843, 1), (1255859, 13)],
+    'tactics':   [(1255836, 31), (1255852, 12), (1255868, 88), (1255885, 114),
+                  (1255901, 114), (1255917, 1), (1255937, 1), (1255953, 13)],
+    'xi':        [(1256242, 192), (1256347, 1), (1256364, 2), (1256381, 60),
+                  (1256409, 1), (1256425, 13), (1256442, 1), (1256458, 13)],
+    'xi_floats': [(2229680, 28), (2229696, 80), (2229712, 82), (2229728, 92),
+                  (2229744, 71), (2229760, 29), (2229776, 59), (2229792, 39)],
+    'budget':    [(8812394, 3), (8812410, 3), (8812426, 3), (8812442, 3),
+                  (8812458, 3), (8812474, 3), (8812490, 3), (8812506, 3)],
+}
+GLOBAL_ANCHORS = [
+    (1000000, 40), (2000411, 7), (3005343, 4), (4000822, 51),
+    (5000137, 9), (6000137, 235), (8000000, 181), (9001096, 199),
+    (10000000, 40), (12000000, 45),
+]
+ALL_ANCHORS = [(o, v) for rows in TABLE_ANCHORS.values() for o, v in rows] + \
+              GLOBAL_ANCHORS
+
+
+def structural_checks(d):
+    """Season-tolerant structural markers for the four measured tables."""
+    out = {}
+    try:
+        out['formation_markers'] = (
+            bytes(d[FORMATION0:FORMATION0 + 4]) == b'\x00\x01\x01\x01' and
+            bytes(d[FORMATION0 + 33:FORMATION0 + 37]) == b'\x00\x01\x01\x03' and
+            bytes(d[FORMATION0 + 66:FORMATION0 + 70]) == b'\x00\x01\x01\x03')
+    except (IndexError, TypeError):
+        out['formation_markers'] = False
+    try:
+        out['tactics_markers'] = (d[TACTICS0 + 6] == 0 and d[TACTICS0 + 7] == 0)
+    except (IndexError, TypeError):
+        out['tactics_markers'] = False
+    try:
+        out['xi_permutation'] = (sorted(bytes(d[XI_ORDER:XI_ORDER + XI_ORDER_LEN]))
+                                 == list(range(XI_ORDER_LEN)))
+    except (IndexError, TypeError):
+        out['xi_permutation'] = False
+    try:
+        main = struct.unpack_from('<I', d, BUDGET_MAIN)[0]
+        wage = struct.unpack_from('<I', d, BUDGET_WAGE)[0]
+        out['budget_plausible'] = (
+            0 < main < (1 << 24) and 0 < wage < (1 << 24) and
+            d[BUDGET_MAIN + 3] == 0 and d[BUDGET_WAGE + 3] == 0)
+    except (struct.error, IndexError, TypeError):
+        out['budget_plausible'] = False
+    return out
+
+
+def verify_layout(d, strict=True, require_real=False):
+    """Prove ``d`` has the measured t99p17v20 layout before writing to it.
+
+    Returns a report dict.  Raises ValueError when ``strict`` and a real-sized
+    save fails the size check, a structural marker, or the anchor fingerprint.
+    With ``strict=False`` the report carries the failures as warnings instead.
+    Short buffers are synthetic test data and are reported, never refused --
+    unless ``require_real`` is set by an explicit caller (HTTP / CLI), in
+    which case any size other than DATA_SIZE is a hard refusal.
+    """
+    size = len(d)
+    rep = dict(ok=True, mode='verified', data_size=size,
+               expected_data_size=DATA_SIZE,
+               note=('Measured offsets belong to one 13,304,607 B t99p17v20 '
+                     'data.dat. This is a layout check, NOT in-game validation.'))
+    if size < MIN_REAL_SAVE and not require_real:
+        rep.update(mode='synthetic',
+                   note='Buffer smaller than 10 MB: synthetic test data, no save is written.')
+        return rep
+    problems = []
+    if size != DATA_SIZE:
+        problems.append('data.dat is %d bytes, expected %d -- offsets would '
+                        'point at unrelated data' % (size, DATA_SIZE))
+        # Never read measured offsets from a shorter buffer: that raises
+        # IndexError instead of producing a useful refusal.
+        checks = dict.fromkeys(('formation_markers', 'tactics_markers',
+                               'xi_permutation', 'budget_plausible'))
+        matched, total, ratio = 0, len(ALL_ANCHORS), 0.0
+        rep['skipped_checks'] = 'wrong data size'
+    else:
+        checks = structural_checks(d)
+        failed = [k for k, v in checks.items() if not v]
+        if failed:
+            problems.append('table structure differs: ' + ', '.join(sorted(failed)))
+        matched = sum(1 for o, v in ALL_ANCHORS if d[o] == v)
+        total = len(ALL_ANCHORS)
+        ratio = matched / float(total) if total else 1.0
+        if ratio < MIN_ANCHOR_RATIO:
+            problems.append('only %d/%d layout anchors match (need %.0f%%)' %
+                            (matched, total, MIN_ANCHOR_RATIO * 100))
+    rep['checks'] = checks
+    rep.update(anchors_matched=matched, anchors_total=total,
+               anchor_ratio=round(ratio, 3))
+    rep['problems'] = problems
+    if problems:
+        rep['ok'] = False
+        if strict:
+            raise ValueError('PES 2017 layout verification FAILED: ' +
+                             '; '.join(problems) +
+                             '. Refusing to write. Re-measure this save with '
+                             'tools/diff_saves.py, or explicitly disable the '
+                             'layout check (advanced, at your own risk).')
+        rep['mode'] = 'override'
+        rep['warning'] = '; '.join(problems)
+    return rep
+
+
 def pair_offsets(name):
     """Absolute offsets of the bytes the game changed for this one action."""
     if name not in PAIRS:

@@ -136,6 +136,14 @@ def info(container, edit_container=None, date_order=None):
                 transfer_offset=pes17_pairs.BUDGET_MAIN,
                 salary_offset=pes17_pairs.BUDGET_WAGE,
                 raw=True,
+                currency_verified=False,
+                unit='raw u32 save units',
+                label='RAW (not confirmed EUR)',
+                scale_note=('The FL26 app prints this number with a EUR sign. '
+                            'That is presentation only: PES 2017 currency '
+                            'scale has NOT been compared with the in-game '
+                            'figure. Compare the number shown in PES 2017 '
+                            'with transfer_raw to derive the scale.'),
                 note=('Raw u32 words measured from the budget pair; PES 2017 '
                       'currency scale is not confirmed in-game.')),
             measured_pairs={k: dict(offsets=len(v),
@@ -159,8 +167,14 @@ def _allowed_ranges(teams):
     return ranges
 
 
-def apply_ops(container, ops, edit_data=None):
+def apply_ops(container, ops, edit_data=None, layout_check='auto'):
     """Apply a list of explicit operations to the decrypted data block.
+
+    ``layout_check`` ('auto' | True | False | 'report') controls the r5 layout
+    guard.  'auto' (default) verifies every real-sized save before touching a
+    single byte; False skips it with a loud warning in ``container.layout``;
+    'report' runs the checks without refusing.  Synthetic test buffers shorter
+    than 10 MB are reported as such and cannot reach a user's save file.
 
     Supported ops:
       {"op":"offer_add",   "buyer":201, "slot":3, "pid":55246}
@@ -177,6 +191,18 @@ def apply_ops(container, ops, edit_data=None):
     """
     original = container.data
     d = bytearray(original)
+    want_check = (len(d) >= pes17_pairs.MIN_REAL_SAVE
+                  if layout_check == 'auto' else bool(layout_check))
+    if want_check:
+        container.layout = pes17_pairs.verify_layout(
+            d, strict=(layout_check != 'report'),
+            require_real=layout_check in (True, 'report'))
+    else:
+        container.layout = dict(
+            ok=True, mode='skipped', data_size=len(d),
+            warning=('Layout verification was DISABLED. Offsets are fixed to '
+                     'the measured t99p17v20 save; a different save can be '
+                     'corrupted. Keep the automatic backup.'))
     teams = pes17.team_records(d)
     results = []
     for i, op in enumerate(ops or []):
@@ -315,8 +341,11 @@ def _cli():
         return
     with open(a.ops, encoding='utf-8') as f:
         ops = json.load(f)
-    res, changed = apply_ops(c, ops, ec.data if ec else None)
-    print(json.dumps(dict(results=res, changed_bytes=changed), ensure_ascii=False, indent=1))
+    res, changed = apply_ops(c, ops, ec.data if ec else None,
+                             layout_check=True)
+    print(json.dumps(dict(results=res, changed_bytes=changed,
+                          layout=getattr(c, 'layout', None)),
+                     ensure_ascii=False, indent=1))
     print(json.dumps(save_with_backup(a.save, c, a.work, a.dry), indent=1))
 
 

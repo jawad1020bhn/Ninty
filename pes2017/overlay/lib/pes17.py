@@ -106,6 +106,11 @@ EDIT_SENTINEL = 262143       # 0x3FFFF, unused standings/offer slot
 BUDGET_MAIN = 8812904         # 2535240 -> 3088641 in the budget pair
 BUDGET_WAGE = 8812936         # 9692344 -> 10245745 in the budget pair
 
+# 26-byte starting-XI / squad-order permutation measured on the XI pair
+# (see lib/pes17_pairs.py).  Read only: the app's lineup() expects 35 slots.
+XI_ORDER = 1256728
+XI_ORDER_LEN = 26
+
 # Measured on a real t99p17v20 save (see pes2017/REAL_SAVE_REPORT.md):
 # the u32 at club+0 is a bit-packed value: (stable PES Team ID << 14) |
 # Master League record index.  Standings and EDIT league arrays use the
@@ -873,7 +878,9 @@ class Pes17Save:
                             'as a RAW save value (currency scale unverified). '
                             'Limited measured writes (offers, shirts, '
                             'formation, tactics, XI, budget) are on the '
-                            'PES 2017 tools page.')
+                            'PES 2017 tools page. r5 reads real shirt '
+                            'numbers and the starting XI order, and '
+                            'verifies the save layout before any write.')
         self.dx = 0
         self.dxa = 0
         self.sh = 0
@@ -917,9 +924,25 @@ class Pes17Save:
     def squad_ids(self):
         return list(self._ids)
     def squad_numbers(self):
-        return {}
+        """Real shirt numbers from club+512, keyed by squad slot (r5)."""
+        if not self._team:
+            return {}
+        nums = shirt_numbers(self.d, self._team)
+        return {i: n for i, n in enumerate(nums) if 0 < n <= 99}
     def lineup(self):
-        return list(range(11)) + [0xff] * 24
+        """Real starting XI order from the measured 26-byte table (r5).
+
+        mlwrite.Save.lineup() returns 35 slots; PES 2017 stores a 26-slot
+        permutation, so the remaining 9 are padded with 0xFF like an empty
+        slot.  A malformed table falls back to the old neutral placeholder.
+        """
+        fallback = list(range(11)) + [0xff] * 24
+        if XI_ORDER + XI_ORDER_LEN > len(self.d):
+            return fallback
+        order = list(bytes(self.d[XI_ORDER:XI_ORDER + XI_ORDER_LEN]))
+        if sorted(order) != list(range(XI_ORDER_LEN)):
+            return fallback
+        return order + [0xff] * (35 - XI_ORDER_LEN)
     def formation(self, k):
         return [('?', 0, 0)] * 11
     def formation_rows(self, k):
@@ -947,9 +970,11 @@ class Pes17Save:
             return struct.unpack_from('<I', self.d, off)[0]
         return dict(transfer=u32(BUDGET_MAIN), salary=u32(BUDGET_WAGE),
                     offsets=dict(transfer=BUDGET_MAIN, salary=BUDGET_WAGE),
-                    raw=True,
+                    raw=True, currency_verified=False,
+                    unit='raw u32 save units', label='RAW (not confirmed EUR)',
                     note=('Raw u32 words measured from the budget pair; '
-                          'PES 2017 currency scale is not confirmed in-game.'))
+                          'PES 2017 currency scale is not confirmed in-game. '
+                          'The EUR sign in the FL26 UI is presentation only.'))
     def budget(self):
         """Read-side transfer budget (raw measured u32, NOT scaled to EUR)."""
         return self.measured_budget()['transfer']

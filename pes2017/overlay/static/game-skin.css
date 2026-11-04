@@ -37,6 +37,36 @@ body.game-skin {
   background-attachment: fixed;
 }
 
+/* r5: three HUD accents, chosen from the HUD strip and remembered locally */
+body.game-skin[data-gi-theme="amber"] {
+  --accent: #ffb648; --accent-ink: #2a1700; --gi: #ffd08a;
+  --line: #5a4326; --muted: #c7ab86;
+  background-image:
+    radial-gradient(ellipse 85% 55% at 50% -12%, rgba(255, 182, 72, .13), transparent 72%),
+    radial-gradient(ellipse 60% 50% at 100% 100%, rgba(140, 90, 20, .10), transparent 70%),
+    linear-gradient(rgba(210, 170, 90, .028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(210, 170, 90, .028) 1px, transparent 1px);
+}
+body.game-skin[data-gi-theme="pitch"] {
+  --accent: #5cf2a8; --accent-ink: #042015; --gi: #9bf7c9;
+  --line: #2b5c46; --muted: #8fc7ab;
+  background-image:
+    radial-gradient(ellipse 85% 55% at 50% -12%, rgba(92, 242, 168, .13), transparent 72%),
+    radial-gradient(ellipse 60% 50% at 100% 100%, rgba(20, 140, 90, .10), transparent 70%),
+    linear-gradient(rgba(90, 210, 160, .028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(90, 210, 160, .028) 1px, transparent 1px);
+}
+
+/* HUD strip controls (accent cycle / boot intro) */
+.gi-hud-btn {
+  font: inherit; letter-spacing: .1em; text-transform: uppercase;
+  color: #9dc4dd; background: transparent;
+  border: 1px solid rgba(120, 170, 200, .28); border-radius: 2px;
+  padding: 2px 7px; cursor: pointer; line-height: 1.4;
+}
+.gi-hud-btn:hover { color: var(--accent); border-color: var(--accent); }
+.gi-hud-btn:focus-visible { outline: 1px solid var(--accent); }
+
 /* very light CRT / scanline wash - pointer events never blocked */
 body.game-skin::after {
   content: "";

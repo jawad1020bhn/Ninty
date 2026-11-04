@@ -11,6 +11,7 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 LIB = os.environ.get('GAFFER_LIB', os.path.join(ROOT, 'build', 'TheGaffer', 'TheGaffer', 'lib'))
 sys.path.insert(0, LIB)
+sys.path.insert(0, os.path.join(ROOT, 'pes2017', 'overlay', 'lib'))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import pes17          # noqa: E402
@@ -57,8 +58,9 @@ class Pes17Header176(unittest.TestCase):
         self.assertEqual(c.encrypt(), raw)
         n = c.save(path)
         self.assertEqual(n, len(raw))
-        self.assertEqual(hashlib.sha256(open(path, 'rb').read()).digest(),
-                         hashlib.sha256(raw).digest())
+        with open(path, 'rb') as f:
+            self.assertEqual(hashlib.sha256(f.read()).digest(),
+                             hashlib.sha256(raw).digest())
 
     def test_shirt_write_and_safety_range(self):
         p = dict(self.parts)
@@ -117,7 +119,8 @@ class Pes17RealSave(unittest.TestCase):
 
     def test_real_files_decrypt_and_re_encrypt_byte_identically(self):
         for src in (self.ML, self.EDIT):
-            raw = open(src, 'rb').read()
+            with open(src, 'rb') as f:
+                raw = f.read()
             parts = pescrypt.decrypt_bytes(raw, pescrypt.KEY_PES17)
             self.assertEqual(len(parts['header.dat']), 176)
             self.assertEqual(pescrypt.encrypt_parts(parts, pescrypt.KEY_PES17), raw)

@@ -20,6 +20,8 @@
   var XLINK = 'http://www.w3.org/1999/xlink';
   var SKIN_KEY = 'gaffer_game_skin';
   var INTRO_KEY = 'gaffer_game_intro';
+  var THEME_KEY = 'gaffer_game_theme';
+  var THEMES = ['ice', 'amber', 'pitch'];
 
   /* ------------------------------------------------------------------ *
    * 1. emoji -> icon id.  Single-codepoint keys only; the FE0F
@@ -291,8 +293,40 @@
       '<span class="gi-hud-slash">//</span>' +
       '<span class="gi-hud-mode">PES 2017 &nbsp;&middot;&nbsp; MASTER LEAGUE</span>' +
       '<span class="gi-hud-right"><i class="gi-led"></i> SAVE LINK LOCAL' +
-      '<span class="gi-hud-sep">|</span> PC414</span>';
+      '<span class="gi-hud-sep">|</span> PC414' +
+      '<span class="gi-hud-sep">|</span>' +
+      '<button type="button" class="gi-hud-btn" data-gi-theme-btn ' +
+        'title="Cycle the HUD accent colour">ICE</button>' +
+      '<button type="button" class="gi-hud-btn" data-gi-intro-btn ' +
+        'title="Turn the boot intro on or off">INTRO: OFF</button></span>';
     document.body.insertBefore(hud, app);
+    var themeBtn = hud.querySelector('[data-gi-theme-btn]');
+    var introBtn = hud.querySelector('[data-gi-intro-btn]');
+    if (themeBtn) themeBtn.addEventListener('click', function () {
+      var i = THEMES.indexOf(document.body.getAttribute('data-gi-theme'));
+      applyTheme(THEMES[(i + 1) % THEMES.length], true);
+    });
+    if (introBtn) introBtn.addEventListener('click', function () {
+      var on = lsGet(INTRO_KEY) !== '1';
+      lsSet(INTRO_KEY, on ? '1' : '0');
+      try { sessionStorage.removeItem('gi_boot'); } catch (e) {}
+      syncIntroLabel();
+      if (on) boot();
+      else { var el = document.querySelector('.gi-boot'); if (el && el.parentNode) el.parentNode.removeChild(el); }
+    });
+  }
+
+  function applyTheme(name, save) {
+    if (THEMES.indexOf(name) < 0) name = THEMES[0];
+    document.body.setAttribute('data-gi-theme', name);
+    var b = document.querySelector('[data-gi-theme-btn]');
+    if (b) b.textContent = name.toUpperCase();
+    if (save) lsSet(THEME_KEY, name);
+  }
+
+  function syncIntroLabel() {
+    var b = document.querySelector('[data-gi-intro-btn]');
+    if (b) b.textContent = 'INTRO: ' + (lsGet(INTRO_KEY) === '1' ? 'ON' : 'OFF');
   }
 
   function buildToggle() {
@@ -322,7 +356,7 @@
     if (!document.body.classList.contains('game-skin')) return;
     if (!document.querySelector('.app')) return;        // tools page: no intro
     try { if (sessionStorage.getItem('gi_boot') === '1') return; } catch (e) {}
-    if (lsGet(INTRO_KEY) === '0') return;
+    if (lsGet(INTRO_KEY) !== '1') return;    // r5: boot intro is OFF by default
     try { sessionStorage.setItem('gi_boot', '1'); } catch (e) {}
 
     var el = document.createElement('div');
@@ -347,7 +381,10 @@
     }
     setTimeout(close, 1900);
     el.addEventListener('click', function (ev) {
-      if (ev.target.closest('[data-gi-nointro]')) lsSet(INTRO_KEY, '0');
+      if (ev.target.closest('[data-gi-nointro]')) {
+        lsSet(INTRO_KEY, '0');
+        syncIntroLabel();
+      }
       close();
     });
     document.addEventListener('keydown', close, { once: true });
@@ -363,6 +400,8 @@
 
     var on = lsGet(SKIN_KEY) !== '0';    // game skin is the default
     set(on, false);
+    applyTheme(lsGet(THEME_KEY) || THEMES[0], false);
+    syncIntroLabel();
 
     /* the app is heavily dynamic: convert newly rendered nodes too */
     var pending = [], scheduled = false;
