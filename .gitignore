@@ -1,0 +1,10 @@
+# Working / generated trees (the deliverable zip is tracked on purpose, like
+# the original program zip in this repository).
+/extracted/
+/build/
+/pes2017/tests/__pycache__/
+/pes2017/__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.DS_Store

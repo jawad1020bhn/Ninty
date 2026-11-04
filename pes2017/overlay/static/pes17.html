@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Gaffer &mdash; PES 2017 tools</title>
+<style>
+:root{color-scheme:dark}
+body{margin:0;background:#101722;color:#dce6f2;font:14px/1.5 system-ui,Segoe UI,Arial,sans-serif}
+header{background:#182538;padding:14px 20px;border-bottom:1px solid #2c3e55}
+h1{margin:0;font-size:18px}
+.wrap{max-width:1100px;margin:0 auto;padding:18px 20px 60px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.card{background:#182436;border:1px solid #2c3e55;border-radius:10px;padding:14px;margin:14px 0}
+h2{font-size:15px;margin:0 0 10px;color:#8fc7ff}
+label{display:inline-flex;flex-direction:column;gap:3px;font-size:12px;color:#9fb3c9}
+input,select,button{background:#0e1622;color:#dce6f2;border:1px solid #3a4f68;border-radius:6px;padding:7px 9px;font:inherit}
+input[type=number]{width:90px}
+button{cursor:pointer;background:#245b96;border-color:#3d82c7}
+button:hover{background:#2e70b8}
+button.ghost{background:#20304a;border-color:#3a4f68}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:5px 8px;border-bottom:1px solid #26364c}
+th{color:#8fc7ff;font-weight:600}
+pre{background:#0b111b;border:1px solid #26364c;border-radius:8px;padding:12px;overflow:auto;max-height:340px;font-size:12px}
+.muted{color:#93a6bd;font-size:12px}
+.err{color:#ff9a9a}
+.ok{color:#8ce6a8}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+</style>
+</head>
+<body>
+<header><h1>PES 2017 tools &mdash; The Gaffer pc414</h1>
+<div class="muted">Measured read + limited, round-trip-verified writes on your real Master League / EDIT files. <a href="/" style="color:#8fc7ff">Back to the app</a></div></header>
+<div class="wrap">
+
+<div class="card">
+  <h2>1. Choose the Master League save</h2>
+  <div class="row">
+    <label>Save slot<select id="slot"></select></label>
+    <button id="load">Load info</button>
+    <label><input type="checkbox" id="dry" checked> dry run (do not write)</label>
+  </div>
+  <div class="muted">The EDIT00000000 next to it (or <code>edit_dat</code> in config.json) supplies player names and competition names.</div>
+</div>
+
+<div class="card">
+  <h2>2. What the app read from your real save</h2>
+  <div id="summary" class="muted">Load a save first.</div>
+  <div class="grid">
+    <div><h2>Squad (shirt numbers)</h2><div id="squad" class="muted">-</div></div>
+    <div><h2>League table</h2><div id="table" class="muted">-</div></div>
+  </div>
+  <h2 style="margin-top:14px">Active negotiations in the save</h2>
+  <div id="offers" class="muted">-</div>
+</div>
+
+<div class="card">
+  <h2>3. Write tools (backups are automatic)</h2>
+  <div class="muted" style="margin-bottom:10px">Only measured tables are writable. FL26-style transfers, contracts, AI moves and revalues remain blocked; formation, tactics, XI and budget are now writable through the measured tables below. Uncheck "dry run" to actually write.</div>
+  <div class="grid">
+    <div>
+      <h2>Add a transfer negotiation</h2>
+      <div class="row"><label>Buyer club<select id="buyer"></select></label></div>
+      <div class="row"><label>Player ID<input type="number" id="pid" placeholder="e.g. 55246"></label>
+      <label>Slot 0-15<input type="number" id="oslot" value="0" min="0" max="15"></label></div>
+      <div class="row"><label><input type="checkbox" id="claim"> claim an unused block for my club (experimental)</label></div>
+      <button id="addOffer" class="ghost">Queue: offer_add</button>
+    </div>
+    <div>
+      <h2>Clear a negotiation</h2>
+      <div class="row"><label>Buyer club<select id="buyer2"></select></label>
+      <label>Slot 0-15<input type="number" id="cslot" value="0" min="0" max="15"></label></div>
+      <button id="clearOffer" class="ghost">Queue: offer_clear</button>
+    </div>
+    <div>
+      <h2>Set a shirt number</h2>
+      <div class="row"><label>Club<select id="club3"></select></label></div>
+      <div class="row"><label>Squad slot 0-31<input type="number" id="sslot" value="0" min="0" max="31"></label>
+      <label>Number 1-99<input type="number" id="num" value="10" min="1" max="99"></label></div>
+      <button id="setShirt" class="ghost">Queue: shirt</button>
+    </div>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <button id="apply">Apply queued ops</button>
+    <button id="clearq" class="ghost">Clear queue</button>
+    <span id="qcount" class="muted">0 ops queued</span>
+  </div>
+  <h2 style="margin-top:14px">Queued operations</h2>
+  <pre id="queue">[]</pre>
+</div>
+
+<div class="card">
+  <h2>3b. Tables measured from your before/after saves</h2>
+  <div class="muted" style="margin-bottom:10px">Each <code>pair</code> op writes exactly the bytes PES 2017 itself wrote for one change (formation, tactics, XI, budget). Offsets are fixed to this save and the before-state is checked first. The custom ops let you write your own values into those same measured tables.</div>
+  <div class="grid">
+    <div>
+      <h2>Reproduce one measured change</h2>
+      <div class="row"><label>Pair<select id="pairName"><option>formation</option><option>tactics</option><option>xi</option><option>budget</option></select></label></div>
+      <button id="queuePair" class="ghost">Queue: pair</button>
+    </div>
+    <div>
+      <h2>Formation record (33-byte hex)</h2>
+      <div class="row"><input id="formationHex" style="width:100%" placeholder="00 01 01 01 04 05 05 07 ... (33 bytes)"></div>
+      <button id="queueFormation" class="ghost">Queue: formation</button>
+    </div>
+    <div>
+      <h2>One tactic byte</h2>
+      <div class="row"><label>Offset<input type="number" id="tacOff" value="1256356"></label>
+      <label>Value 0-255<input type="number" id="tacVal" value="3" min="0" max="255"></label></div>
+      <button id="queueTactic" class="ghost">Queue: tactics</button>
+    </div>
+    <div>
+      <h2>XI order (26 comma-separated squad slots)</h2>
+      <div class="row"><input id="xiOrder" style="width:100%" value="9,15,4,12,13,22,19,17,5,3,6,25,16,18,10,21,8,24,11,2,7,23,20,14,0,1"></div>
+      <button id="queueXi" class="ghost">Queue: xi</button>
+    </div>
+    <div>
+      <h2>Budget u32</h2>
+      <div class="row"><label>Value<input type="number" id="budgetVal" value="3088641"></label>
+      <label>Wage (optional)<input type="number" id="wageVal" placeholder="10247281"></label></div>
+      <button id="queueBudget" class="ghost">Queue: budget</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>4. Result / raw info</h2>
+  <pre id="out">-</pre>
+</div>
+
+<script>
+let QUEUE=[], TEAMS=[], SLOT='';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function get(u){const r=await fetch(u);const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
+async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
+function show(el,html){$(el).innerHTML=html}
+function out(o){show('out',esc(JSON.stringify(o,null,1)))}
+function tbl(rows,cols){if(!rows||!rows.length)return '<span class="muted">none</span>';return '<table><tr>'+cols.map(c=>'<th>'+esc(c[1])+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+cols.map(c=>'<td>'+esc(r[c[0]])+'</td>').join('')+'</tr>').join('')+'</table>'}
+function fillTeams(list){
+  TEAMS=list||[];
+  const opts=TEAMS.map(t=>'<option value="'+esc(t.tid)+'">'+esc(t.name)+' (tid '+esc(t.tid)+')</option>').join('');
+  ['buyer','buyer2','club3'].forEach(id=>{const v=$(id).value;$(id).innerHTML=opts;if(v)$(id).value=v});
+}
+function qsync(){show('queue',esc(JSON.stringify(QUEUE,null,1)));$('qcount').textContent=QUEUE.length+' ops queued'}
+async function loadSlots(){
+  try{const s=await get('/api/slots');$('slot').innerHTML=(s||[]).map(x=>'<option value="'+esc(x.slot)+'">'+esc(x.slot)+'</option>').join('');if(s&&s.length)SLOT=s[0].slot}catch(e){out({error:String(e)})}
+}
+async function loadInfo(){
+  try{
+    SLOT=$('slot').value;
+    const r=await get('/api/pes17/info?slot='+encodeURIComponent(SLOT));
+    show('summary','<b>'+esc(r.info.club)+'</b> &mdash; '+esc(r.info.league)+' &mdash; '+esc(r.info.date)+
+      '<br>'+esc(r.clubs)+' clubs, '+esc(r.squad.length)+' players in your squad, '+esc(r.offers.length)+' active negotiations.'+
+      '<br>container: '+esc(r.container.file_header)+' B file header, '+esc(r.container.data_size)+' B data.dat, type '+esc(r.container.type)+', version '+esc(r.container.version));
+    show('squad',tbl(r.squad,[['slot','#'],['shirt','Shirt'],['name','Player'],['id','ID']]));
+    show('table',tbl(r.league_table,[['pos','Pos'],['club','Club'],['pts','Pts']]));
+    show('offers',tbl(r.offers,[['buyer','Buyer'],['slot','Slot'],['pid','Player ID'],['transfer','Status']]));
+    fillTeams(r.teams);out({ok:true,league_name:r.league_name,info:r.info});
+  }catch(e){out({error:String(e)});show('summary','<span class="err">'+esc(e)+'</span>')}
+}
+$('load').onclick=loadInfo;
+$('addOffer').onclick=()=>{QUEUE.push({op:'offer_add',buyer:Number($('buyer').value),slot:Number($('oslot').value),pid:Number($('pid').value),source:'auto',claim:$('claim').checked});qsync()};
+$('clearOffer').onclick=()=>{QUEUE.push({op:'offer_clear',buyer:Number($('buyer2').value),slot:Number($('cslot').value)});qsync()};
+$('setShirt').onclick=()=>{QUEUE.push({op:'shirt',club:Number($('club3').value),slot:Number($('sslot').value),number:Number($('num').value)});qsync()};
+$('queuePair').onclick=()=>{QUEUE.push({op:'pair',name:$('pairName').value});qsync()};
+$('queueFormation').onclick=()=>{QUEUE.push({op:'formation',index:0,record:$('formationHex').value.trim()});qsync()};
+$('queueTactic').onclick=()=>{QUEUE.push({op:'tactics',values:{[Number($('tacOff').value)]:Number($('tacVal').value)}});qsync()};
+$('queueXi').onclick=()=>{QUEUE.push({op:'xi',order:$('xiOrder').value.split(',').map(x=>Number(x.trim()))});qsync()};
+$('queueBudget').onclick=()=>{const o={op:'budget',value:Number($('budgetVal').value)};if($('wageVal').value)o.wage=Number($('wageVal').value);QUEUE.push(o);qsync()};
+$('clearq').onclick=()=>{QUEUE=[];qsync()};
+$('apply').onclick=async()=>{try{const r=await post('/api/pes17/write',{slot:SLOT,ops:QUEUE,dry:$('dry').checked});out(r);if(!r.dry)await loadInfo()}catch(e){out({error:String(e)})}};
+loadSlots().then(loadInfo);
+</script>
+</body>
+</html>
