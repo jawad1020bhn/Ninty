@@ -369,11 +369,76 @@ no save code, endpoint, config key or app logic was modified.
   `/game-skin.js` 200 `text/javascript`, `/` and `/pes17.html` 200 with both
   hooks, `/api/state`, `/api/pes17/info`, `/api/deals` still 200 with
   `budget: 2535240` and `salary_raw: 9692344`.
-* Final deliverable: `pes2017/dist/TheGaffer_pes2017_pc414.zip`,
+* r3 deliverable (superseded by r4): `pes2017/dist/TheGaffer_pes2017_pc414.zip`,
   30,870,409 B, SHA-256
   `84dad4d0cd6fcb49c918edd1094fb04e296b6681f0f01fe304ae766ff759eeed`,
   289 entries (2 new static files), 0 `__pycache__`, `VERSION.txt`
   `pc414-pes17-gameui-r3 (2026-11-04)`.
+
+**Still unconfirmed:** the PES 2017 currency scale for the raw budget word,
+and whether a written save loads in the game (64-byte header hash preserved).
+Both require the user's Windows in-game check; the UI skin does not affect
+either.
+
+## 6e. r4 — exhaustive emoji/symbol replacement (2026-11-04)
+
+The user asked to "make sure that ALL emojis are replaced". r3 covered 97% of
+one narrow Unicode slice; a full audit of the original pc414 `index.html`
+using the four relevant blocks (`U+1F000–1FAFF`, `U+2600–27BF`,
+`U+2B00–2BFF`, `U+2190–21FF`) found **926 symbolic glyph occurrences / 170
+distinct characters**, of which 13 characters (186 occurrences) were still
+unmapped. r4 closes every gap.
+
+**Explicitly mapped now:**
+
+| glyph(s) | occurrences | icon |
+|---|---|---|
+| `✕` `✗` (close buttons, previously left as text) | 21 | `close` |
+| `→` `←` `↑` `↓` `↔` `⇢` `↪` `⬑` (arrows) | 157 | `arrow-*` |
+| `🅰` `🆕` `🃏` (squared badges) | 8 | `badge` / `star` |
+| `😮‍💨` `🧑‍💼` `👨‍👩‍👧` (ZWJ sequences) | 4 sequences | one icon each |
+| any unknown / future emoji | — | Unicode catch-all → `badge` |
+
+Five new SVG symbols (`close`, `arrow-right`, `arrow-down`, `arrow-lr`,
+`arrow-hook`) bring the pack to **69 icons**. Arrows and X's are rendered in
+a muted blue-grey without the cyan glow so 140+ inline `A → B` separators
+still read as typography.
+
+**Exhaustive safety net:** `game-skin.js` now builds its regex with the `u`
+flag and a trailing catch-all
+
+```
+(?:[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}]
+   (?:\uFE0F|\u200D<picto>|[\u{1F3FB}-\u{1F3FF}])*)
+```
+
+so an emoji that is not in the explicit map (ZWJ chains, skin tones,
+keycaps, or something a future app build adds) still becomes a vector
+`badge` icon instead of a color glyph. `iconId()` resolves unknown arrows to
+`arrow-right`, unknown X glyphs to `close`, everything else to `badge`.
+
+**Verification:**
+
+* Static audit: **0 unmapped distinct glyphs** across all 926 occurrences,
+  and 0 in `pes17.html`. Explicit coverage **100.0%**.
+* 55 unit tests OK (8 skin tests; new ones assert 100% glyph coverage,
+  the `u`-flag catch-all, ZWJ keys and that `✕`/`✗`/`→` are mapped).
+* `node --check` clean; 69 `<symbol>`s, every mapped id has a symbol.
+* jsdom DOM smoke with `🏆 ⚽ ✕ ✗ → ← ↑ ↓ ↔ 🅰️ 🆕 🃏 😮‍💨 🧑‍💼 👨‍👩‍👧 🦖 🛸 ⚠️ ★ ✓ € 123`:
+  **20 icons produced, zero pictographic characters left in visible text**
+  (only `€ 123` remains), ZWJ chains became single icons, unknown `🦖`/`🛸`
+  fell back to `badge`, `textContent` still contains the original characters,
+  toggle off → 0 icons + original text restored, toggle on → 20 icons,
+  no JS errors, no observer loop.
+* HTTP smoke on the real save: all new/existing static files 200 with the
+  right content types, `/api/state`, `/api/pes17/info`, `/api/deals` 200 with
+  `budget: 2535240`, dry `pair` writes 17/13/30/21 B, `/api/apply` 400,
+  save SHA unchanged (`41202a91…`).
+* Final deliverable: `pes2017/dist/TheGaffer_pes2017_pc414.zip`,
+  30,871,569 B, SHA-256
+  `6f03b53f604c83b653c0d0750dce4e4a5f3c1b22706ddb9be87661f314dded1e`,
+  289 entries, 0 `__pycache__`, `VERSION.txt`
+  `pc414-pes17-gameui-r4 (2026-11-04)`.
 
 **Still unconfirmed:** the PES 2017 currency scale for the raw budget word,
 and whether a written save loads in the game (64-byte header hash preserved).

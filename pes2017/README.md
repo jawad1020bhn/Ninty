@@ -109,12 +109,12 @@ in memory and contains no `__pycache__` / `.pyc`.
 
 ## Verified
 
-* **53 unit tests pass**, including tests that decrypt, read, modify and
+* **55 unit tests pass**, including tests that decrypt, read, modify and
   re-encrypt the user's real `ML00000011` / `EDIT00000000` (on copies only),
   tests proving all four measured pair patches against the game-generated
   after files, r2 regression tests for the budget read side
-  (`Pes17Save.budget()` / `/api/pes17/info`), and r3 static checks for the
-  game-HUD skin and its SVG icon pack.
+  (`Pes17Save.budget()` / `/api/pes17/info`), and r3/r4 static checks for the
+  game-HUD skin and its SVG icon pack (including 100% glyph coverage).
 * **r3: GAME UI.** `static/game-skin.css` + `static/game-skin.js` turn the
   website look into a console-style HUD (dark grid backdrop, angled mission
   panels, glowing stats, HUD strip, boot intro) on both `index.html` and
@@ -123,6 +123,13 @@ in memory and contains no `__pycache__` / `.pyc`.
   bottom-right **GAME UI / CLASSIC UI** chip reverts to the original look.
   Pure CSS/JS/DOM: no save code, endpoint or app logic changed, no external
   assets added.
+* **r4: exhaustive icons.** All **926 symbolic glyph occurrences / 170
+  distinct characters** in pc414 (`U+1F000–1FAFF`, `U+2600–27BF`,
+  `U+2B00–2BFF`, `U+2190–21FF`) are explicitly mapped to one of 69 SVG
+  symbols — including the `✕`/`✗` close buttons, plain `→`/`←`/`↑`/`↓`
+  arrows, `🅰`/`🆕`/`🃏` squared badges and ZWJ family sequences. A
+  Unicode `u`-flag catch-all converts any unknown or future emoji to a
+  neutral vector badge, so no color glyph can reappear in app content.
 * r2: `Pes17Save.budget()` no longer returns a hardcoded `0`. It reads the
   measured u32 at `data.dat[8812904]` (2,535,240 on the supplied save), so the
   app's transfer-budget tile and `/api/deals`, `/api/finance` show a real

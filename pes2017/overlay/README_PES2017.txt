@@ -1,4 +1,4 @@
-THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (GAME UI BUILD r3)
+THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (GAME UI BUILD r4)
 ===================================================================
 
 This folder is The Gaffer pc414 with PES 2017 support added.  It is a private,
@@ -20,11 +20,16 @@ BUILD HISTORY
    had a hardcoded 0 stub.  The two measured budget u32 words are now read
    from your save and shown in the app and on the tools page.  The wage word
    in the docs was also corrected to the exact measured value.
-5. r3 (this build): GAME UI.  A dark "game HUD" skin replaces the website
-   look on both the main app and /pes17.html, and ~700 colorful emoji are
-   swapped at runtime for a 64-icon hand-drawn SVG vector pack.  A short
-   boot intro, a HUD strip and a GAME UI / CLASSIC UI toggle were added.
-   NO app logic, save code or endpoint was changed.
+5. r3: GAME UI.  A dark "game HUD" skin replaces the website look on both
+   the main app and /pes17.html, and colorful emoji are swapped at runtime
+   for a hand-drawn SVG vector pack.  A short boot intro, a HUD strip and a
+   GAME UI / CLASSIC UI toggle were added.
+6. r4 (this build): EXHAUSTIVE ICONS.  All 926 symbolic glyph occurrences
+   (170 distinct characters) in pc414 are now explicitly mapped to SVG
+   icons: the X close buttons, plain arrows, squared A / NEW / joker badges
+   and ZWJ family sequences were the last gaps.  A Unicode catch-all with
+   the 'u' flag also converts any unknown / future emoji to a neutral
+   vector badge.  NO app logic, save code or endpoint was changed.
 
 WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------
@@ -70,10 +75,13 @@ The app now opens with a console-style HUD instead of a plain website:
     green "SAVE LINK LOCAL" LED;
   * a short boot intro (once per browser tab, click/any key to skip,
     "SKIP & DON'T SHOW AGAIN" disables it permanently);
-  * a 64-icon vector pack (static/game-skin.js) replaces the app's
-    colorful emoji with crisp SVG icons.  ~97% of the emoji in pc414 are
-    mapped; the two X close-button glyphs stay as text on purpose.
-    Icons also apply to content the app renders later (MutationObserver).
+  * a 69-icon vector pack (static/game-skin.js) replaces EVERY one of the
+    926 symbolic glyph occurrences (170 distinct characters) in pc414 with
+    crisp SVG icons: colorful emoji, dingbats, stars, arrows, X close
+    buttons, squared A/NEW badges and ZWJ family sequences.  A Unicode
+    catch-all also converts any unknown / future emoji to a neutral badge.
+    Icons apply to content the app renders later (MutationObserver).
+    Arrows and X's are drawn in a muted colour so they read as typography.
 
   Files:  static/game-skin.css   (theme, scoped to body.game-skin)
           static/game-skin.js    (SVG sprite, emoji swap, HUD, toggle)
@@ -168,7 +176,7 @@ HOW TO USE ON WINDOWS
 ---------------------
 1. Unzip this build anywhere (not inside the zip) on Windows.
    Check VERSION.txt in that folder: it must say
-   "pc414-pes17-gameui-r3 (2026-11-04)".  If it says
+   "pc414-pes17-gameui-r4 (2026-11-04)".  If it says
    "pc414 (2026-11-01)" you unzipped the ORIGINAL program, which cannot
    decrypt a PES 2017 save at all.
    Both builds use port 8766, so close the old one first (or run
@@ -222,12 +230,12 @@ DIFF TOOLS (on the development machine)
 TESTS
 -----
     python3 -m unittest discover -s pes2017/tests -p 'test_*.py' -v
-53 tests pass, including tests that decrypt, read, modify and re-encrypt
+55 tests pass, including tests that decrypt, read, modify and re-encrypt
 YOUR real ML00000011 / EDIT00000000 files (on copies only), tests that
 prove all four measured pair patches against the game-generated after files,
-r2 regression tests for the budget read side, and r3 checks for the game
-skin / SVG icon pack (icon map consistency, 97% emoji coverage, offline,
-JS syntax via node --check).
+r2 regression tests for the budget read side, and r3/r4 checks for the game
+skin / SVG icon pack (icon map consistency, 100% symbolic-glyph coverage,
+ZWJ sequences, catch-all safety net, offline, JS syntax via node --check).
 
 TECHNICAL SOURCES
 -----------------

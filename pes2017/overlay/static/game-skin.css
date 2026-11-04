@@ -85,6 +85,23 @@ body.game-skin::after {
 body.game-skin .btn .gi,
 body.game-skin button.btn .gi { color: var(--accent-ink); filter: none; }
 
+/* structural arrows and X close glyphs are typography, not badges: keep
+   them quiet so 140+ inline "A -> B" separators do not glow cyan */
+body.game-skin .gi-arrow-right,
+body.game-skin .gi-arrow-left,
+body.game-skin .gi-arrow-up,
+body.game-skin .gi-arrow-down,
+body.game-skin .gi-arrow-lr,
+body.game-skin .gi-arrow-hook,
+body.game-skin .gi-arrow-ur,
+body.game-skin .gi-arrow-dr,
+body.game-skin .gi-close {
+  color: #91b6cf;
+  filter: none;
+  stroke-width: 1.9;
+}
+body.game-skin .gi-close { color: #cfe2f0; }
+
 /* ------------------------------------------------------------- HUD strip */
 .gi-hud {
   display: none;

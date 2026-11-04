@@ -71,7 +71,16 @@
     '🧠': 'badge', '🧾': 'clipboard', '🧑': 'squad', '✨': 'star',
     '😞': 'mood', '🤯': 'mood', '🛟': 'shield', '♪': 'volume',
     '👨': 'squad', '👩': 'squad', '👧': 'squad', '📨': 'mail',
-    '🦈': 'badge', '🏠': 'home', '📚': 'clipboard'
+    '🦈': 'badge', '🏠': 'home', '📚': 'clipboard',
+    /* the last 13 glyphs: X close buttons, arrows and the squared badges */
+    '✕': 'close', '✗': 'close', '✖': 'close',
+    '→': 'arrow-right', '←': 'arrow-left', '↑': 'arrow-up',
+    '↓': 'arrow-down', '↔': 'arrow-lr', '⇢': 'arrow-right',
+    '↪': 'arrow-hook', '⬑': 'arrow-ur', '⬒': 'arrow-up',
+    '🅰': 'badge', '🃏': 'badge', '🆕': 'star',
+    /* whole ZWJ sequences become ONE icon instead of 2-3 broken pieces */
+    '😮\u200d💨': 'mood', '🧑\u200d💼': 'briefcase',
+    '👨\u200d👩\u200d👧': 'squad'
   };
 
   var MAP = {};
@@ -83,8 +92,25 @@
   var keys = Object.keys(MAP).sort(function (a, b) { return b.length - a.length; });
   var escapeRe = function (s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
   var pattern = keys.map(escapeRe).join('|');
-  var TEST = new RegExp(pattern);
-  var RE = new RegExp(pattern, 'g');
+
+  /* Exhaustive safety net: ANY remaining pictograph, dingbat, arrow or
+     squared symbol -- including emoji we have never seen, ZWJ sequences,
+     skin-tone modifiers and keycaps -- still becomes a vector icon.  The
+     explicit map above only decides WHICH icon; this decides that there is
+     always one.  The 'u' flag is required for the \u{...} code point ranges. */
+  var PICTO = '[\\u{1F000}-\\u{1FAFF}\\u{2600}-\\u{27BF}\\u{2B00}-\\u{2BFF}\\u{2190}-\\u{21FF}]';
+  var CATCH = '(?:' + PICTO +
+    '(?:\\uFE0F|\\u200D' + PICTO + '|[\\u{1F3FB}-\\u{1F3FF}])*)';
+  var TEST = new RegExp(pattern + '|' + CATCH, 'u');
+  var RE = new RegExp(pattern + '|' + CATCH, 'gu');
+
+  function iconId(s) {
+    if (MAP[s]) return MAP[s];
+    var cp = s.codePointAt(0);
+    if (cp >= 0x2190 && cp <= 0x21FF) return 'arrow-right';
+    if (cp === 0x2715 || cp === 0x2716 || cp === 0x2717) return 'close';
+    return 'badge';
+  }
 
   /* ------------------------------------------------------------------ *
    * 2. SVG sprite.  One consistent 24x24 stroke grid, currentColor,
@@ -150,6 +176,11 @@
     '<symbol id="gi-arrow-dr" viewBox="0 0 24 24"><path d="M6 6l12 12M18 9v9H9"/></symbol>',
     '<symbol id="gi-arrow-up" viewBox="0 0 24 24"><path d="M12 20V4M6.5 9.5L12 4l5.5 5.5"/></symbol>',
     '<symbol id="gi-arrow-left" viewBox="0 0 24 24"><path d="M20 12H4M10 6.5L4 12l6 5.5"/></symbol>',
+    '<symbol id="gi-arrow-right" viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6"/></symbol>',
+    '<symbol id="gi-arrow-down" viewBox="0 0 24 24"><path d="M12 4v16M6.5 14.5L12 20l5.5-5.5"/></symbol>',
+    '<symbol id="gi-arrow-lr" viewBox="0 0 24 24"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></symbol>',
+    '<symbol id="gi-arrow-hook" viewBox="0 0 24 24"><path d="M8 6l4 4-4 4M12 10h4a4 4 0 0 1 0 8h-3"/></symbol>',
+    '<symbol id="gi-close" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></symbol>',
     '<symbol id="gi-pitch" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="1"/><path d="M12 4v16M2 12h20"/><circle cx="12" cy="12" r="3"/><circle cx="12" cy="7" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/></symbol>',
     '<symbol id="gi-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6h.01"/></symbol>',
     '<symbol id="gi-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6.8V12l3.4 2.2"/></symbol>',
@@ -212,7 +243,7 @@
     var frag = document.createDocumentFragment(), m, last = 0;
     while ((m = RE.exec(text))) {
       if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
-      frag.appendChild(makeIcon(MAP[m[0]], m[0]));
+      frag.appendChild(makeIcon(iconId(m[0]), m[0]));
       last = m.index + m[0].length;
     }
     if (!last) return;

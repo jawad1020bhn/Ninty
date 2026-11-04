@@ -693,7 +693,7 @@ def apply(target):
         shutil.copy2(src, dst)
 
     with open(os.path.join(target, 'VERSION.txt'), 'w', encoding='utf-8') as f:
-        f.write('pc414-pes17-gameui-r3 (2026-11-04)\n')
+        f.write('pc414-pes17-gameui-r4 (2026-11-04)\n')
 
     # Syntax-check all patched Python files in memory (no __pycache__ in the
     # shipped package, no execution of the app).
