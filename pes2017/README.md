@@ -1,4 +1,4 @@
-# The Gaffer — PES 2017 compatibility pack (measured-pairs build)
+# The Gaffer — PES 2017 compatibility pack (r5: measured writes + layout guard)
 
 Source of the PES 2017 port of `TheGaffer_pc414_20261103.zip` (a Football
 Manager style companion for Football Life 26 / PES 2021 / FL27 Master League).
@@ -41,13 +41,14 @@ pes2017/
   overlay/lib/pes17_pairs.py         four tables measured from real before/after save pairs
   tools/diff_saves.py                diff two encrypted saves directly (future pairs)
   tools/verify_pairs.py              prove the four measured patches against the after files
+  tools/analyze_save_noise.py        classify the 211 bytes the game rewrites on every save
   tools/fetch_after_pairs.py         stage the 4 after saves from main into build/pairs (gitignored)
   tools/ct_player_table.py           cross-check the Cheat Engine table against the ML player records
   tools/prepare_pairs.bat            Windows CMD script that prepares pair folders
   overlay/static/pes17.html          PES 2017 tools page (read + write UI)
   overlay/README_PES2017.txt         user docs, shipped in the zip
   overlay/config_pes2017.example.json
-  patch.py                           40 asserted text patches for pc414 sources
+  patch.py                           42 asserted text patches for pc414 sources
   build.py                           extract original zip -> patch -> dist/TheGaffer_pes2017_pc414.zip
   tests/sample.py                    synthetic but structurally faithful PES 2017 saves
   tests/test_pes17.py                15 unit tests (crypto, detection, parsing, EDIT DB, write guard)
@@ -92,7 +93,8 @@ in memory and contains no `__pycache__` / `.pyc`.
   real pairs, plus validated builders for custom values.
 * `static/index.html` — PES 2017 banner links to the tools page.
 * `static/pes17.html` — tools UI: slot picker, real-save info, squad/table/
-  offers, queued ops, dry-run, backups.
+  offers, queued ops, dry-run, backups, RAW budget badge + display-only
+  scale, layout verification checkbox, Arabic toggle.
 
 ## Safety model
 
@@ -101,7 +103,8 @@ in memory and contains no `__pycache__` / `.pyc`.
 * PES 2017 writes are limited to measured tables: negotiation slots, shirt
   numbers, (experimental) squad slots, the four tables from the real pairs
   (formation/tactics/XI/budget), and a u32 `raw` escape hatch that is still
-  range-checked. `pair` checks the before-state before writing.
+  range-checked. `pair` checks the before-state before writing; r5 adds a
+  layout guard that runs BEFORE every op, for all ops.
 * Every write: decrypt → mutate bytearray → assert changed bytes are inside
   measured ranges → re-encrypt → decrypt again → compare all six parts →
   `.tmp` + `os.replace` → reload from disk → compare → timestamped backup.
@@ -109,10 +112,49 @@ in memory and contains no `__pycache__` / `.pyc`.
 
 ## Verified
 
-* **40 unit tests pass**, including tests that decrypt, read, modify and
+* **76 unit tests pass**, including tests that decrypt, read, modify and
   re-encrypt the user's real `ML00000011` / `EDIT00000000` (on copies only),
-  and tests proving all four measured pair patches against the game-generated
-  after files.
+  tests proving all four measured pair patches against the game-generated
+  after files, r2 regression tests for the budget read side
+  (`Pes17Save.budget()` / `/api/pes17/info`), r3/r4 static checks for the
+  game-HUD skin and its SVG icon pack (including 100% glyph coverage), and r5
+  tests for the layout guard, real shirt numbers / XI and RAW budget labels.
+* **r3: GAME UI.** `static/game-skin.css` + `static/game-skin.js` turn the
+  website look into a console-style HUD (dark grid backdrop, angled mission
+  panels, glowing stats, HUD strip) on both `index.html` and `/pes17.html`.
+  The bottom-right **GAME UI / CLASSIC UI** chip reverts to the original look.
+  Pure CSS/JS/DOM: no external assets added. r5 adds a HUD accent picker and
+  makes the boot intro OFF by default.
+* **r4: exhaustive icons.** All **926 symbolic glyph occurrences / 170
+  distinct characters** in pc414 (`U+1F000–1FAFF`, `U+2600–27BF`,
+  `U+2B00–2BFF`, `U+2190–21FF`) are explicitly mapped to one of 69 SVG
+  symbols — including the `✕`/`✗` close buttons, plain `→`/`←`/`↑`/`↓`
+  arrows, `🅰`/`🆕`/`🃏` squared badges and ZWJ family sequences. A
+  Unicode `u`-flag catch-all converts any unknown or future emoji to a
+  neutral vector badge, so no color glyph can reappear in app content.
+* **r5: layout guard.** `apply_ops()` calls `pes17_pairs.verify_layout()`
+  before any op: exact 13,304,607 B data size, four structural table markers
+  (formation record prefixes, XI permutation, tactics invariant bytes,
+  plausible budget u32s) and 50 stable anchors (≥60% match). A different-sized
+  or structurally different save is refused before a byte changes; the
+  `layout` report is returned by `/api/pes17/write` and shown on the tools
+  page with a checked "verify save layout" box. `layout_check=False` opts out
+  with a loud warning; `'report'` runs checks without refusing.
+* **r5: honest budget + more reads.** `/api/pes17/info` reports
+  `currency_verified=false` and `unit='raw u32 save units'`; the tools page
+  shows a RAW / NOT CONFIRMED EUR badge and a display-only x1/x10/x100/x1000
+  scale selector (never written). `Pes17Save.squad_numbers()` now returns the
+  real shirt numbers and `lineup()` the measured 26-slot XI order + 0xFF pad.
+  The tools page has an Arabic toggle (RTL), and the HUD has ICE/AMBER/PITCH
+  accents with the boot intro off by default. `tools/analyze_save_noise.py`
+  classified the 211 common bytes; `tools/diff_saves.py` was executed on all
+  four pairs.
+* r2: `Pes17Save.budget()` no longer returns a hardcoded `0`. It reads the
+  measured u32 at `data.dat[8812904]` (2,535,240 on the supplied save), so the
+  app's transfer-budget tile and `/api/deals`, `/api/finance` show a real
+  number. `/api/pes17/info` also reports both budget words and their offsets.
+  These are **raw save units**; PES 2017's currency scale is unverified, so
+  no ×100 conversion (used by FL26) is applied.
 * `tools/fetch_after_pairs.py` staged all four after saves from `main`;
   `tools/verify_pairs.py`: **PASS** for formation/tactics/xi/budget —
   `offsets_match`, `bytes_reproduced`, `no_extra_changes` all true.

@@ -1,5 +1,5 @@
-THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (MEASURED-PAIRS BUILD)
-======================================================================
+THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (GAME UI BUILD r5)
+===================================================================
 
 This folder is The Gaffer pc414 with PES 2017 support added.  It is a private,
 modified build for personal use; please respect the original FREE TO USE
@@ -13,9 +13,23 @@ BUILD HISTORY
    208-byte PES 2021 header).  That was fixed; decryption and byte-identical
    re-encryption of BOTH real files is proven in tests.  Reads + a small set
    of writes (offers, shirts) were measured on your files.
-3. This build: you supplied four game-generated "after" saves, one per
-   in-game change (formation, tactics, XI, budget), with the same common
+3. Measured-pairs build: you supplied four game-generated "after" saves, one
+   per in-game change (formation, tactics, XI, budget), with the same common
    "before" file ML00000011.  Those pairs mapped four more tables exactly.
+4. r2: the main app showed "Budget EUR 0" because the PES 2017 read adapter
+   had a hardcoded 0 stub.  The two measured budget u32 words are now read
+   from your save and shown in the app and on the tools page.  The wage word
+   in the docs was also corrected to the exact measured value.
+5. r3: GAME UI.  A dark "game HUD" skin replaces the website look on both
+   the main app and /pes17.html, and colorful emoji are swapped at runtime
+   for a hand-drawn SVG vector pack.  A short boot intro, a HUD strip and a
+   GAME UI / CLASSIC UI toggle were added.
+6. r4: EXHAUSTIVE ICONS.  All 926 symbolic glyph occurrences
+   (170 distinct characters) in pc414 are now explicitly mapped to SVG
+   icons: the X close buttons, plain arrows, squared A / NEW / joker badges
+   and ZWJ family sequences were the last gaps.  A Unicode catch-all with
+   the 'u' flag also converts any unknown / future emoji to a neutral
+   vector badge.  NO app logic, save code or endpoint was changed.
 
 WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------
@@ -30,7 +44,93 @@ WHAT THE APP READS FROM YOUR REAL SAVE
 
 Note: description.dat says "Premier League" while the standings/EDIT tables
 place Birmingham in the Sky Bet Championship.  Both values are shown.
-Points / played / goals are still shown as 0: not mapped yet.
+Points / played / goals are still shown as 0: not mapped yet.  r5 scanned
+8,610,000..8,720,000 for a 20-row stats array (w+d+l == played, plausible
+points) and found none, so zeros are kept instead of guessed values.
+Real shirt numbers and the starting XI order are now read (r5).
+
+BUDGET DISPLAY (r2)
+-------------------
+Earlier builds showed "Budget EUR 0": the PES 2017 read adapter had a
+hardcoded 0 stub, even though the budget words were measured for writing.
+r2 reads them from YOUR save.  The app's "Transfer budget" tile now shows the
+raw u32 word at data.dat offset 8,812,904:
+
+  before (the file you gave me)      2,535,240
+  after  (game-generated budget)     3,088,641
+  second word at 8,812,936           9,692,344 -> 10,245,745
+
+These are RAW save units, NOT confirmed EUR amounts.  FL26 stores its budget
+in 100-EUR units and the original app multiplies by 100; PES 2017's currency
+scale has NOT been checked in game, so no conversion is applied.  Compare the
+number with what PES 2017 shows on screen.  If the game shows a multiple
+(e.g. 10x or 100x), report the figure and the scale can be added.  The
+PES 2017 tools page ("Load info") shows both words and their offsets.
+
+BUDGET LABELLING (r5)
+---------------------
+The tools page now shows a RAW / NOT CONFIRMED EUR badge instead of a bare
+currency amount, and /api/pes17/info reports currency_verified=false plus
+unit="raw u32 save units".  A "Display scale (view only)" selector (x1, x10,
+x100, x1000) lets you compare the raw word with the number PES 2017 shows on
+screen; it is display-only and NEVER writes to the save.  The blue banner in
+the main app says the same.  Report the in-game figure and the correct scale
+can be applied -- until then the EUR sign in the original FL26 UI is only
+presentation.
+
+LAYOUT GUARD (r5)
+-----------------
+The four custom ops (formation, tactics, xi, budget) used to write arbitrary
+values without checking the save layout.  apply_ops() now calls
+pes17_pairs.verify_layout() first:
+
+  * data.dat must be exactly 13,304,607 B (the measured save);
+  * formation record markers, the 26-slot XI permutation, two invariant
+    tactics bytes and plausible budget u32 words must all be present;
+  * 50 stable anchor bytes sampled around the tables and across the file
+    (identical in BEFORE and all four AFTERs, outside every writable range)
+    must match at least 60%.
+
+A save from another season/patch is REFUSED before a single byte changes;
+the response includes the layout report.  The tools page has a checked
+"verify save layout" box -- unchecking it disables the guard with a loud
+warning, for advanced users only.  `layout_check='report'` runs the checks
+without refusing.  Synthetic test buffers (<10 MB) are reported, never
+written to a user's save.  This is a save-file comparison, NOT in-game
+validation.
+
+GAME UI (r3)
+------------
+The app now opens with a console-style HUD instead of a plain website:
+
+  * dark navy grid backdrop, angled "mission panel" cards with corner
+    ticks and a thin cyan accent edge, uppercase condensed headings,
+    glowing numeric stats, beveled buttons and HUD-style tables;
+  * a top status strip: THE GAFFER // PES 2017 - MASTER LEAGUE, with a
+    green "SAVE LINK LOCAL" LED;
+  * r5: a HUD accent picker (ICE / AMBER / PITCH, remembered locally)
+    and an INTRO: ON/OFF chip.  The boot intro is now OFF by default;
+    turning it on plays it once per tab, and "SKIP & DON'T SHOW AGAIN"
+    disables it again;
+  * a 69-icon vector pack (static/game-skin.js) replaces EVERY one of the
+    926 symbolic glyph occurrences (170 distinct characters) in pc414 with
+    crisp SVG icons: colorful emoji, dingbats, stars, arrows, X close
+    buttons, squared A/NEW badges and ZWJ family sequences.  A Unicode
+    catch-all also converts any unknown / future emoji to a neutral badge.
+    Icons apply to content the app renders later (MutationObserver).
+    Arrows and X's are drawn in a muted colour so they read as typography.
+
+  Files:  static/game-skin.css   (theme, scoped to body.game-skin)
+          static/game-skin.js    (SVG sprite, emoji swap, HUD, toggle)
+
+  TOGGLE: the "GAME UI" chip at the bottom-right switches to the original
+  "CLASSIC UI" look and restores the original emoji.  The choice is saved
+  in the browser.  Nothing in the skin touches the save file, the API or
+  any app logic.  It is fully offline: no external fonts, images or CDNs
+  were added (the original Google Fonts links are unchanged).
+
+  If the skin ever looks wrong on your display, click the chip once; the
+  classic layout is byte-for-byte the original pc414 UI.
 
 WHAT CAN BE WRITTEN (MEASURED, ROUND-TRIP VERIFIED)
 ---------------------------------------------------
@@ -67,7 +167,7 @@ Four tables measured from YOUR before/after save pairs (lib/pes17_pairs.py):
   XI / squad order      1,256,728, 26 B permutation of squad slots 0..25
                         + 42 B order block, 24 B float sliders at 2,230,192
   budget u32            8,812,904 (2,535,240 -> 3,088,641)
-  wage budget u32       8,812,936 (9,689,272 -> 10,247,281)
+  wage budget u32       8,812,936 (9,692,344 -> 10,245,745)
                         budget pair also touched 15 companion bytes
                         (9,836,708 .. 9,845,147)
 
@@ -112,6 +212,12 @@ NOT in-game validated, and is flagged experimental.  Prefer an AI club
 HOW TO USE ON WINDOWS
 ---------------------
 1. Unzip this build anywhere (not inside the zip) on Windows.
+   Check VERSION.txt in that folder: it must say
+   "pc414-pes17-gameui-r5 (2026-11-04)".  If it says
+   "pc414 (2026-11-01)" you unzipped the ORIGINAL program, which cannot
+   decrypt a PES 2017 save at all.
+   Both builds use port 8766, so close the old one first (or run
+   "The Gaffer.bat" from the new folder, which stops the old process).
 2. Double-click "The Gaffer.vbs" (or "The Gaffer.bat").
 3. In Setup > Save folder choose
       ...\Documents\KONAMI\Pro Evolution Soccer 2017\save
@@ -147,7 +253,7 @@ ops.json example:
   {"op":"pair","name":"formation"},
   {"op":"tactics","values":{"1256356":3}},
   {"op":"xi","order":[9,15,4,12,13,22,19,17,5,3,6,25,16,18,10,21,8,24,11,2,7,23,20,14,0,1]},
-  {"op":"budget","value":3088641,"wage":10247281}
+  {"op":"budget","value":3088641,"wage":10245745}
 ]
 
 DIFF TOOLS (on the development machine)
@@ -157,13 +263,20 @@ DIFF TOOLS (on the development machine)
     python3 pes2017/tools/diff_saves.py  BEFORE AFTER --json diff.json
     python3 pes2017/tools/verify_pairs.py --before "Needed files/ML00000011" \
         --after-dir build/pairs
+    python3 pes2017/tools/analyze_save_noise.py \
+        --json build/analysis/noise_report.json
 
 TESTS
 -----
     python3 -m unittest discover -s pes2017/tests -p 'test_*.py' -v
-40 tests pass, including tests that decrypt, read, modify and re-encrypt
-YOUR real ML00000011 / EDIT00000000 files (on copies only) and tests that
-prove all four measured pair patches against the game-generated after files.
+76 tests pass, including tests that decrypt, read, modify and re-encrypt
+YOUR real ML00000011 / EDIT00000000 files (on copies only), tests that
+prove all four measured pair patches against the game-generated after files,
+r2 regression tests for the budget read side, r3/r4 checks for the game
+skin / SVG icon pack (100% symbolic-glyph coverage, ZWJ sequences,
+catch-all, offline, JS syntax), and r5 tests for the layout guard
+(refusal on a different-size or broken-table save, all four custom ops,
+report/opt-out modes, real shirt numbers / XI, RAW budget labels).
 
 TECHNICAL SOURCES
 -----------------

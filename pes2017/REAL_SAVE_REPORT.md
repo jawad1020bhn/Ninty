@@ -76,7 +76,7 @@ Birmingham in the Sky Bet Championship (patch quirk — both are reported).
 | XI / squad order | `1256728` | 26 B permutation of squad slots 0..25 (+ 42 B order block) |
 | XI float sliders | `2230192` | 24 B (6 × f32), changed by the XI pair |
 | budget u32 | `8812904` | `2535240 → 3088641` in the budget pair |
-| wage budget u32 | `8812936` | `9689272 → 10247281` in the budget pair |
+| wage budget u32 | `8812936` | `9692344 → 10245745` in the budget pair |
 | budget companion bytes | `9836708 … 9845147` | 15 more bytes changed by the budget pair |
 
 **Team id mapping:** `cid >> 14` gives the stable PES Team ID used by
@@ -186,7 +186,7 @@ Interpretation of the tables:
   18 0b 02 07 0d 14 0e 09 03`. The XI edit also reset six formation-slider
   floats at `2230192` (1.0/1.75/1.25/4.0/5.0 → 2.0/0.5/0.0…).
 * Budget: u32 at `8812904` `2535240 → 3088641`, u32 at `8812936`
-  `9689272 → 10247281`, plus 15 companion bytes in four finance records
+  `9692344 → 10245745`, plus 15 companion bytes in four finance records
   (`+3` in three `0x16 → 0x19` bytes, clearing three `01 01` flags). We only
   expose the two u32 words as a value op; the companions are available through
   the exact `pair` op.
@@ -261,6 +261,306 @@ never touches a save.
   (`41202a9196d84116`).
 * The four 13 MB after saves are left on `main`; `tools/fetch_after_pairs.py`
   stages them into the gitignored `build/pairs/` for verification.
+
+## 6c. r2 — "Budget €0" read fix (2026-11-04)
+
+**Symptom reported by the user:** the main app showed `Budget €0` on a real
+PES 2017 save. Cause: `Pes17Save.budget()` in `lib/pes17.py` was a hardcoded
+`return 0` stub left from the first read-only build, even though the two budget
+u32 words had since been measured for writing. Decryption and all other reads
+were fine; the save was not "undetected".
+
+**Fix:**
+
+* `pes17.BUDGET_MAIN` / `BUDGET_WAGE` (8,812,904 / 8,812,936),
+  `Pes17Save.measured_budget()` and `budget()` now read the u32 words from
+  `self.d`. `wage_commitment()` stays 0: FL26's sum-of-salaries is not mapped
+  for PES 2017, and the measured salary word must not be mislabelled as a
+  wage total.
+* `pes17_write.info()` returns
+  `budget={transfer_raw, salary_raw, transfer_offset, salary_offset, raw, note}`;
+  `/pes17.html` shows the detected words when **Load info** is clicked.
+* The blue banner and `layout_note` warn that the € figure is a **raw u32**.
+  FL26 stores its budget in 100-EUR units (`mlwrite.Save.budget()` multiplies
+  by 100), but PES 2017's currency scale has NOT been checked in game, so no
+  conversion is applied. Compare it with the number on screen.
+* Corrected the wage-pair numbers in docs / comments / UI defaults from the
+  earlier transcription `9689272 → 10247281` to the exact measured bytes
+  `9692344 → 10245745` (`data.dat[8812936:8812940]`: `b8 e4 93 00` →
+  `71 56 9c 00`). The `PAIRS` byte triples were always correct, so the
+  measured writes were unaffected; `verify_pairs.py` still passes ×4.
+* New `tests/test_pes17_budget.py` (7 regression tests).
+
+**Verification:**
+
+* `python3 -m unittest discover -s pes2017/tests -p 'test_*.py'` → **47 OK**.
+* `tools/fetch_after_pairs.py` staged 4/4; `tools/verify_pairs.py` →
+  **PASS ×4** (`offsets_match` / `bytes_reproduced` / `no_extra_changes`).
+* HTTP smoke on `build/realsmoke2` with pristine `ML00000011` (SHA
+  `41202a91…`): `/api/deals?slot=ML00000011` → `budget: 2535240`,
+  `/api/finance?slot=…` → `budget: 2535240`,
+  `/api/pes17/info?slot=…` → `budget.transfer_raw=2535240`,
+  `salary_raw=9692344`; `/api/state` layout note updated. Dry `pair` writes
+  17 / 13 / 30 / 21 B and custom `budget` 6 B all 200; unknown pair,
+  unmeasured `raw`, `/api/apply`, `/api/ai/move` → 400; save SHA unchanged.
+* r2 deliverable (superseded by r3): `pes2017/dist/TheGaffer_pes2017_pc414.zip`,
+  30,858,128 B, SHA-256
+  `4efc8653e47947560e62b2d478c58fb9dcde0ba75a635a3ab01a0fb5990741aa`,
+  287 entries, 0 `__pycache__`, `VERSION.txt`
+  `pc414-pes17-measuredpairs-r2 (2026-11-04)`.
+
+**Still unconfirmed:** whether `2,535,240` equals the amount PES 2017 shows
+on screen (currency scale), and whether a written save loads in the game
+(the 64-byte header hash is kept unchanged). Both need the user's Windows
+in-game check.
+
+## 6d. r3 — game-style UI and SVG icon pack (2026-11-04)
+
+The user asked for the app to "look like a game more than a website" and for
+"pro game icons instead of emoji". This is a **presentation-only** change:
+no save code, endpoint, config key or app logic was modified.
+
+**What shipped** (two new static files, copied by `patch.py`):
+
+* `static/game-skin.css` — scoped entirely under `body.game-skin`. Cyan/amber
+  HUD palette, dark grid + vignette backdrop and a faint CRT scanline wash,
+  angular "mission panel" cards with corner ticks and accent edges, uppercase
+  condensed headings with a leading light bar, glowing tabular stat numerals,
+  beveled buttons, HUD-style tables and scrollbars, a 38 px top status strip
+  (`THE GAFFER // PES 2017 · MASTER LEAGUE` + green SAVE LINK LED), a short
+  boot intro, and a bottom-right toggle chip.
+* `static/game-skin.js` — an inline 64-symbol hand-drawn 24×24 SVG sprite
+  (one consistent stroke grid, `currentColor`, no bitmaps or fonts), a
+  159-entry emoji→icon map, a text-node walker that swaps emoji for
+  `<svg><use></svg>`, a `MutationObserver` that also covers content rendered
+  later by the app, the HUD/toggle/boot DOM, and localStorage persistence.
+  `patch.py` hooks the CSS into `index.html` before `</head>` and the JS
+  before `</body>`; `pes17.html` links both directly.
+
+**Design decisions / safety:**
+
+* The original emoji character is retained in a visually hidden span inside
+  each icon wrapper, so `textContent` / `innerText` based logic in the
+  original app still sees the same text. Turning the skin off restores the
+  plain emoji (`restore()`), so the classic layout is fully reversible.
+* `✕` / `✗` close-button glyphs are intentionally left as text (21
+  occurrences); everything else pictographic is mapped. Coverage measured
+  against the original pc414 `index.html`: **684 / 705 = 97.0%**.
+* `<script>`, `<style>`, `<option>`, `<textarea>`, `<input>`, `<title>` and
+  SVG subtrees are skipped, so JS string constants and native dropdown
+  labels are untouched.
+* Fully offline: no `https://`, `@import`, `url()` or font CDN in either
+  file. No new binaries were added to the zip.
+
+**Verification:**
+
+* 53 unit tests OK (6 new `tests/test_game_skin.py` checks: file hooks,
+  `node --check` JS syntax, every mapped id has a `<symbol>`, ≥95% emoji
+  coverage with only `✕`/`✗` left, offline/self-contained + balanced CSS,
+  scoped/toggleable skin API).
+* jsdom DOM smoke (Node 22 + jsdom 30, `runScripts: outside-only`): sprite
+  injected with 64 symbols, `body.game-skin` on, HUD/toggle/boot present,
+  no JS errors; a dynamically inserted `<span>` with `🏆 ⚽ 🎯` produced 6
+  icon wrappers, a later `textContent` insertion produced 2 more, icon count
+  stayed stable across observer flushes (no loop), `textContent` preserved;
+  toggle off → 0 wrappers + original emoji restored, toggle on → converted
+  again. `/pes17.html` correctly gets no HUD/boot.
+* HTTP smoke on the real save: `/game-skin.css` 200 `text/css`,
+  `/game-skin.js` 200 `text/javascript`, `/` and `/pes17.html` 200 with both
+  hooks, `/api/state`, `/api/pes17/info`, `/api/deals` still 200 with
+  `budget: 2535240` and `salary_raw: 9692344`.
+* r3 deliverable (superseded by r4): `pes2017/dist/TheGaffer_pes2017_pc414.zip`,
+  30,870,409 B, SHA-256
+  `84dad4d0cd6fcb49c918edd1094fb04e296b6681f0f01fe304ae766ff759eeed`,
+  289 entries (2 new static files), 0 `__pycache__`, `VERSION.txt`
+  `pc414-pes17-gameui-r3 (2026-11-04)`.
+
+**Still unconfirmed:** the PES 2017 currency scale for the raw budget word,
+and whether a written save loads in the game (64-byte header hash preserved).
+Both require the user's Windows in-game check; the UI skin does not affect
+either.
+
+## 6e. r4 — exhaustive emoji/symbol replacement (2026-11-04)
+
+The user asked to "make sure that ALL emojis are replaced". r3 covered 97% of
+one narrow Unicode slice; a full audit of the original pc414 `index.html`
+using the four relevant blocks (`U+1F000–1FAFF`, `U+2600–27BF`,
+`U+2B00–2BFF`, `U+2190–21FF`) found **926 symbolic glyph occurrences / 170
+distinct characters**, of which 13 characters (186 occurrences) were still
+unmapped. r4 closes every gap.
+
+**Explicitly mapped now:**
+
+| glyph(s) | occurrences | icon |
+|---|---|---|
+| `✕` `✗` (close buttons, previously left as text) | 21 | `close` |
+| `→` `←` `↑` `↓` `↔` `⇢` `↪` `⬑` (arrows) | 157 | `arrow-*` |
+| `🅰` `🆕` `🃏` (squared badges) | 8 | `badge` / `star` |
+| `😮‍💨` `🧑‍💼` `👨‍👩‍👧` (ZWJ sequences) | 4 sequences | one icon each |
+| any unknown / future emoji | — | Unicode catch-all → `badge` |
+
+Five new SVG symbols (`close`, `arrow-right`, `arrow-down`, `arrow-lr`,
+`arrow-hook`) bring the pack to **69 icons**. Arrows and X's are rendered in
+a muted blue-grey without the cyan glow so 140+ inline `A → B` separators
+still read as typography.
+
+**Exhaustive safety net:** `game-skin.js` now builds its regex with the `u`
+flag and a trailing catch-all
+
+```
+(?:[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}]
+   (?:\uFE0F|\u200D<picto>|[\u{1F3FB}-\u{1F3FF}])*)
+```
+
+so an emoji that is not in the explicit map (ZWJ chains, skin tones,
+keycaps, or something a future app build adds) still becomes a vector
+`badge` icon instead of a color glyph. `iconId()` resolves unknown arrows to
+`arrow-right`, unknown X glyphs to `close`, everything else to `badge`.
+
+**Verification:**
+
+* Static audit: **0 unmapped distinct glyphs** across all 926 occurrences,
+  and 0 in `pes17.html`. Explicit coverage **100.0%**.
+* 55 unit tests OK (8 skin tests; new ones assert 100% glyph coverage,
+  the `u`-flag catch-all, ZWJ keys and that `✕`/`✗`/`→` are mapped).
+* `node --check` clean; 69 `<symbol>`s, every mapped id has a symbol.
+* jsdom DOM smoke with `🏆 ⚽ ✕ ✗ → ← ↑ ↓ ↔ 🅰️ 🆕 🃏 😮‍💨 🧑‍💼 👨‍👩‍👧 🦖 🛸 ⚠️ ★ ✓ € 123`:
+  **20 icons produced, zero pictographic characters left in visible text**
+  (only `€ 123` remains), ZWJ chains became single icons, unknown `🦖`/`🛸`
+  fell back to `badge`, `textContent` still contains the original characters,
+  toggle off → 0 icons + original text restored, toggle on → 20 icons,
+  no JS errors, no observer loop.
+* HTTP smoke on the real save: all new/existing static files 200 with the
+  right content types, `/api/state`, `/api/pes17/info`, `/api/deals` 200 with
+  `budget: 2535240`, dry `pair` writes 17/13/30/21 B, `/api/apply` 400,
+  save SHA unchanged (`41202a91…`).
+* Final deliverable: `pes2017/dist/TheGaffer_pes2017_pc414.zip`,
+  30,871,569 B, SHA-256
+  `6f03b53f604c83b653c0d0750dce4e4a5f3c1b22706ddb9be87661f314dded1e`,
+  289 entries, 0 `__pycache__`, `VERSION.txt`
+  `pc414-pes17-gameui-r4 (2026-11-04)`.
+
+**Still unconfirmed:** the PES 2017 currency scale for the raw budget word,
+and whether a written save loads in the game (64-byte header hash preserved).
+Both require the user's Windows in-game check; the UI skin does not affect
+either.
+
+## 6f. r5 — layout guard, honest budget labels, real reads and noise analysis (2026-11-04)
+
+Asked "what to improve next?", then "do what you can do". r5 implements every
+item that does NOT need the user's Windows machine or new before/after saves.
+No save code, endpoint set, container format or FL26 write guard was loosened.
+
+### Layout guard (the main safety fix)
+
+Before r5, only `pair` checked the measured before-state. The four custom ops
+(`formation`, `tactics`, `xi`, `budget`) wrote arbitrary values using ABSOLUTE
+offsets measured on ONE 13,304,607 B `t99p17v20` save, with no layout check --
+a save from a different season/patch could be silently corrupted.
+
+`lib/pes17_pairs.py::verify_layout()` now runs once in `apply_ops()` BEFORE any
+op:
+
+* `data.dat` must be exactly **13,304,607 B**;
+* four season-tolerant structural markers: the three formation record prefixes
+  (`00 01 01 01`, `00 01 01 03`, `00 01 01 03`), two invariant zero bytes in
+  the tactics block, the 26-byte XI table must be a permutation of `0..25`, and
+  both budget u32 words must be plausible (`0 < v < 2^24`, high byte zero);
+* **50 anchors** sampled near the tables and across the file, identical in
+  BEFORE and ALL FOUR after saves, outside every writable range; at least 60%
+  must match.
+
+Synthetic buffers (<10 MB) are reported as `synthetic` and never refused; the
+HTTP and CLI callers force `require_real=True`, so a small-but-real container
+cannot slip through as "synthetic". `/api/pes17/write` returns the `layout`
+report; the tools page has a checked **verify save layout** box, shows the
+result, and can disable the check only with an explicit unchecked box (the
+response then carries `mode:'skipped'` plus a `DISABLED` warning). `layout_check='report'`
+runs the checks without refusing. Verified over HTTP: a 5,266,180 B EDIT
+container used as a slot is now refused **by the guard itself** with
+`PES 2017 layout verification FAILED: data.dat is 5266180 bytes, expected 13304607`.
+
+### Budget is RAW, not confirmed EUR
+
+`/api/pes17/info` now returns `currency_verified=false`,
+`unit='raw u32 save units'`, `label='RAW (not confirmed EUR)'` and a
+`scale_note`. The tools page shows a `RAW` + `NOT CONFIRMED EUR` badge, both
+words with their offsets, and a **display-only** x1/x10/x100/x1000 selector
+that never writes. The blue banner in the main app now says the EUR figure is
+a raw save word and that the tools page checks the layout first. The original
+FL26 UI still prints `€` because that is its own formatting; it is explicitly
+labelled as presentation, not a currency conversion.
+
+### More real read-side data
+
+`Pes17Save.squad_numbers()` now returns the 32 real shirt numbers from
+`club+512` (K. Vasilj = 2), and `lineup()` returns the measured 26-slot XI
+permutation from `data.dat[1256728]` padded to the app's 35-slot shape with
+`0xFF`. A malformed table falls back to the previous neutral placeholder.
+Both are strictly read-only.
+
+### Noise analysis (new tool, and `diff_saves.py` finally executed)
+
+`tools/analyze_save_noise.py` decrypts BEFORE + all four AFTERs and classifies
+the **211 bytes that change in EVERY save** (`build/analysis/noise_report.json`,
+gitignored):
+
+| group | count | finding |
+|---|---|---|
+| `data.dat[48:80]` token | 29 of 32 bytes changed | high entropy, unique per save; likely a seed/MAC, algorithm unknown |
+| non-token varying offsets | 12 | two copies of a 5-byte `0a 08 04 05 01` state at 2,210,104 / 8,361,540 and a 2-byte word at 8,433,234 |
+| stable delta | 170 | **152** follow `before == after + 0x4C` (76) at a fixed stride in the player/team arrays: a per-save counter, not an action table |
+| budget companion bytes | 15 | **14** are small counters/flags (±8 or zeroed); none holds a copy of the budget u32, so the custom `budget` op correctly writes only the two words |
+
+`header.dat[80:144]` (64 B hash) changes in all four saves while **every other
+header byte is identical**; the hash algorithm is still unknown and the writer
+keeps the original. `tools/diff_saves.py` was run on all four pairs:
+47/47/49/56 changed ranges, header hash + token changed in every pair.
+
+A targeted scan of `8,610,000..8,720,000` for a 20-row u16 standings-stats
+array (`w + d + l == played`, plausible points) found **no match**. Points /
+played / goals therefore stay `0` instead of showing guessed numbers; more
+before/after pairs or a fixture/results table are still needed.
+
+### UI polish
+
+* HUD accent picker: ICE / AMBER / PITCH (`data-gi-theme`, CSS variables,
+  remembered in `localStorage`), plus an `INTRO: ON/OFF` chip.
+* The boot intro is now **OFF by default** and can be enabled from the HUD.
+* `/pes17.html` has an Arabic toggle (`data-ar` on 41 static strings, `dir=rtl`,
+  remembered); only direct text nodes are translated so inputs, selects and
+  dynamically rendered tables are untouched.
+
+### Verification (all save-file / HTTP facts; NOT in-game confirmation)
+
+* **76 unit tests OK** (11 new r5 tests: guard pass/refuse, all four custom
+  ops with the guard, report/opt-out modes, small-real-container refusal, real
+  shirt numbers + XI, RAW budget labels, tools-page static checks).
+* `node --check` clean for `game-skin.js` and the tools-page inline script.
+* jsdom smokes: 16/16 tools page checks (RAW badge, no `€` in the budget
+  panel, display scale, Arabic RTL toggle + restore, inputs preserved, queue,
+  `layout:true` / `layout:false` payloads, layout box); 13/13 skin checks
+  (theme cycle/wrap, intro off by default and enableable, icon injection,
+  toggle off/on), no JS errors.
+* **35/35 HTTP checks** on the real save: static files 200 with new content,
+  `/api/state` `pes17:true`, `/api/pes17/info` budget `2535240` +
+  `currency_verified:false`, dry `pair` writes 17/13/30/21 B with
+  `layout.mode:'verified'`, all four custom ops in one request verified,
+  explicit opt-out reports `skipped` + warning, wrong-size save refused by the
+  guard, unknown pair / unmeasured `raw` / `/api/apply` all 400, and the save
+  SHA stays `41202a91…` (dry runs only).
+* `verify_pairs.py`: **PASS** — every measured byte reproduced, no extras.
+* Final deliverable: `pes2017/dist/TheGaffer_pes2017_pc414.zip`,
+  **30,879,476 B**, SHA-256
+  `cf01803fabe0dad1d77a9522174343f4bc0add62dd74f86796e80b6e5249e10d`,
+  289 entries, 0 `__pycache__`, no `config.json`, `VERSION.txt`
+  `pc414-pes17-gameui-r5 (2026-11-04)`.
+
+**Still unconfirmed / needs the user:** a written save loaded in PES 2017 on
+Windows (64-byte header hash preserved), the in-game currency scale for the
+raw budget word, and more before/after pairs for arbitrary values, contracts,
+loans, youth, training, points/goals and offer injection. The r5 guard makes
+wrong-save writes safer; it does not make a written save game-accepted.
 
 ## 7. Sources
 

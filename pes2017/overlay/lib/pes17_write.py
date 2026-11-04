@@ -96,6 +96,12 @@ def _decrypted_folder(container):
     return tmp
 
 
+def _read_u32(data, off):
+    """Little-endian u32, or 0 if the block is too short (never raise)."""
+    return (struct.unpack_from('<I', data, off)[0]
+            if off >= 0 and off + 4 <= len(data) else 0)
+
+
 def info(container, edit_container=None, date_order=None):
     """Human-readable, real-save-derived state (no synthetic fallbacks)."""
     folder = _decrypted_folder(container)
@@ -124,6 +130,22 @@ def info(container, edit_container=None, date_order=None):
             league_name=r.get('league_name', ''),
             offers=pes17.read_offers(data, teams),
             teams=[dict(tid=t['tid'], name=t['name']) for t in teams],
+            budget=dict(
+                transfer_raw=_read_u32(data, pes17_pairs.BUDGET_MAIN),
+                salary_raw=_read_u32(data, pes17_pairs.BUDGET_WAGE),
+                transfer_offset=pes17_pairs.BUDGET_MAIN,
+                salary_offset=pes17_pairs.BUDGET_WAGE,
+                raw=True,
+                currency_verified=False,
+                unit='raw u32 save units',
+                label='RAW (not confirmed EUR)',
+                scale_note=('The FL26 app prints this number with a EUR sign. '
+                            'That is presentation only: PES 2017 currency '
+                            'scale has NOT been compared with the in-game '
+                            'figure. Compare the number shown in PES 2017 '
+                            'with transfer_raw to derive the scale.'),
+                note=('Raw u32 words measured from the budget pair; PES 2017 '
+                      'currency scale is not confirmed in-game.')),
             measured_pairs={k: dict(offsets=len(v),
                                     first_offset=v[0][0], last_offset=v[-1][0])
                             for k, v in pes17_pairs.PAIRS.items()},
@@ -145,8 +167,14 @@ def _allowed_ranges(teams):
     return ranges
 
 
-def apply_ops(container, ops, edit_data=None):
+def apply_ops(container, ops, edit_data=None, layout_check='auto'):
     """Apply a list of explicit operations to the decrypted data block.
+
+    ``layout_check`` ('auto' | True | False | 'report') controls the r5 layout
+    guard.  'auto' (default) verifies every real-sized save before touching a
+    single byte; False skips it with a loud warning in ``container.layout``;
+    'report' runs the checks without refusing.  Synthetic test buffers shorter
+    than 10 MB are reported as such and cannot reach a user's save file.
 
     Supported ops:
       {"op":"offer_add",   "buyer":201, "slot":3, "pid":55246}
@@ -157,12 +185,24 @@ def apply_ops(container, ops, edit_data=None):
       {"op":"formation",   "index":0, "record":"<33-byte hex>"}
       {"op":"tactics",     "values":{"1256356":3}}
       {"op":"xi",          "order":[0,15,4,12,23,21,8,18,5,1,25, ...26 ints]}
-      {"op":"budget",      "value":3088641, "wage":10247281}
+      {"op":"budget",      "value":3088641, "wage":10245745}
 
     Returns (list of results, changed byte count).  No disk write occurs here.
     """
     original = container.data
     d = bytearray(original)
+    want_check = (len(d) >= pes17_pairs.MIN_REAL_SAVE
+                  if layout_check == 'auto' else bool(layout_check))
+    if want_check:
+        container.layout = pes17_pairs.verify_layout(
+            d, strict=(layout_check != 'report'),
+            require_real=layout_check in (True, 'report'))
+    else:
+        container.layout = dict(
+            ok=True, mode='skipped', data_size=len(d),
+            warning=('Layout verification was DISABLED. Offsets are fixed to '
+                     'the measured t99p17v20 save; a different save can be '
+                     'corrupted. Keep the automatic backup.'))
     teams = pes17.team_records(d)
     results = []
     for i, op in enumerate(ops or []):
@@ -301,8 +341,11 @@ def _cli():
         return
     with open(a.ops, encoding='utf-8') as f:
         ops = json.load(f)
-    res, changed = apply_ops(c, ops, ec.data if ec else None)
-    print(json.dumps(dict(results=res, changed_bytes=changed), ensure_ascii=False, indent=1))
+    res, changed = apply_ops(c, ops, ec.data if ec else None,
+                             layout_check=True)
+    print(json.dumps(dict(results=res, changed_bytes=changed,
+                          layout=getattr(c, 'layout', None)),
+                     ensure_ascii=False, indent=1))
     print(json.dumps(save_with_backup(a.save, c, a.work, a.dry), indent=1))
 
 

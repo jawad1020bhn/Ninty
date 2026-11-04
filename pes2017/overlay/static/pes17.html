@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -7,7 +7,7 @@
 <style>
 :root{color-scheme:dark}
 body{margin:0;background:#101722;color:#dce6f2;font:14px/1.5 system-ui,Segoe UI,Arial,sans-serif}
-header{background:#182538;padding:14px 20px;border-bottom:1px solid #2c3e55}
+header{background:#182538;padding:14px 20px;border-bottom:1px solid #2c3e55;display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 h1{margin:0;font-size:18px}
 .wrap{max-width:1100px;margin:0 auto;padding:18px 20px 60px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}
@@ -21,118 +21,145 @@ button:hover{background:#2e70b8}
 button.ghost{background:#20304a;border-color:#3a4f68}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th,td{text-align:left;padding:5px 8px;border-bottom:1px solid #26364c}
-th{color:#8fc7ff;font-weight:600}
+[dir=rtl] th,[dir=rtl] td{text-align:right}
 pre{background:#0b111b;border:1px solid #26364c;border-radius:8px;padding:12px;overflow:auto;max-height:340px;font-size:12px}
 .muted{color:#93a6bd;font-size:12px}
 .err{color:#ff9a9a}
 .ok{color:#8ce6a8}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.raw-badge{display:inline-block;background:#4a2a12;color:#ffc352;border:1px solid #a76a20;border-radius:5px;padding:1px 7px;font-size:11px;letter-spacing:.08em;font-weight:700}
+.big-num{font-size:17px;color:#e8f5ff;font-weight:700}
+.warnbox{background:#2a1c16;border:1px solid #8a5a24;color:#ffd9a0;border-radius:8px;padding:10px 12px;font-size:12px;margin:10px 0}
+.goodbox{background:#142a1e;border:1px solid #2f7a52;color:#b6f2cd;border-radius:8px;padding:10px 12px;font-size:12px;margin:10px 0}
+.langbtn{font-size:12px;background:#20304a}
 </style>
+<link rel="stylesheet" href="/game-skin.css">
 </head>
 <body>
-<header><h1>PES 2017 tools &mdash; The Gaffer pc414</h1>
-<div class="muted">Measured read + limited, round-trip-verified writes on your real Master League / EDIT files. <a href="/" style="color:#8fc7ff">Back to the app</a></div></header>
+<header>
+  <div>
+    <h1 data-ar="أدوات PES 2017 &mdash; The Gaffer pc414">PES 2017 tools &mdash; The Gaffer pc414</h1>
+    <div class="muted" data-ar="قراءة مقيسة وكتابة محدودة ومتحقق منها على ملفات الماستر ليج و EDIT الحقيقية.">Measured read + limited, round-trip-verified writes on your real Master League / EDIT files. <a href="/" style="color:#8fc7ff" data-ar="العودة للتطبيق">Back to the app</a></div>
+  </div>
+  <button id="langBtn" class="langbtn" type="button">العربية</button>
+</header>
 <div class="wrap">
 
 <div class="card">
-  <h2>1. Choose the Master League save</h2>
+  <h2 data-ar="1. اختر ملف حفظ الماستر ليج">1. Choose the Master League save</h2>
   <div class="row">
-    <label>Save slot<select id="slot"></select></label>
-    <button id="load">Load info</button>
-    <label><input type="checkbox" id="dry" checked> dry run (do not write)</label>
+    <label><span data-ar="خانة الحفظ">Save slot</span><select id="slot"></select></label>
+    <button id="load" data-ar="تحميل المعلومات">Load info</button>
+    <label><input type="checkbox" id="dry" checked> <span data-ar="تجربة بدون كتابة">dry run (do not write)</span></label>
+    <label><input type="checkbox" id="verifyLayout" checked> <span data-ar="التحقق من بنية الملف (موصى به)">verify save layout (recommended)</span></label>
   </div>
-  <div class="muted">The EDIT00000000 next to it (or <code>edit_dat</code> in config.json) supplies player names and competition names.</div>
+  <div class="muted" data-ar="ملف EDIT00000000 بجانبه (أو edit_dat في config.json) يوفر أسماء اللاعبين والمسابقات.">The EDIT00000000 next to it (or <code>edit_dat</code> in config.json) supplies player names and competition names.</div>
+  <div class="warnbox" data-ar="التحقق من البنية يمنع الكتابة في ملف من موسم أو باتش مختلف؛ لأن العناوين مقيسة على ملف واحد فقط. لا تعطله إلا إذا كنت تعرف ما تفعله.">Layout verification refuses a save from a different season/patch, because the offsets were measured on one 13,304,607 B save. Disable it only if you know what you are doing; the automatic backup stays.</div>
 </div>
 
 <div class="card">
-  <h2>2. What the app read from your real save</h2>
+  <h2 data-ar="2. ما قرأه التطبيق من ملفك الحقيقي">2. What the app read from your real save</h2>
   <div id="summary" class="muted">Load a save first.</div>
   <div class="grid">
-    <div><h2>Squad (shirt numbers)</h2><div id="squad" class="muted">-</div></div>
-    <div><h2>League table</h2><div id="table" class="muted">-</div></div>
+    <div><h2 data-ar="التشكيلة (أرقام القمصان)">Squad (shirt numbers)</h2><div id="squad" class="muted">-</div></div>
+    <div><h2 data-ar="ترتيب الدوري">League table</h2><div id="table" class="muted">-</div></div>
   </div>
-  <h2 style="margin-top:14px">Active negotiations in the save</h2>
+  <h2 style="margin-top:14px" data-ar="المفاوضات النشطة في الملف">Active negotiations in the save</h2>
   <div id="offers" class="muted">-</div>
+  <div id="layoutInfo" class="goodbox" style="display:none"></div>
 </div>
 
 <div class="card">
-  <h2>3. Write tools (backups are automatic)</h2>
-  <div class="muted" style="margin-bottom:10px">Only measured tables are writable. FL26-style transfers, contracts, AI moves and revalues remain blocked; formation, tactics, XI and budget are now writable through the measured tables below. Uncheck "dry run" to actually write.</div>
+  <h2 data-ar="2b. الميزانية: قيم خام من ملف الحفظ (ليست يورو مؤكد)">2b. Budget is a RAW save value, not confirmed EUR</h2>
+  <div id="budgetPanel" class="muted">Load a save first.</div>
+  <div class="row" style="margin-top:12px">
+    <label><span data-ar="مقياس العرض فقط (لا يكتب في الملف)">Display scale (view only)</span>
+      <select id="scale"><option value="1">x1 (raw)</option><option value="10">x10</option><option value="100">x100</option><option value="1000">x1000</option></select></label>
+    <span id="scaled" class="muted">-</span>
+  </div>
+  <div class="warnbox" data-ar="التطبيق الأصلي يضع رمز اليورو على هذا الرقم، لكن مقياس العملة في PES 2017 لم يتأكد داخل اللعبة. قارن الرقم الظاهر في شاشة اللعبة بالقيمة الخام لتحديد المقياس. المقياس هنا للعرض فقط ولا يغير الملف.">The original app prints this number with a EUR sign, but PES 2017 currency scale has NOT been verified in game. Compare the figure on the game screen with the raw word to find the scale. This selector is display-only: it never writes to your save.</div>
+</div>
+
+<div class="card">
+  <h2 data-ar="3. أدوات الكتابة (النسخ الاحتياطي تلقائي)">3. Write tools (backups are automatic)</h2>
+  <div class="muted" style="margin-bottom:10px" data-ar="الجداول المقيسة فقط قابلة للكتابة. انتقالات وعقود وتحركات FL26 محجوبة؛ التشكيل والتكتيكات والتشكيلة الأساسية والميزانية متاحة عبر الجداول المقيسة. أزل علامة التجربة للكتابة فعلياً.">Only measured tables are writable. FL26-style transfers, contracts, AI moves and revalues remain blocked; formation, tactics, XI and budget are writable through the measured tables below. Uncheck "dry run" to actually write.</div>
   <div class="grid">
     <div>
-      <h2>Add a transfer negotiation</h2>
-      <div class="row"><label>Buyer club<select id="buyer"></select></label></div>
-      <div class="row"><label>Player ID<input type="number" id="pid" placeholder="e.g. 55246"></label>
-      <label>Slot 0-15<input type="number" id="oslot" value="0" min="0" max="15"></label></div>
-      <div class="row"><label><input type="checkbox" id="claim"> claim an unused block for my club (experimental)</label></div>
+      <h2 data-ar="إضافة مفاوضة انتقال">Add a transfer negotiation</h2>
+      <div class="row"><label><span data-ar="النادي المشتري">Buyer club</span><select id="buyer"></select></label></div>
+      <div class="row"><label><span data-ar="رقم اللاعب">Player ID</span><input type="number" id="pid" placeholder="e.g. 55246"></label>
+      <label><span data-ar="الخانة 0-15">Slot 0-15</span><input type="number" id="oslot" value="0" min="0" max="15"></label></div>
+      <div class="row"><label><input type="checkbox" id="claim"> <span data-ar="حجز كتلة فارغة لناديي (تجريبي)">claim an unused block for my club (experimental)</span></label></div>
       <button id="addOffer" class="ghost">Queue: offer_add</button>
     </div>
     <div>
-      <h2>Clear a negotiation</h2>
-      <div class="row"><label>Buyer club<select id="buyer2"></select></label>
-      <label>Slot 0-15<input type="number" id="cslot" value="0" min="0" max="15"></label></div>
+      <h2 data-ar="إلغاء مفاوضة">Clear a negotiation</h2>
+      <div class="row"><label><span data-ar="النادي المشتري">Buyer club</span><select id="buyer2"></select></label>
+      <label><span data-ar="الخانة 0-15">Slot 0-15</span><input type="number" id="cslot" value="0" min="0" max="15"></label></div>
       <button id="clearOffer" class="ghost">Queue: offer_clear</button>
     </div>
     <div>
-      <h2>Set a shirt number</h2>
-      <div class="row"><label>Club<select id="club3"></select></label></div>
-      <div class="row"><label>Squad slot 0-31<input type="number" id="sslot" value="0" min="0" max="31"></label>
-      <label>Number 1-99<input type="number" id="num" value="10" min="1" max="99"></label></div>
+      <h2 data-ar="تغيير رقم قميص">Set a shirt number</h2>
+      <div class="row"><label><span data-ar="النادي">Club</span><select id="club3"></select></label></div>
+      <div class="row"><label><span data-ar="خانة التشكيلة 0-31">Squad slot 0-31</span><input type="number" id="sslot" value="0" min="0" max="31"></label>
+      <label><span data-ar="الرقم 1-99">Number 1-99</span><input type="number" id="num" value="10" min="1" max="99"></label></div>
       <button id="setShirt" class="ghost">Queue: shirt</button>
     </div>
   </div>
   <div class="row" style="margin-top:14px">
-    <button id="apply">Apply queued ops</button>
-    <button id="clearq" class="ghost">Clear queue</button>
+    <button id="apply" data-ar="تنفيذ العمليات">Apply queued ops</button>
+    <button id="clearq" class="ghost" data-ar="مسح القائمة">Clear queue</button>
     <span id="qcount" class="muted">0 ops queued</span>
   </div>
-  <h2 style="margin-top:14px">Queued operations</h2>
+  <h2 style="margin-top:14px" data-ar="العمليات في الانتظار">Queued operations</h2>
   <pre id="queue">[]</pre>
 </div>
 
 <div class="card">
-  <h2>3b. Tables measured from your before/after saves</h2>
-  <div class="muted" style="margin-bottom:10px">Each <code>pair</code> op writes exactly the bytes PES 2017 itself wrote for one change (formation, tactics, XI, budget). Offsets are fixed to this save and the before-state is checked first. The custom ops let you write your own values into those same measured tables.</div>
+  <h2 data-ar="3b. الجداول المقيسة من ملفات قبل/بعد">3b. Tables measured from your before/after saves</h2>
+  <div class="muted" style="margin-bottom:10px" data-ar="كل عملية pair تكتب بالضبط البايتات التي كتبتها اللعبة نفسها لتغيير واحد. العناوين ثابتة لهذا الملف، ويتم التحقق من حالة «قبل» أولاً. العمليات المخصصة تكتب قيماً أخرى داخل نفس الجداول المقيسة.">Each <code>pair</code> op writes exactly the bytes PES 2017 itself wrote for one change (formation, tactics, XI, budget). Offsets are fixed to this save and the before-state is checked first. The custom ops let you write your own values into those same measured tables.</div>
   <div class="grid">
     <div>
-      <h2>Reproduce one measured change</h2>
-      <div class="row"><label>Pair<select id="pairName"><option>formation</option><option>tactics</option><option>xi</option><option>budget</option></select></label></div>
+      <h2 data-ar="إعادة تغيير مقيس واحد">Reproduce one measured change</h2>
+      <div class="row"><label><span data-ar="الزوج">Pair</span><select id="pairName"><option>formation</option><option>tactics</option><option>xi</option><option>budget</option></select></label></div>
       <button id="queuePair" class="ghost">Queue: pair</button>
     </div>
     <div>
-      <h2>Formation record (33-byte hex)</h2>
+      <h2 data-ar="سجل التشكيل (33 بايت hex)">Formation record (33-byte hex)</h2>
       <div class="row"><input id="formationHex" style="width:100%" placeholder="00 01 01 01 04 05 05 07 ... (33 bytes)"></div>
       <button id="queueFormation" class="ghost">Queue: formation</button>
     </div>
     <div>
-      <h2>One tactic byte</h2>
-      <div class="row"><label>Offset<input type="number" id="tacOff" value="1256356"></label>
-      <label>Value 0-255<input type="number" id="tacVal" value="3" min="0" max="255"></label></div>
+      <h2 data-ar="بايت تكتيك واحد">One tactic byte</h2>
+      <div class="row"><label><span data-ar="العنوان">Offset</span><input type="number" id="tacOff" value="1256356"></label>
+      <label><span data-ar="القيمة 0-255">Value 0-255</span><input type="number" id="tacVal" value="3" min="0" max="255"></label></div>
       <button id="queueTactic" class="ghost">Queue: tactics</button>
     </div>
     <div>
-      <h2>XI order (26 comma-separated squad slots)</h2>
+      <h2 data-ar="ترتيب التشكيلة الأساسية (26 خانة)">XI order (26 comma-separated squad slots)</h2>
       <div class="row"><input id="xiOrder" style="width:100%" value="9,15,4,12,13,22,19,17,5,3,6,25,16,18,10,21,8,24,11,2,7,23,20,14,0,1"></div>
       <button id="queueXi" class="ghost">Queue: xi</button>
     </div>
     <div>
-      <h2>Budget u32</h2>
-      <div class="row"><label>Value<input type="number" id="budgetVal" value="3088641"></label>
-      <label>Wage (optional)<input type="number" id="wageVal" placeholder="10247281"></label></div>
+      <h2 data-ar="الميزانية (u32 خام)">Budget u32 (raw)</h2>
+      <div class="row"><label><span data-ar="القيمة">Value</span><input type="number" id="budgetVal" value="3088641"></label>
+      <label><span data-ar="الرواتب (اختياري)">Wage (optional)</span><input type="number" id="wageVal" placeholder="10245745"></label></div>
+      <div class="muted" style="font-size:.85em;margin-bottom:8px">The defaults are the game-generated values from your budget pair. These are raw u32 save units, not confirmed EUR; see card 2b.</div>
       <button id="queueBudget" class="ghost">Queue: budget</button>
     </div>
   </div>
 </div>
 
 <div class="card">
-  <h2>4. Result / raw info</h2>
+  <h2 data-ar="4. النتيجة / المعلومات الخام">4. Result / raw info</h2>
   <pre id="out">-</pre>
 </div>
 
 <script>
-let QUEUE=[], TEAMS=[], SLOT='';
+let QUEUE=[], TEAMS=[], SLOT='', RAW={transfer:0,salary:0};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>Number(n||0).toLocaleString('en-US');
 async function get(u){const r=await fetch(u);const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
 async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
 function show(el,html){$(el).innerHTML=html}
@@ -144,6 +171,30 @@ function fillTeams(list){
   ['buyer','buyer2','club3'].forEach(id=>{const v=$(id).value;$(id).innerHTML=opts;if(v)$(id).value=v});
 }
 function qsync(){show('queue',esc(JSON.stringify(QUEUE,null,1)));$('qcount').textContent=QUEUE.length+' ops queued'}
+function renderScale(){
+  const k=Number($('scale').value)||1;
+  $('scaled').innerHTML='display only: '+esc(fmt(RAW.transfer*k))+(k===1?' (raw)':' = '+esc(fmt(RAW.transfer))+' x '+esc(k));
+}
+function renderBudget(b){
+  RAW={transfer:b?b.transfer_raw:0,salary:b?b.salary_raw:0};
+  if(!b){$('budgetPanel').innerHTML='<span class="muted">No budget words in this save.</span>';renderScale();return}
+  $('budgetPanel').innerHTML=
+    '<span class="raw-badge">RAW</span> <span class="raw-badge">NOT CONFIRMED EUR</span>'+
+    '<div style="margin-top:10px">Transfer word: <span class="big-num">'+esc(fmt(b.transfer_raw))+'</span> @ '+esc(b.transfer_offset)+'</div>'+
+    '<div>Salary word: <span class="big-num">'+esc(fmt(b.salary_raw))+'</span> @ '+esc(b.salary_offset)+'</div>'+
+    '<div class="muted" style="margin-top:8px">Unit: '+esc(b.unit||'raw u32 save units')+'. '+esc(b.note||'')+'</div>';
+  renderScale();
+}
+function renderLayout(l){
+  const box=$('layoutInfo');
+  if(!l){box.style.display='none';return}
+  box.style.display='block';
+  box.className=l.ok?'goodbox':'warnbox';
+  box.textContent='Layout check: '+(l.mode||'?')+
+    (l.anchors_matched!=null?' ('+l.anchors_matched+'/'+l.anchors_total+' anchors)':'')+
+    (l.warning?' -- '+l.warning:'')+
+    (l.ok?' -- ok to write on this measured layout.':'');
+}
 async function loadSlots(){
   try{const s=await get('/api/slots');$('slot').innerHTML=(s||[]).map(x=>'<option value="'+esc(x.slot)+'">'+esc(x.slot)+'</option>').join('');if(s&&s.length)SLOT=s[0].slot}catch(e){out({error:String(e)})}
 }
@@ -157,10 +208,12 @@ async function loadInfo(){
     show('squad',tbl(r.squad,[['slot','#'],['shirt','Shirt'],['name','Player'],['id','ID']]));
     show('table',tbl(r.league_table,[['pos','Pos'],['club','Club'],['pts','Pts']]));
     show('offers',tbl(r.offers,[['buyer','Buyer'],['slot','Slot'],['pid','Player ID'],['transfer','Status']]));
-    fillTeams(r.teams);out({ok:true,league_name:r.league_name,info:r.info});
+    renderBudget(r.budget);
+    fillTeams(r.teams);out({ok:true,league_name:r.league_name,info:r.info,budget:r.budget});
   }catch(e){out({error:String(e)});show('summary','<span class="err">'+esc(e)+'</span>')}
 }
 $('load').onclick=loadInfo;
+$('scale').onchange=renderScale;
 $('addOffer').onclick=()=>{QUEUE.push({op:'offer_add',buyer:Number($('buyer').value),slot:Number($('oslot').value),pid:Number($('pid').value),source:'auto',claim:$('claim').checked});qsync()};
 $('clearOffer').onclick=()=>{QUEUE.push({op:'offer_clear',buyer:Number($('buyer2').value),slot:Number($('cslot').value)});qsync()};
 $('setShirt').onclick=()=>{QUEUE.push({op:'shirt',club:Number($('club3').value),slot:Number($('sslot').value),number:Number($('num').value)});qsync()};
@@ -170,8 +223,34 @@ $('queueTactic').onclick=()=>{QUEUE.push({op:'tactics',values:{[Number($('tacOff
 $('queueXi').onclick=()=>{QUEUE.push({op:'xi',order:$('xiOrder').value.split(',').map(x=>Number(x.trim()))});qsync()};
 $('queueBudget').onclick=()=>{const o={op:'budget',value:Number($('budgetVal').value)};if($('wageVal').value)o.wage=Number($('wageVal').value);QUEUE.push(o);qsync()};
 $('clearq').onclick=()=>{QUEUE=[];qsync()};
-$('apply').onclick=async()=>{try{const r=await post('/api/pes17/write',{slot:SLOT,ops:QUEUE,dry:$('dry').checked});out(r);if(!r.dry)await loadInfo()}catch(e){out({error:String(e)})}};
+$('apply').onclick=async()=>{try{
+  const r=await post('/api/pes17/write',{slot:SLOT,ops:QUEUE,dry:$('dry').checked,
+    layout:$('verifyLayout').checked});
+  out(r);renderLayout(r.layout);if(!r.dry)await loadInfo();
+}catch(e){out({error:String(e)})}};
+
+/* ------------------------------------------------------------------ *
+ * Bilingual tools page (r5).  Only direct text nodes are translated, so
+ * inputs, selects and the dynamically rendered tables are untouched.
+ * ------------------------------------------------------------------ */
+const LANG_KEY='gaffer_pes17_lang';
+function setLang(ar){
+  document.documentElement.lang=ar?'ar':'en';
+  document.documentElement.dir=ar?'rtl':'ltr';
+  document.querySelectorAll('[data-ar]').forEach(el=>{
+    const texts=Array.from(el.childNodes).filter(n=>n.nodeType===3);
+    if(el.dataset.en===undefined)el.dataset.en=texts.map(n=>n.textContent).join('').trim();
+    const value=ar?el.dataset.ar:el.dataset.en;
+    if(texts.length){texts[0].textContent=value+' ';for(let i=1;i<texts.length;i++)texts[i].textContent='';}
+    else el.textContent=value;
+  });
+  $('langBtn').textContent=ar?'English':'العربية';
+  try{localStorage.setItem(LANG_KEY,ar?'ar':'en')}catch(e){}
+}
+$('langBtn').onclick=()=>setLang(document.documentElement.lang!=='ar');
+try{setLang(localStorage.getItem(LANG_KEY)==='ar')}catch(e){setLang(false)}
 loadSlots().then(loadInfo);
 </script>
+<script src="/game-skin.js"></script>
 </body>
 </html>

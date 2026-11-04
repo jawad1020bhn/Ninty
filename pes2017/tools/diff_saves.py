@@ -46,6 +46,10 @@ def main():
         p2 = decrypt_to_folder(a.after, os.path.join(tmp, 'after'))
         rep = pes17_layout.diff(os.path.join(tmp, 'before'),
                                 os.path.join(tmp, 'after'), a.block)
+        with open(a.before, 'rb') as f:
+            before_sha = hashlib.sha256(f.read()).hexdigest()
+        with open(a.after, 'rb') as f:
+            after_sha = hashlib.sha256(f.read()).hexdigest()
         rep['header'] = dict(
             file_header=len(p1['header.dat']),
             hash_changed=p1['header.dat'][80:144] != p2['header.dat'][80:144],
@@ -53,8 +57,8 @@ def main():
                                        p2['encryptHeader.dat']),
             description_changed=p1['description.dat'] != p2['description.dat'],
             token_changed=p1['data.dat'][48:80] != p2['data.dat'][48:80],
-            before_sha256=hashlib.sha256(open(a.before, 'rb').read()).hexdigest(),
-            after_sha256=hashlib.sha256(open(a.after, 'rb').read()).hexdigest())
+            before_sha256=before_sha,
+            after_sha256=after_sha)
     text = json.dumps(rep, indent=1, ensure_ascii=False)
     if a.json:
         os.makedirs(os.path.dirname(os.path.abspath(a.json)), exist_ok=True)

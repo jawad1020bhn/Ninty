@@ -20,13 +20,17 @@ page and the PES2017-Master-League-Transfer-Engine project):
 * an importer that turns that EDIT database into the app's own
   players/ratings/positions/playpos JSON files,
 * a ``Pes17Save`` adapter that mimics the read side of ``mlwrite.Save`` and
-  refuses every write.
+  refuses every write,
+* the two measured budget u32 words (8,812,904 / 8,812,936), exposed raw on
+  the read side -- previously this adapter returned a hardcoded 0, which is
+  why the app showed "Budget EUR 0".
 
-Everything that needs writing into the PES 2017 ML save (transfers, contracts,
-formation, tactics, budgets, loans, youth, AI transfers, ...) is intentionally
-blocked: those tables have different offsets and row sizes in PES 2017 and
-have not been measured on real PES 2017 save pairs yet.  lib/pes17_layout.py
-is the companion tool for that measurement.
+Four tables (formation, tactics, XI, budget) WERE measured on real
+before/after save pairs and are writable only through lib/pes17_write.py on
+the PES 2017 tools page.  Everything else (transfers, contracts, loans,
+youth, AI transfers, ...) is still blocked: those PES 2017 tables have
+different offsets and have not been measured.  lib/pes17_layout.py is the
+companion tool for that measurement.
 """
 import json
 import os
@@ -92,6 +96,20 @@ COMP_NAME_STRIDE = 124
 COMP_NAME_LEN = 64
 TEAM_ARRAY0 = 4782840        # EDIT league member arrays (18 x 80 B)
 EDIT_SENTINEL = 262143       # 0x3FFFF, unused standings/offer slot
+
+# Two u32 words that changed ONLY in the user's real "budget" before/after
+# save pair (see lib/pes17_pairs.py).  These are RAW SAVE UNITS, not confirmed
+# EUR amounts: FL26 stores its budget in 100-EUR units (mlwrite.Save.budget()
+# multiplies by 100), but PES 2017's currency scale has NOT been checked in
+# game, so no conversion is applied here.  Compare the number below with the
+# number PES 2017 shows on screen before trusting the € sign in the app.
+BUDGET_MAIN = 8812904         # 2535240 -> 3088641 in the budget pair
+BUDGET_WAGE = 8812936         # 9692344 -> 10245745 in the budget pair
+
+# 26-byte starting-XI / squad-order permutation measured on the XI pair
+# (see lib/pes17_pairs.py).  Read only: the app's lineup() expects 35 slots.
+XI_ORDER = 1256728
+XI_ORDER_LEN = 26
 
 # Measured on a real t99p17v20 save (see pes2017/REAL_SAVE_REPORT.md):
 # the u32 at club+0 is a bit-packed value: (stable PES Team ID << 14) |
@@ -854,11 +872,15 @@ class Pes17Save:
         self.PLAN0 = 0
         self.known_format = False
         self.layout_ok = False
-        self.layout_note = ('PES 2017 save: club, squad, players and standings '
-                            'are read; FL26-style writes are blocked. Limited '
-                            'measured writes (offers, shirts, formation, '
-                            'tactics, XI, budget) are on the PES 2017 tools '
-                            'page.')
+        self.layout_note = ('PES 2017 save: club, squad, players, standings '
+                            'and the measured budget u32 words are read; '
+                            'FL26-style writes are blocked. Budget is shown '
+                            'as a RAW save value (currency scale unverified). '
+                            'Limited measured writes (offers, shirts, '
+                            'formation, tactics, XI, budget) are on the '
+                            'PES 2017 tools page. r5 reads real shirt '
+                            'numbers and the starting XI order, and '
+                            'verifies the save layout before any write.')
         self.dx = 0
         self.dxa = 0
         self.sh = 0
@@ -902,9 +924,25 @@ class Pes17Save:
     def squad_ids(self):
         return list(self._ids)
     def squad_numbers(self):
-        return {}
+        """Real shirt numbers from club+512, keyed by squad slot (r5)."""
+        if not self._team:
+            return {}
+        nums = shirt_numbers(self.d, self._team)
+        return {i: n for i, n in enumerate(nums) if 0 < n <= 99}
     def lineup(self):
-        return list(range(11)) + [0xff] * 24
+        """Real starting XI order from the measured 26-byte table (r5).
+
+        mlwrite.Save.lineup() returns 35 slots; PES 2017 stores a 26-slot
+        permutation, so the remaining 9 are padded with 0xFF like an empty
+        slot.  A malformed table falls back to the old neutral placeholder.
+        """
+        fallback = list(range(11)) + [0xff] * 24
+        if XI_ORDER + XI_ORDER_LEN > len(self.d):
+            return fallback
+        order = list(bytes(self.d[XI_ORDER:XI_ORDER + XI_ORDER_LEN]))
+        if sorted(order) != list(range(XI_ORDER_LEN)):
+            return fallback
+        return order + [0xff] * (35 - XI_ORDER_LEN)
     def formation(self, k):
         return [('?', 0, 0)] * 11
     def formation_rows(self, k):
@@ -918,8 +956,28 @@ class Pes17Save:
         return {}
     def game_date_code(self):
         return game_date_code(self.folder, self.date_order)
+    def measured_budget(self):
+        """Raw u32 budget words measured from the budget before/after pair.
+
+        Deliberately unscaled: the FL26 app multiplies its own budget word by
+        100, but PES 2017's currency scale is not in-game confirmed.  The app
+        shows these numbers with a € sign; treat them as raw save units until
+        they are compared with the figure PES 2017 displays.
+        """
+        def u32(off):
+            if off < 0 or off + 4 > len(self.d):
+                return 0
+            return struct.unpack_from('<I', self.d, off)[0]
+        return dict(transfer=u32(BUDGET_MAIN), salary=u32(BUDGET_WAGE),
+                    offsets=dict(transfer=BUDGET_MAIN, salary=BUDGET_WAGE),
+                    raw=True, currency_verified=False,
+                    unit='raw u32 save units', label='RAW (not confirmed EUR)',
+                    note=('Raw u32 words measured from the budget pair; '
+                          'PES 2017 currency scale is not confirmed in-game. '
+                          'The EUR sign in the FL26 UI is presentation only.'))
     def budget(self):
-        return 0
+        """Read-side transfer budget (raw measured u32, NOT scaled to EUR)."""
+        return self.measured_budget()['transfer']
     def club_squad_ids(self, idx):
         if not 0 <= idx < len(self.teams):
             return []
@@ -937,6 +995,10 @@ class Pes17Save:
     def list_deals(self):
         return []
     def wage_commitment(self):
+        # FL26's sum-of-squad-salaries is not mapped for PES 2017.  The
+        # measured salary u32 word is exposed through measured_budget() and
+        # /api/pes17/info instead; returning it here would mislabel it as a
+        # wage total in the finance views.
         return 0
     def loaned_in_pids(self):
         return []

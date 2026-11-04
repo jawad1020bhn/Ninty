@@ -371,9 +371,10 @@ def state(slot):
     return pes17_write.info(c, ec)
 
 
-def pes17_tools_apply(slot, ops, dry=False):
+def pes17_tools_apply(slot, ops, dry=False, layout_check=True):
     # Measured, round-trip-verified PES 2017 writes.  All FL26 write
-    # endpoints remain blocked by pes17_readonly().
+    # endpoints remain blocked by pes17_readonly().  r5: verify the measured
+    # t99p17v20 layout BEFORE any op runs (see lib/pes17_pairs.py).
     import pes17_write
     src = os.path.join(CFG['save_dir'], slot)
     with LOCK:
@@ -385,14 +386,17 @@ def pes17_tools_apply(slot, ops, dry=False):
                 ec = pes17_write.load_edit(ep)
             except Exception:
                 ec = None
-        results, changed = pes17_write.apply_ops(c, ops, ec.data if ec else None)
+        results, changed = pes17_write.apply_ops(
+            c, ops, ec.data if ec else None, layout_check=layout_check)
+        lay = getattr(c, 'layout', None)
         if dry:
             c.encrypt()          # prove the modified container re-encrypts
-            return dict(ok=True, dry=True, changed_bytes=changed, results=results)
+            return dict(ok=True, dry=True, changed_bytes=changed,
+                        results=results, layout=lay)
         r = pes17_write.save_with_backup(src, c, CFG['work'])
         PCACHE.clear()
         _REV[0] += 1
-        r.update(dict(changed_bytes=changed, results=results))
+        r.update(dict(changed_bytes=changed, results=results, layout=lay))
         return r
 
 
@@ -418,9 +422,13 @@ def state(slot):
      """            if self.path == '/api/lan/set':
                 return self.send(200, lan_set(body))
             if self.path == '/api/pes17/write':
+                lc = body.get('layout', True)
+                if lc not in (True, False, 'auto', 'report'):
+                    lc = True
                 return self.send(200, pes17_tools_apply(body.get('slot'),
                                                         body.get('ops') or [],
-                                                        bool(body.get('dry'))))""", 1),
+                                                        bool(body.get('dry')),
+                                                        lc))""", 1),
 
     ('server.py',
      """    r = mlsave.read_save(d, None)
@@ -639,7 +647,20 @@ def players_data(slot):
     # ------------------------------------------------------------------- UI
     ('static/index.html',
      """if(S.layout&&S.layout.game27){let seen=false;""",
-     """if(S.layout&&S.layout.pes17){banner('<b>PES 2017 save.</b> The app reads your club, squad, players, shirt numbers, league table and negotiations from your real Master League + EDIT files. FL26-style writes stay blocked; measured formation, tactics, XI and budget write tools are here: <a href="/pes17.html" style="color:#fff;text-decoration:underline">PES 2017 tools</a>. Always keep a backup.',false);}else if(S.layout&&S.layout.game27){let seen=false;""", 1),
+     """if(S.layout&&S.layout.pes17){banner('<b>PES 2017 save.</b> The app reads your club, squad, players, shirt numbers, league table and negotiations from your real Master League + EDIT files. FL26-style writes stay blocked; measured formation, tactics, XI and budget write tools are here: <a href="/pes17.html" style="color:#fff;text-decoration:underline">PES 2017 tools</a>. The &euro; figure in the app is a RAW save word, not confirmed EUR (PES 2017 currency scale is not verified in game). The tools page labels it as raw and checks the save layout before any write. Always keep a backup.',false);}else if(S.layout&&S.layout.game27){let seen=false;""", 1),
+
+    # ------------------------------------------------------------- GAME UI
+    # Loaded LAST in <head> / at the very end of <body> so the skin wins over
+    # the app's inline styles and sees the DOM after the app's own scripts.
+    ('static/index.html',
+     """</head>""",
+     """<link rel="stylesheet" href="/game-skin.css">
+</head>""", 1),
+
+    ('static/index.html',
+     """</body>""",
+     """<script src="/game-skin.js"></script>
+</body>""", 1),
 ]
 
 
@@ -669,6 +690,8 @@ def apply(target):
         ('lib/pes17_write.py', 'lib/pes17_write.py'),
         ('lib/pes17_pairs.py', 'lib/pes17_pairs.py'),
         ('static/pes17.html', 'static/pes17.html'),
+        ('static/game-skin.css', 'static/game-skin.css'),
+        ('static/game-skin.js', 'static/game-skin.js'),
         ('README_PES2017.txt', 'README_PES2017.txt'),
         ('config_pes2017.example.json', 'config_pes2017.example.json'),
     ):
@@ -678,7 +701,7 @@ def apply(target):
         shutil.copy2(src, dst)
 
     with open(os.path.join(target, 'VERSION.txt'), 'w', encoding='utf-8') as f:
-        f.write('pc414-pes17-measuredpairs (2026-11-04)\n')
+        f.write('pc414-pes17-gameui-r5 (2026-11-04)\n')
 
     # Syntax-check all patched Python files in memory (no __pycache__ in the
     # shipped package, no execution of the app).

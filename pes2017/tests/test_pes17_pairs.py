@@ -115,11 +115,11 @@ class CustomOpTests(unittest.TestCase):
 
     def test_budget_u32_and_wage(self):
         d = bytearray(pes17_pairs.DATA_SIZE)
-        r = pes17_pairs.set_budget(d, 3088641, wage=10247281)
+        r = pes17_pairs.set_budget(d, 3088641, wage=10245745)
         self.assertEqual(struct.unpack_from('<I', d, pes17_pairs.BUDGET_MAIN)[0],
                          3088641)
         self.assertEqual(struct.unpack_from('<I', d, pes17_pairs.BUDGET_WAGE)[0],
-                         10247281)
+                         10245745)
         self.assertEqual(r['op'], 'budget')
         with self.assertRaises(ValueError):
             pes17_pairs.set_budget(d, -1)
@@ -172,7 +172,7 @@ class EngineIntegrationTests(unittest.TestCase):
                  record=(b'\x00\x01\x01\x01' + bytes(range(29))).hex()),
             dict(op='tactics', values={'1256356': 3}),
             dict(op='xi', order=list(range(26))),
-            dict(op='budget', value=3088641, wage=10247281),
+            dict(op='budget', value=3088641, wage=10245745),
         ]
         c = pes17_write.Pes17Container.load(self.path)
         res, changed = pes17_write.apply_ops(c, ops)
