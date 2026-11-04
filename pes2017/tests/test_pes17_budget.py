@@ -19,7 +19,8 @@ import pes17          # noqa: E402
 import pes17_pairs    # noqa: E402
 import pes17_write    # noqa: E402
 
-REAL_ML = os.path.join(ROOT, 'Needed files', 'ML00000011')
+_SAVES = os.environ.get('PES17_REAL_SAVES') or os.path.join(ROOT, 'Needed files')
+REAL_ML = os.path.join(_SAVES, 'ML00000011')
 
 
 def adapter(d):

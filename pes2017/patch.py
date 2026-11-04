@@ -795,6 +795,94 @@ def players_data(slot):
         return
     try:
         st = json.load(open(REALMOVES_FILE, encoding='utf-8')) if os.path.exists(REALMOVES_FILE) else {}""", 1),
+    # ------------------------------------------- r9: first-run PES 2017 save folder
+    # pc414 ships a machine-specific FL26 default save_dir.  On a PES 2017 PC
+    # that folder does not exist, so /api/slots and /api/pes17/info raised raw
+    # [Errno 2] / [WinError 3] into the dashboard.  Make the default empty and
+    # resolve a real PES 2017 folder instead.
+    ('server.py',
+     r"""    'save_dir': r'%USERPROFILE%\OneDrive\Dokumenti\KONAMI\eFootball PES 2021 SEASON UPDATE\2026\save',""",
+     r"""    'save_dir': '',   # r9: never inherit pc414's machine-specific FL26 path; load_cfg() finds a real PES 2017 folder""", 1),
+
+    ('server.py',
+     r"""    for k in ('save_dir', 'decrypter', 'encrypter', 'work', 'pes_exe', 'dump', 'telemetry'):
+        cfg[k] = os.path.expandvars(cfg[k])""",
+     r"""    for k in ('save_dir', 'decrypter', 'encrypter', 'work', 'pes_exe', 'dump', 'telemetry'):
+        cfg[k] = os.path.expandvars(cfg[k])
+    if not cfg.get('save_dir'):
+        import pes17_setup
+        cfg['save_dir'] = pes17_setup.autodetect()""", 1),
+
+    ('server.py',
+     r"""def list_slots():
+    out = []
+    if DEV:
+        return [dict(slot='DEV', size=0, mtime=0, label='razvojni save')]
+    for f in sorted(os.listdir(CFG['save_dir'])):
+        if f.startswith('ML0'):
+            p = os.path.join(CFG['save_dir'], f)
+            out.append(dict(slot=f, size=os.path.getsize(p), mtime=int(os.path.getmtime(p))))
+    return out""",
+     r"""def list_slots():
+    out = []
+    if DEV:
+        return [dict(slot='DEV', size=0, mtime=0, label='razvojni save')]
+    _sd = CFG.get('save_dir') or ''
+    if not _sd or not os.path.isdir(_sd):
+        return []   # r9: no save folder yet; /api/pes17/setup explains how to set it
+    try:
+        _files = sorted(os.listdir(_sd))
+    except OSError:
+        return []
+    for f in _files:
+        if f.startswith('ML0'):
+            p = os.path.join(_sd, f)
+            out.append(dict(slot=f, size=os.path.getsize(p), mtime=int(os.path.getmtime(p))))
+    return out""", 1),
+
+    # Structured friendly response instead of a raw 500 traceback.
+    ('server.py',
+     r"""            if u.path == '/api/pes17/info':
+                return self.send(200, pes17_tools_info(parse_qs(u.query).get('slot', [''])[0]))""",
+     r"""            if u.path == '/api/pes17/info':
+                _slot = parse_qs(u.query).get('slot', [''])[0]
+                try:
+                    return self.send(200, pes17_tools_info(_slot))
+                except Exception as _ex:
+                    import pes17_setup
+                    return self.send(200, pes17_setup.unavailable(CFG, _slot, _ex, HERE))""", 1),
+
+    # GET /api/pes17/setup: first-run status, auto-detected candidates, version.
+    ('server.py',
+     r"""            if u.path == '/api/pes17/mode':
+                return self.send(200, dict(pes17=(_GAME['v'] == 'pes17'),
+                                          only=bool(CFG.get('pes17_only', True)),
+                                          offline=not bool(CFG.get('wiki_web', False))))""",
+     r"""            if u.path == '/api/pes17/mode':
+                return self.send(200, dict(pes17=(_GAME['v'] == 'pes17'),
+                                          only=bool(CFG.get('pes17_only', True)),
+                                          offline=not bool(CFG.get('wiki_web', False))))
+            if u.path == '/api/pes17/setup':
+                import pes17_setup
+                return self.send(200, pes17_setup.status(CFG, HERE))""", 1),
+
+    # Owner-only POST: set the save folder straight from the dashboard.
+    ('server.py',
+     r"""                  '/api/pes17/crests/dir', '/api/pes17/assets/extract')""",
+     r"""                  '/api/pes17/crests/dir', '/api/pes17/assets/extract',
+                  '/api/pes17/setup/savefolder')""", 1),
+
+    ('server.py',
+     r"""            if self.path == '/api/pes17/crests/dir':""",
+     r"""            if self.path == '/api/pes17/setup/savefolder':
+                import pes17_setup
+                try:
+                    _sd = pes17_setup.validate_save_dir(body.get('save_dir'))
+                except ValueError as _ex:
+                    return self.send(400, dict(ok=False, error=str(_ex)))
+                _cfg_update(save_dir=_sd)
+                return self.send(200, pes17_setup.status(CFG, HERE))
+            if self.path == '/api/pes17/crests/dir':""", 1),
 ]
 
 
@@ -843,6 +931,7 @@ def apply(target):
         ('lib/pes17_pairs.py', 'lib/pes17_pairs.py'),
         ('lib/pes17_crests.py', 'lib/pes17_crests.py'),
         ('lib/pes17_assets.py', 'lib/pes17_assets.py'),
+        ('lib/pes17_setup.py', 'lib/pes17_setup.py'),
         ('static/pes17.html', 'static/pes17.html'),
         ('static/pes17-dashboard.html', 'static/pes17-dashboard.html'),
         ('static/game-skin.css', 'static/game-skin.css'),
@@ -860,6 +949,7 @@ def apply(target):
         ('tools/harvest_cpk.py', 'tools/harvest_cpk.py'),
         ('CPK_ASSET_INVENTORY.md', 'CPK_ASSET_INVENTORY.md'),
         ('CLEANUP_REPORT.md', 'CLEANUP_REPORT.md'),
+        ('FIRST_RUN.md', 'FIRST_RUN.md'),
     ):
         src = os.path.join(ROOT, rel)
         dst = os.path.join(target, dest)
@@ -867,14 +957,15 @@ def apply(target):
         shutil.copy2(src, dst)
 
     with open(os.path.join(target, 'VERSION.txt'), 'w', encoding='utf-8') as f:
-        f.write('pc414-pes17-clean-r8 (2026-11-04)\n')
+        f.write('pc414-pes17-clean-r9 (2026-11-04)\n')
 
     # Syntax-check all patched Python files in memory (no __pycache__ in the
     # shipped package, no execution of the app).
     for fn in ('server.py', 'lib/pescrypt.py', 'lib/mlwrite.py',
                'lib/pes17.py', 'lib/pes17_layout.py', 'lib/pes17_write.py',
                'lib/pes17_pairs.py', 'lib/pes17_crests.py',
-               'lib/pes17_assets.py', 'tools/harvest_cpk.py'):
+               'lib/pes17_assets.py', 'lib/pes17_setup.py',
+               'tools/harvest_cpk.py'):
         with open(os.path.join(target, fn), encoding='utf-8') as f:
             compile(f.read(), fn, 'exec')
     print('PES 2017 patch applied to', target, '(%d replacements)' %

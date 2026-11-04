@@ -28,6 +28,7 @@ button:disabled{opacity:.5;cursor:default}
 .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;margin-top:16px}
 .card{background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:17px 18px;min-width:0}
 .card h2{margin:0 0 12px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:700;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.card.setup{border-color:#8a6124;background:linear-gradient(160deg,#2a2011,#151c27)}
 .hero{grid-column:span 12;display:flex;align-items:center;gap:20px;flex-wrap:wrap;background:linear-gradient(105deg,#173043,#111c29 65%)}
 .crest{width:92px;height:92px;flex:none;border-radius:16px;background:#0c1621;border:1px solid #2b4257;display:grid;place-items:center;overflow:hidden}
 .crest img{width:82px;height:82px;object-fit:contain}
@@ -43,6 +44,7 @@ button:disabled{opacity:.5;cursor:default}
 .big{font-size:29px;font-weight:760;letter-spacing:-.02em;color:#f2f9ff}
 .badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.1em;border:1px solid #8a6124;background:#3a2810;color:#ffc861;border-radius:5px;padding:2px 8px;margin-left:8px;vertical-align:middle}
 .muted{color:var(--dim);font-size:12px}
+input.path{flex:1;min-width:260px;background:#0d1824;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font:12.5px/1.4 ui-monospace,Consolas,monospace}
 table{border-collapse:collapse;width:100%;font-size:12.5px}
 th{text-align:left;color:var(--dim);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line)}
 td{padding:6px 8px;border-bottom:1px solid #1d2b3b}
@@ -57,8 +59,10 @@ tr:last-child td{border-bottom:0}
 .kv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid #1d2b3b;font-size:12.5px}
 .kv:last-child{border-bottom:0}.kv b{font-weight:650;color:#dbe9f7}
 .bars{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
-.bar{border:1px solid var(--line);background:#0e1a26;border-radius:7px;padding:5px 9px;font-size:11px;color:var(--dim)}
+.bar{border:1px solid var(--line);background:#0e1a26;border-radius:7px;padding:5px 9px;font-size:11px;color:var(--dim);max-width:100%;overflow-wrap:anywhere}
 .bar b{color:var(--txt)}
+.bar.click{cursor:pointer;border-color:#8a6124}
+.bar.click:hover{background:#241d12}
 .foot{margin-top:20px;padding:14px 16px;border:1px dashed #3a4a5e;border-radius:12px;color:var(--dim);font-size:12px;background:#0e1722}
 .err{color:var(--bad)}.ok{color:var(--ok)}
 .skel{height:13px;background:linear-gradient(90deg,#1c2a3a,#243549,#1c2a3a);background-size:200% 100%;animation:sh 1.3s infinite;border-radius:4px}
@@ -75,8 +79,9 @@ tr:last-child td{border-bottom:0}
       <div class="sub" data-ar="لوحة تحكم محلية · بدون إنترنت">Local Master League dashboard · offline</div></div>
   </div>
   <div class="hdr-actions">
-    <span class="chip" data-ar="الإصدار: <b>r7</b>">Build <b>r7</b></span>
+    <span class="chip" data-ar="الإصدار: ">Build <b id="buildVer">r9</b></span>
     <span class="chip amber" data-ar="القراءة من ملف الحفظ <b>محلية</b>">Save reads <b>local</b></span>
+    <button id="setupBtn" class="ghost" type="button" data-ar="مجلد الحفظ">Save folder</button>
     <button id="langBtn" class="langbtn" type="button">العربية</button>
     <button id="refresh" data-ar="تحديث">Refresh</button>
     <a class="chip" href="/pes17.html" data-ar="أدوات الكتابة والفحص">Tools &amp; diagnostics ↗</a>
@@ -85,6 +90,21 @@ tr:last-child td{border-bottom:0}
 </header>
 
 <div class="grid">
+  <!-- r9: first-run setup card. Hidden once a PES 2017 save folder with ML slots is found. -->
+  <section class="card setup c12" id="setupCard" style="display:none">
+    <h2 data-ar="أول تشغيل: اختر مجلد حفظ بي إس 2017">First run · choose your PES 2017 save folder</h2>
+    <div class="muted" id="setupMsg" data-ar="لم يتم ضبط مجلد الحفظ بعد.">Checking your save folder…</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;align-items:center">
+      <input class="path" id="saveDir" type="text" spellcheck="false" dir="ltr"
+             placeholder="C:\Users\...\KONAMI\Pro Evolution Soccer 2017\save" aria-label="PES 2017 save folder">
+      <button id="saveDirBtn" type="button" data-ar="حفظ المجلد">Save folder</button>
+      <a class="chip" href="/index.html" data-ar="فتح الإعداد الكامل ↗">Full Setup ↗</a>
+    </div>
+    <div class="bars" id="setupCandidates"></div>
+    <div class="muted" id="setupOut" style="margin-top:9px"></div>
+    <div class="muted" style="margin-top:9px" data-ar="يجب أن يحتوي المجلد على ML00000011 و EDIT00000000. التطبيق يقرأ فقط ولا يعدل ملفات اللعبة.">The folder must contain ML00000011 (or another ML slot) and EDIT00000000. The app only reads them; it never changes the game or patch folder. It is saved to config.json next to the program.</div>
+  </section>
+
   <section class="card hero">
     <div class="crest" id="crestBox"><span>TG</span></div>
     <div class="hero-main">
@@ -122,13 +142,13 @@ tr:last-child td{border-bottom:0}
   </section>
 
   <section class="card c6">
-    <h2 data-ar="شعارات الأندية من مجلد الباتش">Club crests from your patch folder <span id="crestCount" class="muted">—</span></h2>
+    <h2 data-ar="شعارات الأندية من مجلد الباتش (اختياري)">Club crests · optional <span id="crestCount" class="muted">—</span></h2>
     <div class="muted" id="crestReport">Scanning locally…</div>
     <div class="crestgrid" id="crestGrid" style="margin-top:12px"></div>
   </section>
 
   <section class="card c6">
-    <h2 data-ar="محتويات أرشيف CPK">CPK asset inventory <span id="assetCount" class="muted">—</span></h2>
+    <h2 data-ar="محتويات أرشيف CPK (اختياري)">CPK asset inventory · optional <span id="assetCount" class="muted">—</span></h2>
     <div class="muted" id="assetReport">Scanning locally…</div>
     <div class="bars" id="assetBars"></div>
     <div style="margin-top:13px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -157,17 +177,57 @@ const fmt=n=>Number(n||0).toLocaleString('en-US');
 async function get(u){const r=await fetch(u);const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
 async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
 function tbl(rows,cols){if(!rows||!rows.length)return '<span class="muted">none</span>';return '<table><tr>'+cols.map(c=>'<th>'+esc(c[1])+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+cols.map(c=>'<td>'+(c[2]?'<span class="num">'+esc(r[c[0]])+'</span>':esc(r[c[0]]))+'</td>').join('')+'</tr>').join('')+'</table>'}
-function fail(el,e){$(el).innerHTML='<span class="err">'+esc(e)+'</span>'}
+/* r9: never show a raw Windows path error to the user. */
+function friendly(e){
+  const m=String((e&&e.message)||e||'');
+  if(/No such file|WinError\s*3|Errno 2|chemin d.access|not found|Folder not found/i.test(m))
+    return 'Save folder or save file not found. Use "Save folder" above to pick the folder that contains ML00000011 and EDIT00000000 (usually ...\\KONAMI\\Pro Evolution Soccer 2017\\save).';
+  return m;
+}
+function fail(el,e){$(el).innerHTML='<span class="err">'+esc(friendly(e))+'</span>'}
 
-let SLOT='';
+let SLOT='',SETUP=null;
+function showSetup(st,msg){
+  SETUP=st||{};
+  $('setupCard').style.display='';
+  $('setupMsg').textContent=msg||SETUP.message||'No PES 2017 save folder configured. Choose the folder with your Master League save.';
+  const v=SETUP.candidates&&SETUP.candidates[0]||SETUP.save_dir||SETUP.suggested||'';
+  if(!$('saveDir').value)$('saveDir').value=v;
+  $('setupCandidates').innerHTML=(SETUP.candidates&&SETUP.candidates.length)
+    ? SETUP.candidates.map(p=>'<span class="bar click" data-p="'+esc(p)+'" title="click to use">Detected: <b>'+esc(p)+'</b></span>').join('')
+    : '<span class="bar click" data-p="'+esc(SETUP.suggested||'')+'">Suggested: <b>'+esc(SETUP.suggested||'')+'</b></span>';
+}
+function hideSetup(){$('setupCard').style.display='none'}
+async function setup(force){
+  try{
+    const s=await get('/api/pes17/setup');
+    if(s.version)$('buildVer').textContent=(String(s.version).match(/r\d+/)||['r9'])[0];
+    if(force)showSetup(s);else if(!s.ok)showSetup(s);else hideSetup();
+    return s;
+  }catch(e){if(force)showSetup({},String(e));return null}
+}
+function noSave(msg){
+  $('clubName').textContent='Save folder not set';
+  $('clubMeta').textContent=msg||'Choose your PES 2017 save folder above, then Refresh.';
+  $('container').textContent='-';
+  $('budgetNum').textContent='—';$('wageNum').textContent='—';
+  $('squad').innerHTML='<span class="muted">Waiting for a save folder…</span>';
+  $('table').innerHTML='<span class="muted">Waiting for a save folder…</span>';
+}
 async function slots(){
-  try{const s=await get('/api/slots');$('slot').innerHTML=(s||[]).map(x=>'<option value="'+esc(x.slot)+'">'+esc(x.slot)+'</option>').join('');if(s&&s.length)SLOT=s[0].slot}
-  catch(e){fail('clubMeta',e)}
+  try{
+    const s=await get('/api/slots');
+    $('slot').innerHTML=(s&&s.length)?s.map(x=>'<option value="'+esc(x.slot)+'">'+esc(x.slot)+'</option>').join(''):'<option value="">(no save slots found)</option>';
+    if(s&&s.length)SLOT=s[0].slot;
+  }catch(e){$('slot').innerHTML='<option value="">(save folder not set)</option>'}
 }
 async function info(){
   try{
     SLOT=$('slot').value||SLOT;
     const r=await get('/api/pes17/info?slot='+encodeURIComponent(SLOT));
+    if(r.ok===false){
+      const s=await setup();showSetup(s||r,r.message);noSave(r.message);return;
+    }
     const c=r.club||'',i=r.info||{};
     $('clubName').textContent=i.club||c||'Unknown club';
     $('clubMeta').textContent=(i.league||'-')+' · '+(i.date||'-')+' · '+(r.league_name||'');
@@ -179,7 +239,7 @@ async function info(){
     $('crestBox').innerHTML='<img alt="" src="/api/crest?club='+encodeURIComponent(i.club||c)+'" onerror="this.parentNode.innerHTML=\'<span>TG</span>\'">';
     $('squad').innerHTML=tbl(r.squad,[['shirt','#',1],['name','Player'],['id','ID']]);
     $('table').innerHTML=tbl(r.league_table,[['pos','Pos',1],['club','Club'],['pts','Pts']]);
-  }catch(e){fail('clubName',e);fail('squad',e);fail('table',e)}
+  }catch(e){noSave(friendly(e));fail('squad',e);fail('table',e)}
 }
 async function crests(){
   try{
@@ -187,11 +247,11 @@ async function crests(){
     $('crestCount').textContent=r.logos_found+' logos / '+r.clubs_matched+' clubs';
     $('crestReport').innerHTML=r.available
       ? '<span class="ok">Read locally from '+(r.auto?'folders next to pes_exe':'your patch folder')+'. No network request for crests.</span>'
-      : '<span class="err">No crests found. Set a patch folder in Tools → card 3c.</span>';
+      : '<span class="muted">Optional — no patch folder configured. The save works without crests. If you have loose logos or a livecpk/CPK patch, set pes17_patch_dir in Tools → card 3c.</span>';
     const sm=r.sample||[];
     $('crestGrid').innerHTML=sm.length?sm.map(x=>{const n=x.name||('#'+x.id);
       return '<div><img alt="" src="/api/crest?club='+encodeURIComponent(n)+'"><span title="'+esc(n)+'">'+esc(n)+'</span></div>'}).join('')
-      : '<span class="muted">no sample crests</span>';
+      : '<span class="muted">no sample crests (optional)</span>';
   }catch(e){fail('crestReport',e)}
 }
 async function assets(){
@@ -203,7 +263,7 @@ async function assets(){
       +'<span class="bar">PES17-ready <b>'+(u.YES||0)+'</b></span><span class="bar">needs ID map <b>'+(u.MAP||0)+'</b></span>';
     $('assetReport').innerHTML=r.files
       ? '<span class="ok">Catalogued '+r.cpk_entries+' CPK entries and '+r.loose_files+' loose files, read-only.</span>'
-      : '<span class="err">Nothing found. Point pes17_patch_dir at the patch folder, then Refresh.</span>';
+      : '<span class="muted">Optional — no patch/CPK folder found. Point pes17_patch_dir at a folder holding PES 2021 CPK files, then Refresh. No real .cpk ships with this build.</span>';
     $('assetHint').textContent=r.hint||'';
   }catch(e){fail('assetReport',e)}
 }
@@ -213,7 +273,18 @@ $('harvest').onclick=async()=>{
     $('harvestOut').innerHTML='<span class="ok">'+r.written+' files, '+fmt(r.bytes)+' B → '+esc(r.out)+'</span>';
   }catch(e){fail('harvestOut',e)}finally{$('harvest').disabled=false}
 };
-$('refresh').onclick=()=>{info();crests();assets()};
+$('saveDirBtn').onclick=async()=>{
+  $('saveDirBtn').disabled=true;$('setupOut').textContent='saving…';
+  try{
+    const r=await post('/api/pes17/setup/savefolder',{save_dir:$('saveDir').value});
+    if(r.ok){$('setupOut').innerHTML='<span class="ok">Saved. Reading your save…</span>';hideSetup();await boot()}
+    else{$('setupOut').innerHTML='<span class="err">'+esc(r.message||r.error)+'</span>';showSetup(r)}
+  }catch(e){$('setupOut').innerHTML='<span class="err">'+esc(friendly(e))+'</span>'}
+  finally{$('saveDirBtn').disabled=false}
+};
+$('setupBtn').onclick=()=>{setup(true)};
+$('setupCandidates').onclick=e=>{const b=e.target.closest('.bar.click');if(b&&b.dataset.p)$('saveDir').value=b.dataset.p};
+$('refresh').onclick=()=>{setup().then(()=>{slots().then(()=>{info();crests();assets()})})};
 $('slot').onchange=info;
 
 /* Bilingual: only elements with a direct text node are translated. */
@@ -231,7 +302,8 @@ function setLang(ar){
 }
 $('langBtn').onclick=()=>setLang(document.documentElement.lang!=='ar');
 try{setLang(localStorage.getItem(LK)==='ar')}catch(e){setLang(false)}
-slots().then(()=>{info();crests();assets()});
+async function boot(){await setup();await slots();info();crests();assets()}
+boot();
 </script>
 </body>
 </html>

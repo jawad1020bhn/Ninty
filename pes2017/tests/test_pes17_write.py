@@ -99,8 +99,9 @@ class Pes17Header176(unittest.TestCase):
 
 class Pes17RealSave(unittest.TestCase):
     """Only runs when the user's real files are present in the repo."""
-    ML = os.path.join(ROOT, 'Needed files', 'ML00000011')
-    EDIT = os.path.join(ROOT, 'Needed files', 'EDIT00000000')
+    _SAVES = os.environ.get('PES17_REAL_SAVES') or os.path.join(ROOT, 'Needed files')
+    ML = os.path.join(_SAVES, 'ML00000011')
+    EDIT = os.path.join(_SAVES, 'EDIT00000000')
 
     @classmethod
     def setUpClass(cls):

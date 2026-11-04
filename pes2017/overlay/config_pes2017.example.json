@@ -1,5 +1,6 @@
 {
   "_comment": "Example config.json for PES 2017 (t99p17v20). Rename to config.json in the app folder, then adjust the paths. Setup can also write these for you. The /pes17.html write tools work with or without this file as long as save_dir is right.",
+  "_save_dir_note": "r9: no save folder is hard-coded any more. On first run the dashboard shows a 'Save folder' card and the app looks for KONAMI\\Pro Evolution Soccer 2017\\save under your profile, Documents and OneDrive (including localised names like Dokumenti). Paste the real path there, or set save_dir here. The folder must contain ML00000011 (or another ML slot) and EDIT00000000.",
   "save_dir": "%USERPROFILE%\\Documents\\KONAMI\\Pro Evolution Soccer 2017\\save",
   "work": "%USERPROFILE%\\Documents\\TheGaffer\\work",
   "edit_dat": "%USERPROFILE%\\Documents\\KONAMI\\Pro Evolution Soccer 2017\\save\\EDIT00000000",

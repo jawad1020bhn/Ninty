@@ -745,7 +745,7 @@ reference that needed it. No save, patch or game file was touched.
 | `FL_key.bin`, `FL_key_README.txt` | 2 | FL27 save key; PES 2017 uses `KEY_PES17`; `_fl_key()` tolerates absence. |
 | `data/players.json`, `positions.json`, `playpos.json`, `ratings.json`, `realmoves.json` | 5 | FL26 databases shadowed by `data/pes17/*` regenerated from the real `EDIT00000000`; startup loaders are guarded. |
 
-`prune.apply()` asserts all **43 KEEP paths** still exist and writes
+`prune.apply()` asserts all **45 KEEP paths** still exist and writes
 `CLEANUP_MANIFEST.txt` with every deletion. Kept on purpose: the classic
 FL26 UI at `/index.html` (20,074-line `index.html`, `static/art`,
 `static/leagues`, `game-skin.*`), ID-independent `data/art`, `data/myscenes`,
@@ -800,6 +800,107 @@ archive, no real CPK/CRILAYLA/FTEX verification, no PES 2021 -> `t99p17v20`
 ID map, no Windows execution, no in-game save load, no header-hash or
 budget-scale confirmation. **Nothing in r8 proves a written save is accepted
 by PES 2017.**
+
+
+## 6j. r9 — first-run save folder fix (2026-11-04)
+
+User report, verbatim excerpt: *"first try after clean up:"* followed by the
+PES 2017 dashboard showing
+
+```
+Error: [Errno 2] No such file or directory: 'C:\Users\SR InfoMobile\OneDrive\Dokumenti\KONAMI\eFootball PES 2021 SEASON UPDATE\2026\save\'
+Error: [WinError 3] Le chemin d'accès spécifié est introuvable: '...\2026\save'
+```
+
+and `0 logos / 0 clubs`, `0 entries / 0 archives`, `PES17-ready 0`.
+
+### Root cause
+
+`DEFAULT_CFG['save_dir']` in the original pc414 `server.py` is a hard-coded,
+machine-specific **Football Life 2026 / PES 2021** path:
+
+```python
+'save_dir': r'%USERPROFILE%\OneDrive\Dokumenti\KONAMI\eFootball PES 2021 SEASON UPDATE\2026\save',
+```
+
+No `config.json` is shipped, so on a fresh PES 2017 install `load_cfg()` kept
+that value. `list_slots()` calls `os.listdir()` on it (HTTP 500, raw OS string
+surfaced by `do_GET`'s `except Exception` → `{'error': str(e)}`), and
+`pes17_tools_info()` opens `<save_dir>/<slot>` (a second raw OS error). The
+dashboard's `fail()` printed both verbatim. The `Build r7` chip was a static
+label left over from r7. The crest/CPK zeros are **expected** on a machine
+with no patch folder — both are optional.
+
+### Changes (all in `pes2017/`, no game/save/patch file touched)
+
+* `DEFAULT_CFG['save_dir'] = ''`; `load_cfg()` calls
+  `pes17_setup.autodetect()` when unset, which scans the profile, `Documents`,
+  OneDrive and localised Documents names (`Dokumenti`, `Documenti`, …) for
+  `KONAMI\Pro Evolution Soccer 2017\save`, preferring folders with `ML*`
+  slots. It **never** falls back to an FL26 path.
+* New `overlay/lib/pes17_setup.py` (shipped as `lib/pes17_setup.py`): pure
+  stdlib, no network — `home_roots()`, `candidates()`, `autodetect()`,
+  `suggested()`, `slots_in()`, `validate_save_dir()`, `version()`,
+  `friendly_error()`, `status()`, `unavailable()`.
+* `list_slots()` returns `[]` instead of raising when the folder is absent or
+  unreadable. `GET /api/pes17/info` catches read failures and returns HTTP 200
+  `{'ok': false, 'error': 'save_unavailable', 'message': <friendly>, ...}`
+  instead of a 500 with a Windows path.
+* New `GET /api/pes17/setup` (status, detected candidates, suggested path,
+  build version) and owner-only `POST /api/pes17/setup/savefolder`, added to
+  `LAN_POST_BLOCK`. The POST validates that the folder exists, calls
+  `_cfg_update(save_dir=...)` (writes `config.json`) and returns fresh status.
+* Dashboard: a **Save folder** card with a path input, clickable detected
+  candidates, a header button, a dynamic build-version chip (`r9`), a
+  `friendly()` mapper that turns any remaining OS error into guidance, and
+  "Waiting for a save folder…" placeholders instead of raw exceptions. The
+  crest/CPK cards are now labelled **optional** and explain `pes17_patch_dir`.
+* `config_pes2017.example.json` documents the first-run behaviour; new
+  shipped [`FIRST_RUN.md`](FIRST_RUN.md) is the Windows user guide.
+* `build.py` accepts `GAFFER_ORIGINAL_ZIP` / `--source` and
+  `GAFFER_BUILD_DIR` because the original upstream zip and the real saves were
+  removed from the repo by the r8/r9 cleanup; both are recoverable from git
+  history. Tests accept `GAFFER_LIB` and `PES17_REAL_SAVES`; `verify_pairs.py`
+  accepts `GAFFER_LIB`.
+* `prune.KEEP` now asserts 45 required paths (added `lib/pes17_setup.py` and
+  `FIRST_RUN.md`). `patch.py` asserts **60** exact replacements + **2** regex
+  patches.
+
+### Verification (save-file / HTTP facts; NOT in-game confirmation)
+
+* **142 unit tests OK (2 skipped)** — 127 from r8 plus 15 new
+  `test_pes17_setup.py` tests (detection with a temp OneDrive/`Dokumenti`
+  tree, `autodetect`, `suggested`, `slots_in`, `validate_save_dir`,
+  `status`/`unavailable` with no raw OS strings, offline module, patch/dashboard
+  wiring, shipped zip contents). `verify_pairs.py` **PASS** against the four
+  game-generated after saves; `node --check` clean for the dashboard JS.
+* **66/66 live HTTP checks PASS** on a server extracted from the **final r9
+  zip**. Scenario A = fresh install with **no `config.json`** (reproducing the
+  user's failure): `/api/slots` 200 `[]`, `/api/pes17/info` 200 structured
+  friendly error, `/api/pes17/setup` 200 with a PES 2017 suggested path and no
+  `[Errno`/`WinError` anywhere, all dashboard endpoints 200. Scenario B =
+  `POST /api/pes17/setup/savefolder` (bad path → 400 friendly, real path →
+  200 `ok:true`, `config.json` written): real club `Birmingham City FC`, RAW
+  budget, **26-player squad**, league table, `/api/state`, crest/asset
+  reports, read-only harvest, dry `pair` with `layout.mode:'verified'`, crest
+  PNG, and real save SHA still `41202a91...`.
+* **Differential sweep:** all **133 GET endpoints** on r9 (8767) vs a freshly
+  extracted r8 build (8768) with identical config/save/patch → **132 identical
+  status pairs**; the only difference is the new `/api/pes17/setup` (r9 200,
+  r8 404). Zero new 5xx, zero timeouts, pre-existing 5xx set unchanged.
+* Final deliverable: `pes2017/dist/TheGaffer_pes2017_pc414.zip`,
+  **28,097,505 B**, SHA-256
+  `cbea780ee107628bddd95d1c9adb1367124f672259e5fc0971c84e3e23318b5a`,
+  **187 entries**, 0 `__pycache__`, no `config.json`, `VERSION.txt`
+  `pc414-pes17-clean-r9 (2026-11-04)`. Ships `lib/pes17_setup.py`,
+  `FIRST_RUN.md`, `CLEANUP_MANIFEST.txt` and `CLEANUP_REPORT.md`.
+
+**User action still required:** paste the real PES 2017 save folder into the
+new dashboard card (or classic Setup). Limits unchanged: no Windows
+execution here, no in-game save load, no header-hash or budget-scale
+confirmation, no real `.cpk` archive, no PES 2021 → `t99p17v20` ID map, FL26
+UI/endpoints still exist behind `pes17_only:false`. **Nothing in r9 proves a
+written save is accepted by PES 2017.**
 
 ## 7. Sources
 
