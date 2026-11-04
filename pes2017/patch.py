@@ -644,6 +644,67 @@ def players_data(slot):
      """    game = dict(v='fl27' if g27 else 'fl26')""",
      """    game = dict(v='pes17' if _GAME['v'] == 'pes17' else ('fl27' if g27 else 'fl26'))""", 1),
 
+    # --------------------------------------------------- PES 2017 crests (r6)
+    # The FL26/FL27 crest pipeline (Sider livecpk + CPK next to pes_exe) uses a
+    # 1680 B club stride and can resolve a PES 2017 club name to the raw
+    # bit-packed id instead of the stable team id.  pes17_crests reads the
+    # patch folder directly and is tried FIRST on a PES 2017 save.
+    ('server.py',
+     """LAN_POST_BLOCK = ('/api/setup/save', '/api/setup/pick', '/api/setup/sider', '/api/setup/michele', '/api/setup/injuries',
+                  '/api/setup/regen', '/api/setup/check', '/api/package', '/api/quit', '/api/lan/set', '/api/dbimport/faces',
+                  '/api/backups/keep', '/api/backups/clean', '/api/dev/')""",
+     """LAN_POST_BLOCK = ('/api/setup/save', '/api/setup/pick', '/api/setup/sider', '/api/setup/michele', '/api/setup/injuries',
+                  '/api/setup/regen', '/api/setup/check', '/api/package', '/api/quit', '/api/lan/set', '/api/dbimport/faces',
+                  '/api/backups/keep', '/api/backups/clean', '/api/dev/',
+                  '/api/pes17/crests/dir')""", 1),
+
+    ('server.py',
+     """def crest_img(name):
+    b = game_logo(name)""",
+     """def crest_img(name):
+    if _GAME['v'] == 'pes17' or CFG.get('pes17_patch_dir'):
+        try:
+            import pes17_crests
+            _b17 = pes17_crests.crest_img(name, CFG)
+            if _b17:
+                return _b17
+        except Exception as _ex:
+            print('[pes17 crests]', _ex)
+    b = game_logo(name)""", 1),
+
+    ('server.py',
+     """        return len(_game_logo_index()) >= 50""",
+     """        if _GAME['v'] == 'pes17' or CFG.get('pes17_patch_dir'):
+            try:
+                import pes17_crests
+                if pes17_crests.count(CFG) >= 1:
+                    return True
+            except Exception as _ex:
+                print('[pes17 crests]', _ex)
+        return len(_game_logo_index()) >= 50""", 1),
+
+    ('server.py',
+     """            if u.path == '/api/pes17/info':
+                return self.send(200, pes17_tools_info(parse_qs(u.query).get('slot', [''])[0]))""",
+     """            if u.path == '/api/pes17/info':
+                return self.send(200, pes17_tools_info(parse_qs(u.query).get('slot', [''])[0]))
+            if u.path == '/api/pes17/crests':
+                import pes17_crests
+                return self.send(200, pes17_crests.report(
+                    CFG, bool(parse_qs(u.query).get('rescan'))))""", 1),
+
+    ('server.py',
+     """            if self.path == '/api/pes17/write':""",
+     """            if self.path == '/api/pes17/crests/dir':
+                import pes17_crests
+                _pd = (body.get('dir') or '').strip()
+                if _pd and not os.path.isdir(_pd):
+                    return self.send(400, dict(error='Not a folder: %s' % _pd))
+                _cfg_update(pes17_patch_dir=_pd)
+                pes17_crests.clear()
+                return self.send(200, pes17_crests.report(CFG, True))
+            if self.path == '/api/pes17/write':""", 1),
+
     # ------------------------------------------------------------------- UI
     ('static/index.html',
      """if(S.layout&&S.layout.game27){let seen=false;""",
@@ -689,6 +750,7 @@ def apply(target):
         ('lib/pes17_layout.py', 'lib/pes17_layout.py'),
         ('lib/pes17_write.py', 'lib/pes17_write.py'),
         ('lib/pes17_pairs.py', 'lib/pes17_pairs.py'),
+        ('lib/pes17_crests.py', 'lib/pes17_crests.py'),
         ('static/pes17.html', 'static/pes17.html'),
         ('static/game-skin.css', 'static/game-skin.css'),
         ('static/game-skin.js', 'static/game-skin.js'),
@@ -701,13 +763,13 @@ def apply(target):
         shutil.copy2(src, dst)
 
     with open(os.path.join(target, 'VERSION.txt'), 'w', encoding='utf-8') as f:
-        f.write('pc414-pes17-gameui-r5 (2026-11-04)\n')
+        f.write('pc414-pes17-crests-r6 (2026-11-04)\n')
 
     # Syntax-check all patched Python files in memory (no __pycache__ in the
     # shipped package, no execution of the app).
     for fn in ('server.py', 'lib/pescrypt.py', 'lib/mlwrite.py',
                'lib/pes17.py', 'lib/pes17_layout.py', 'lib/pes17_write.py',
-               'lib/pes17_pairs.py'):
+               'lib/pes17_pairs.py', 'lib/pes17_crests.py'):
         with open(os.path.join(target, fn), encoding='utf-8') as f:
             compile(f.read(), fn, 'exec')
     print('PES 2017 patch applied to', target, '(%d replacements)' %

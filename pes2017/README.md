@@ -1,4 +1,4 @@
-# The Gaffer — PES 2017 compatibility pack (r5: measured writes + layout guard)
+# The Gaffer — PES 2017 compatibility pack (r6: club crests from the patch folder)
 
 Source of the PES 2017 port of `TheGaffer_pc414_20261103.zip` (a Football
 Manager style companion for Football Life 26 / PES 2021 / FL27 Master League).
@@ -39,6 +39,7 @@ pes2017/
   overlay/lib/pes17_layout.py        diagnostic CLI: info / diff / edit (maps before/after save pairs)
   overlay/lib/pes17_write.py         real-save container I/O + whitelisted, round-trip-verified writes
   overlay/lib/pes17_pairs.py         four tables measured from real before/after save pairs
+  overlay/lib/pes17_crests.py       offline club-crest reader for the local patch folder
   tools/diff_saves.py                diff two encrypted saves directly (future pairs)
   tools/verify_pairs.py              prove the four measured patches against the after files
   tools/analyze_save_noise.py        classify the 211 bytes the game rewrites on every save
@@ -48,7 +49,7 @@ pes2017/
   overlay/static/pes17.html          PES 2017 tools page (read + write UI)
   overlay/README_PES2017.txt         user docs, shipped in the zip
   overlay/config_pes2017.example.json
-  patch.py                           42 asserted text patches for pc414 sources
+  patch.py                           47 asserted text patches for pc414 sources
   build.py                           extract original zip -> patch -> dist/TheGaffer_pes2017_pc414.zip
   tests/sample.py                    synthetic but structurally faithful PES 2017 saves
   tests/test_pes17.py                15 unit tests (crypto, detection, parsing, EDIT DB, write guard)
@@ -112,13 +113,15 @@ in memory and contains no `__pycache__` / `.pyc`.
 
 ## Verified
 
-* **76 unit tests pass**, including tests that decrypt, read, modify and
+* **99 unit tests pass**, including tests that decrypt, read, modify and
   re-encrypt the user's real `ML00000011` / `EDIT00000000` (on copies only),
   tests proving all four measured pair patches against the game-generated
   after files, r2 regression tests for the budget read side
   (`Pes17Save.budget()` / `/api/pes17/info`), r3/r4 static checks for the
-  game-HUD skin and its SVG icon pack (including 100% glyph coverage), and r5
-  tests for the layout guard, real shirt numbers / XI and RAW budget labels.
+  game-HUD skin and its SVG icon pack (including 100% glyph coverage), r5
+  tests for the layout guard, real shirt numbers / XI and RAW budget labels,
+  and r6 tests for offline patch-folder crests (loose files, CPK/WESYS, DDS
+  decoding, stable-id mapping, read-only behaviour).
 * **r3: GAME UI.** `static/game-skin.css` + `static/game-skin.js` turn the
   website look into a console-style HUD (dark grid backdrop, angled mission
   panels, glowing stats, HUD strip) on both `index.html` and `/pes17.html`.
@@ -132,6 +135,21 @@ in memory and contains no `__pycache__` / `.pyc`.
   arrows, `🅰`/`🆕`/`🃏` squared badges and ZWJ family sequences. A
   Unicode `u`-flag catch-all converts any unknown or future emoji to a
   neutral vector badge, so no color glyph can reappear in app content.
+* **r6: patch-folder club crests.** `overlay/lib/pes17_crests.py` walks a
+  configurable local folder (`pes17_patch_dir`; blank = auto-detect folders
+  next to `pes_exe`) for crest-like PNG/JPG/DDS/FTEX files and for
+  `common/render/symbol/flag/e_<id>_<variant>.(png|dds)` entries inside `*.cpk`
+  archives, using the shipped `cpkread` / `dds` / `ftex` / `bc7` readers.
+  Club names are resolved with `data/pes17/teamids.json`, preferring the stable
+  team ID over the raw bit-packed ID (the FL26 `_save_team_ids()` stride is
+  wrong for PES 2017). `crest_img()` tries this source first on a PES 2017
+  save; `crest_prefetch()` skips Wikipedia when patch crests exist. New
+  `/api/pes17/crests` (diagnostic) and `/api/pes17/crests/dir` (owner-only
+  config setter) endpoints and a card on `/pes17.html` show the result.
+  Read-only, offline, no external dependency; nothing is written to the game
+  folder. Verified with 32/32 HTTP checks on the real save plus a synthetic
+  patch folder. Real patch CPK archives were not available in this sandbox, so
+  CPK reading is covered by a mocked reader and the shipped `cpkread.Cpk` API.
 * **r5: layout guard.** `apply_ops()` calls `pes17_pairs.verify_layout()`
   before any op: exact 13,304,607 B data size, four structural table markers
   (formation record prefixes, XI permutation, tactics invariant bytes,

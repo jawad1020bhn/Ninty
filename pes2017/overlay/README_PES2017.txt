@@ -1,4 +1,4 @@
-THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (GAME UI BUILD r5)
+THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (CRESTS BUILD r6)
 ===================================================================
 
 This folder is The Gaffer pc414 with PES 2017 support added.  It is a private,
@@ -30,6 +30,12 @@ BUILD HISTORY
    and ZWJ family sequences were the last gaps.  A Unicode catch-all with
    the 'u' flag also converts any unknown / future emoji to a neutral
    vector badge.  NO app logic, save code or endpoint was changed.
+7. r6: PATCH-FOLDER CLUB CRESTS.  The app can now read club logos straight
+   from the local PES 2017 patch folder, offline, instead of downloading
+   crests from Wikipedia.  Loose PNG/JPG/DDS/FTEX logos and
+   common/render/symbol/flag/e_<id>_r.dds entries inside *.cpk archives are
+   decoded with the readers already shipped with the program.  See the
+   CLUB CRESTS FROM THE PATCH FOLDER section below.
 
 WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------
@@ -209,11 +215,56 @@ The "claim an unused block for my club" checkbox is a structural inference,
 NOT in-game validated, and is flagged experimental.  Prefer an AI club
 (e.g. Arsenal, tid 101) for a fully published write.
 
+CLUB CRESTS FROM THE PATCH FOLDER (r6)
+--------------------------------------
+Set "pes17_patch_dir" in config.json to the folder that holds your patch's
+logos, e.g.
+
+    "pes17_patch_dir": "D:\jawedfolder\Games\Pro Evolution Soccer 2017\download"
+
+or leave it blank ("") and the app auto-detects download/, Data/, patch/,
+content/ and livecpk/ next to "pes_exe".  On the PES 2017 tools page, card
+"3c. Club logos from your PES 2017 patch folder" can also set/clear the folder
+without editing JSON by hand; press "Set folder & scan".
+
+Recognised crest files (case-insensitive, read-only):
+
+    common/render/symbol/flag/e_201_r.png       game emblem, team id 201
+    common/render/symbol/flag/e_201_r_l.dds     DDS emblem (converted to PNG)
+    logos/201.png  logos/logo_201.png  logos/flag_201.png
+    logos/Birmingham City FC.png                named after the club
+    map.txt / teams.txt with lines like "201=Birmingham City FC"
+    <patch>/download/T99_v20.cpk                CPK archive containing
+       common/render/symbol/flag/e_201_r.dds    (CPK TOC read only)
+
+Preferred emblem variants are r, r_l, r_w, r_b, ... (same order the game
+uses).  Club names are matched against data/pes17/teamids.json, which the app
+builds from YOUR real ML/EDIT files; the stable team id wins over the raw
+bit-packed id.  When patch crests are found they are served FIRST by the
+existing /api/crest?club=... endpoint and the Wikipedia crest prefetch is
+skipped, so no network request is made for club logos.
+
+GET  /api/pes17/crests           diagnostic: folders scanned, files, CPK
+                                archives, logos found, clubs matched, sample
+POST /api/pes17/crests/dir       set/clear the folder (PC only, saves
+                                config.json). {"dir": ""} clears it.
+
+Nothing is ever written into the game or patch folder.  No CDN, font, API or
+external library is added.  If the report says "Logos found: 0", point the
+folder at the place where your patch keeps emblems (often download/*.cpk) and
+press Rescan.  Kit textures, player faces and stadium images are ignored.
+
+LIMIT: the user's real patch folder was not available in this sandbox.  Loose
+files, DDS/WESYS decoding, ID/name mapping and the HTTP endpoints were tested
+against a synthetic patch folder and the REAL save; CPK reading was tested
+with the shipped cpkread.Cpk API via a mocked archive.  Try it on your patch
+and read the diagnostic card -- that is the confirmation step for your layout.
+
 HOW TO USE ON WINDOWS
 ---------------------
 1. Unzip this build anywhere (not inside the zip) on Windows.
    Check VERSION.txt in that folder: it must say
-   "pc414-pes17-gameui-r5 (2026-11-04)".  If it says
+   "pc414-pes17-crests-r6 (2026-11-04)".  If it says
    "pc414 (2026-11-01)" you unzipped the ORIGINAL program, which cannot
    decrypt a PES 2017 save at all.
    Both builds use port 8766, so close the old one first (or run
@@ -269,14 +320,17 @@ DIFF TOOLS (on the development machine)
 TESTS
 -----
     python3 -m unittest discover -s pes2017/tests -p 'test_*.py' -v
-76 tests pass, including tests that decrypt, read, modify and re-encrypt
+99 tests pass, including tests that decrypt, read, modify and re-encrypt
 YOUR real ML00000011 / EDIT00000000 files (on copies only), tests that
 prove all four measured pair patches against the game-generated after files,
 r2 regression tests for the budget read side, r3/r4 checks for the game
 skin / SVG icon pack (100% symbolic-glyph coverage, ZWJ sequences,
 catch-all, offline, JS syntax), and r5 tests for the layout guard
 (refusal on a different-size or broken-table save, all four custom ops,
-report/opt-out modes, real shirt numbers / XI, RAW budget labels).
+report/opt-out modes, real shirt numbers / XI, RAW budget labels), and r6
+tests for the offline crest reader (loose files, CPK/WESYS, DDS -> PNG,
+stable-id mapping, auto-detection, read-only, no network API).  A live HTTP
+smoke on the real save with a synthetic patch folder passed 32/32 checks.
 
 TECHNICAL SOURCES
 -----------------

@@ -5,6 +5,8 @@
   "edit_dat": "%USERPROFILE%\\Documents\\KONAMI\\Pro Evolution Soccer 2017\\save\\EDIT00000000",
   "pes_exe": "D:\\jawedfolder\\Games\\Pro Evolution Soccer 2017\\PES2017.exe",
   "pes_process": "PES2017",
+  "_pes17_patch_dir_note": "OPTIONAL, offline only. Folder that holds your patch logos: loose PNG/JPG/DDS files named by club name or team id, or CPK archives containing common/render/symbol/flag/e_<teamid>_r.dds. Leave blank to auto-detect download/, Data/, livecpk/, content/ next to pes_exe. The app only READS here; it never modifies the game or patch folder.",
+  "pes17_patch_dir": "",
   "pes17_date_order": "dmy",
   "auto_menu": false,
   "_pes17_allow_writes_note": "KEEP FALSE. This only gates the old FL26 write engine, which would corrupt a PES 2017 save. The measured PES 2017 writes are on /pes17.html and are always available.",

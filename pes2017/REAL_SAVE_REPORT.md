@@ -562,6 +562,87 @@ raw budget word, and more before/after pairs for arbitrary values, contracts,
 loans, youth, training, points/goals and offer injection. The r5 guard makes
 wrong-save writes safer; it does not make a written save game-accepted.
 
+## 6g. r6 — club crests from the local PES 2017 patch folder (2026-11-04)
+
+Asked "can we make it read club logos from the game patch foldeer".  The
+shipped pc414 already has a game-crest pipeline (`_game_logo_index()`,
+`game_logo()`, `/api/crest`, `crest_prefetch()`, `lib/cpkread.py`,
+`lib/dds.py`, `lib/bc7.py`, `lib/ftex.py`), but it is built for FL26/FL27:
+`_save_team_ids()` parses the club table with FL26's 1680 B stride (PES 2017
+uses 1312 B), and `data/pes17/teamids.json` contains BOTH the stable team id
+and the raw bit-packed club id for each name, so a club name can resolve to an
+id in the millions that no `e_<id>_r.dds` file uses.  It also only looks in
+Sider `livecpk` folders and CPK archives next to `pes_exe`.
+
+r6 adds `overlay/lib/pes17_crests.py`: a separate, explicit, offline,
+read-only source that is tried FIRST by `crest_img()` on a PES 2017 save.
+
+* `pes17_patch_dir` in `config.json` (blank = auto-detect `download/`,
+  `Data/`, `patch/`, `content/`, `livecpk/` next to `pes_exe`).  Walk is
+  capped at 8 levels / 30,000 files / 40 CPK archives; kit, face, stadium and
+  boot folders are ignored.  Nothing is written into the game folder.
+* Loose `*.png / *.jpg / *.dds / *.ftex / *.bmp / *.webp` files:
+  `e_<id>_<variant>.png`, `<id>.png`, `logo_<id>.png`, `flag_<id>.png`,
+  club-name filenames (`Birmingham City FC.png`, `Arsenal_FC.png`), and an
+  optional `map.txt` / `teams.txt` (`201=Birmingham City FC`).  Emblem variant
+  preference is the game's own `r, r_l, r_w, r_b, ...`.
+* `*.cpk` archives: TOC-only `cpkread.Cpk` scan for
+  `common/render/symbol/flag/e_<id>_<variant>.(png|dds)`; `WESYS`/zlib
+  wrappers are unwrapped, CRILAYLA is handled by the shipped reader.
+* Decoding uses the shipped `lib/dds.py` (DDS -> PNG), `lib/ftex.py` +
+  `lib/bc7.py`, with an 8 MB cap.  No Pillow / CDN / Wikipedia / new network
+  call is added; the module contains no `urllib`, `requests`, `socket` or URL.
+* Name -> id uses `data/pes17/teamids.json` built from the user's REAL ML file
+  (624 clubs), always preferring the smallest (= stable) id over the raw
+  `tid << 14 | index` alias, with Unicode normalization, FC/AFC/CF suffix
+  stripping and a conservative `difflib` fallback.
+* On a PES 2017 save `crest_img()` tries the patch folder before
+  `game_logo()`; when any patch crest is found `_game_crests_on()` returns
+  True, so `crest_prefetch()` does NOT fetch Wikipedia crests.  Clubs with no
+  patch crest show the app's initials badge instead of a possibly wrong
+  FL26-era crest.
+* New endpoints: `GET /api/pes17/crests` (diagnostic: roots, files scanned,
+  CPK archives/entries, logos found, clubs matched, sample) and
+  `POST /api/pes17/crests/dir` (owner-only config setter, added to
+  `LAN_POST_BLOCK`, rejects a non-existent folder, calls
+  `pes17_crests.clear()` and returns a fresh report).  `pes17.html` card 3c
+  sets/clears the folder, rescans and shows crest thumbnails through the
+  existing `/api/crest?club=...` endpoint; bilingual (AR/EN).
+
+### Verification (save-file / HTTP facts; NOT in-game confirmation)
+
+* **99 unit tests OK** (23 new: 19 for the crest reader + 4 static wiring
+  checks).  Cover stable-id preference, name/ID/plain-number/flag filenames,
+  `map.txt`, variant ranking, loose file over CPK, DDS -> PNG with the real
+  shipped `dds.py`, WESYS-wrapped CPK entries, graceful failure on broken
+  DDS/oversized files, auto-detection from `pes_exe`, report/count/clear,
+  no-network imports and read-only behaviour (patch folder unchanged).
+* `node --check` clean for the expanded `pes17.html` inline script.
+* **32/32 HTTP checks** against a live server with the REAL `ML00000011` and
+  a synthetic patch folder: tools page + crest card served,
+  `/api/pes17/crests` report, `/api/crest?club=Birmingham City FC` and
+  `?club=201` return the id-variant PNG, a loose name-named logo works,
+  an unknown club is not served, `crest_prefetch` returns
+  `{queued:0, game:true}` (no Wikipedia), set/clear/bad-dir config endpoint,
+  plus r5 regressions (`/api/pes17/info` club + RAW budget, dry `pair` with
+  `layout.mode:'verified'`) and the real save SHA still `41202a91...`.
+* `verify_pairs.py`: **PASS** — every measured byte reproduced, no extras.
+* Final deliverable: `pes2017/dist/TheGaffer_pes2017_pc414.zip`,
+  **30,888,104 B**, SHA-256
+  `4bf03e564cb5692910958cac75195cbf66ad4b324b29dc7464f035d1da11e155`,
+  290 entries, 0 `__pycache__`, no `config.json`, `VERSION.txt`
+  `pc414-pes17-crests-r6 (2026-11-04)`. `patch.py` now asserts 47 text
+  replacements.
+
+**Limits.** The user's actual patch folder was NOT provided, so no real
+`t99p17v20` CPK emblem file was decoded here; CPK reading is covered by a
+mocked archive implementing the shipped `cpkread.Cpk` API.  The folder
+layout, emblem naming and team-id numbering of a specific patch vary — the
+`/api/pes17/crests` diagnostic card is the confirmation step on the user's
+Windows machine.  This is a local file reader, not an in-game test; the
+outstanding PES 2017 save-load / header-hash / budget-scale checks from §6f
+are unchanged.
+
 ## 7. Sources
 
 * `the4chancup/pesXdecrypter` — `src/masterkey.c`, `src/crypt.c` (`struct FileHeader` = 176 B for PES 2016–2017).
