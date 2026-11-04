@@ -1,4 +1,0 @@
-Pair: tactics
-Change made (one line):
-In-game date:
-Slot: ML00000011
