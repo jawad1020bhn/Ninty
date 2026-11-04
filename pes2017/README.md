@@ -31,6 +31,20 @@ tables. Full measurements and honest validation status:
 Real result: Birmingham City FC, `10/1/2029`, 26-player squad with real names,
 Sky Bet Championship table (20 rows), 0 active negotiations.
 
+## MATCHDAY UI refresh (r10 overlay)
+
+The shipped `VERSION.txt` is still `pc414-pes17-clean-r9 (2026-11-04)` — this
+is a **visual/navigation revision of the static files only**, not a new save
+format or endpoint change. `game-skin.js` / `game-skin.css` now provide 108
+dedicated SVG icons (no emoji, no generic Badge fallback), a Stadium Dark
+palette with the club colour as the only accent, console-style top navigation
+with a Quick Switcher, and mobile bottom nav. `pes17-dashboard.html` is a
+MATCHDAY home screen (hero, standings rail, player cards, manager decisions).
+Full change list and honest limitations: [`UI_REPORT.md`](UI_REPORT.md).
+
+The r9 first-run save-folder flow, measured-only writes, dry-run/backups,
+layout guard and offline defaults are unchanged.
+
 ## Files
 
 ```
@@ -43,7 +57,10 @@ pes2017/
   overlay/lib/pes17_assets.py       offline CPK asset inventory + harvester
   overlay/lib/pes17_setup.py        r9 first-run save-folder detection + friendly status
   FIRST_RUN.md                      Windows first-run guide (shipped in the build)
-  overlay/static/pes17-dashboard.html  dedicated PES 2017 landing page
+  overlay/static/pes17-dashboard.html  r10 MATCHDAY home screen (also the landing page)
+  overlay/static/game-skin.js        r10 icon sprite + console navigation + game feel
+  overlay/static/game-skin.css       r10 Stadium Dark identity, scoped/toggleable
+  UI_REPORT.md                       r10 UI change list + honest limitations
   prune.py                          curated r8 cleanup of FL26/FL27/Sider leftovers
   CLEANUP_REPORT.md                 what r8 removed, what it kept and why
   tools/harvest_cpk.py              standalone offline CLI for the harvester

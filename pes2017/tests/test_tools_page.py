@@ -66,11 +66,15 @@ class ToolsPageR5Tests(unittest.TestCase):
         self.assertNotIn('<label data-ar', self.tools)
 
     def test_theme_picker_and_intro_default(self):
+        # r10 MATCHDAY UI: the r5 HUD was replaced by a console-style bar,
+        # but the localStorage theme key is kept for existing users.
         self.assertIn("THEME_KEY = 'gaffer_game_theme'", self.js)
-        self.assertIn('data-gi-theme-btn', self.js)
-        self.assertIn("lsGet(INTRO_KEY) !== '1'", self.js)
-        self.assertIn('data-gi-intro-btn', self.js)
-        self.assertIn('data-gi-theme="amber"', self.css)
+        self.assertIn('giThemeBtn', self.js)
+        self.assertIn('cycleTheme', self.js)
+        self.assertIn('lsGet(INTRO_KEY)', self.js)
+        self.assertIn('giIntroBtn', self.js)
+        self.assertIn('SOUND_KEY', self.js)
+        self.assertIn('data-gi-theme="gold"', self.css)
         self.assertIn('data-gi-theme="pitch"', self.css)
         self.assertIn('.gi-hud-btn {', self.css)
 
