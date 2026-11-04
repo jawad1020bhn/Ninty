@@ -639,7 +639,7 @@ def players_data(slot):
     # ------------------------------------------------------------------- UI
     ('static/index.html',
      """if(S.layout&&S.layout.game27){let seen=false;""",
-     """if(S.layout&&S.layout.pes17){banner('<b>PES 2017 save.</b> The app reads your club, squad, players, shirt numbers, league table and negotiations from your real Master League + EDIT files. FL26-style writes stay blocked; measured formation, tactics, XI and budget write tools are here: <a href="/pes17.html" style="color:#fff;text-decoration:underline">PES 2017 tools</a>. Always keep a backup.',false);}else if(S.layout&&S.layout.game27){let seen=false;""", 1),
+     """if(S.layout&&S.layout.pes17){banner('<b>PES 2017 save.</b> The app reads your club, squad, players, shirt numbers, league table and negotiations from your real Master League + EDIT files. FL26-style writes stay blocked; measured formation, tactics, XI and budget write tools are here: <a href="/pes17.html" style="color:#fff;text-decoration:underline">PES 2017 tools</a>. The &euro; budget is the raw measured u32 word (PES 2017 currency scale is not confirmed in game). Always keep a backup.',false);}else if(S.layout&&S.layout.game27){let seen=false;""", 1),
 ]
 
 
@@ -678,7 +678,7 @@ def apply(target):
         shutil.copy2(src, dst)
 
     with open(os.path.join(target, 'VERSION.txt'), 'w', encoding='utf-8') as f:
-        f.write('pc414-pes17-measuredpairs (2026-11-04)\n')
+        f.write('pc414-pes17-measuredpairs-r2 (2026-11-04)\n')
 
     # Syntax-check all patched Python files in memory (no __pycache__ in the
     # shipped package, no execution of the app).

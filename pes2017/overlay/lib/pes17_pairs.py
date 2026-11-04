@@ -38,7 +38,7 @@ XI_FLOATS = 2230192           # 6 float32 formation sliders
 XI_FLOATS_LEN = 24
 XI_FLOATS2 = 2230322          # 2 more bytes changed by the XI edit
 BUDGET_MAIN = 8812904         # u32, 2535240 -> 3088641 in the budget pair
-BUDGET_WAGE = 8812936         # u32, 9689272 -> 10247281 in the budget pair
+BUDGET_WAGE = 8812936         # u32, 9692344 -> 10245745 in the budget pair
 
 # ---- per-pair measured bytes ----------------------------------------------
 # (offset, before_byte, after_byte).  Kept verbatim so a write can be proven

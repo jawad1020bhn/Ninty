@@ -96,6 +96,12 @@ def _decrypted_folder(container):
     return tmp
 
 
+def _read_u32(data, off):
+    """Little-endian u32, or 0 if the block is too short (never raise)."""
+    return (struct.unpack_from('<I', data, off)[0]
+            if off >= 0 and off + 4 <= len(data) else 0)
+
+
 def info(container, edit_container=None, date_order=None):
     """Human-readable, real-save-derived state (no synthetic fallbacks)."""
     folder = _decrypted_folder(container)
@@ -124,6 +130,14 @@ def info(container, edit_container=None, date_order=None):
             league_name=r.get('league_name', ''),
             offers=pes17.read_offers(data, teams),
             teams=[dict(tid=t['tid'], name=t['name']) for t in teams],
+            budget=dict(
+                transfer_raw=_read_u32(data, pes17_pairs.BUDGET_MAIN),
+                salary_raw=_read_u32(data, pes17_pairs.BUDGET_WAGE),
+                transfer_offset=pes17_pairs.BUDGET_MAIN,
+                salary_offset=pes17_pairs.BUDGET_WAGE,
+                raw=True,
+                note=('Raw u32 words measured from the budget pair; PES 2017 '
+                      'currency scale is not confirmed in-game.')),
             measured_pairs={k: dict(offsets=len(v),
                                     first_offset=v[0][0], last_offset=v[-1][0])
                             for k, v in pes17_pairs.PAIRS.items()},
@@ -157,7 +171,7 @@ def apply_ops(container, ops, edit_data=None):
       {"op":"formation",   "index":0, "record":"<33-byte hex>"}
       {"op":"tactics",     "values":{"1256356":3}}
       {"op":"xi",          "order":[0,15,4,12,23,21,8,18,5,1,25, ...26 ints]}
-      {"op":"budget",      "value":3088641, "wage":10247281}
+      {"op":"budget",      "value":3088641, "wage":10245745}
 
     Returns (list of results, changed byte count).  No disk write occurs here.
     """

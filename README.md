@@ -11,8 +11,11 @@ Contents:
 * `formation/`, `tactics/`, `xi/`, `budget/` (on `main`) — four game-generated
   `after/ML00000011` files, one per in-game change.
 * `pes2017/dist/TheGaffer_pes2017_pc414.zip` — **rebuilt program with PES 2017
-  reads + measured, round-trip-verified writes**. Unzip on Windows and run
-  `The Gaffer.vbs`, then open `/pes17.html`.
+  reads + measured, round-trip-verified writes**. `VERSION.txt` says
+  `pc414-pes17-measuredpairs-r2 (2026-11-04)`. Unzip on Windows and run
+  `The Gaffer.vbs`, then open `/pes17.html`. r2 fixes the "Budget €0" display:
+  the two measured budget u32 words are now read from the save (raw units,
+  PES 2017 currency scale not confirmed in game).
 * `pes2017/` — source of the compatibility pack, patcher, build script, tests
   and documentation. Start with [`pes2017/README.md`](pes2017/README.md) and
   [`pes2017/REAL_SAVE_REPORT.md`](pes2017/REAL_SAVE_REPORT.md).

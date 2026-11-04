@@ -76,7 +76,7 @@ Birmingham in the Sky Bet Championship (patch quirk — both are reported).
 | XI / squad order | `1256728` | 26 B permutation of squad slots 0..25 (+ 42 B order block) |
 | XI float sliders | `2230192` | 24 B (6 × f32), changed by the XI pair |
 | budget u32 | `8812904` | `2535240 → 3088641` in the budget pair |
-| wage budget u32 | `8812936` | `9689272 → 10247281` in the budget pair |
+| wage budget u32 | `8812936` | `9692344 → 10245745` in the budget pair |
 | budget companion bytes | `9836708 … 9845147` | 15 more bytes changed by the budget pair |
 
 **Team id mapping:** `cid >> 14` gives the stable PES Team ID used by
@@ -186,7 +186,7 @@ Interpretation of the tables:
   18 0b 02 07 0d 14 0e 09 03`. The XI edit also reset six formation-slider
   floats at `2230192` (1.0/1.75/1.25/4.0/5.0 → 2.0/0.5/0.0…).
 * Budget: u32 at `8812904` `2535240 → 3088641`, u32 at `8812936`
-  `9689272 → 10247281`, plus 15 companion bytes in four finance records
+  `9692344 → 10245745`, plus 15 companion bytes in four finance records
   (`+3` in three `0x16 → 0x19` bytes, clearing three `01 01` flags). We only
   expose the two u32 words as a value op; the companions are available through
   the exact `pair` op.
@@ -261,6 +261,58 @@ never touches a save.
   (`41202a9196d84116`).
 * The four 13 MB after saves are left on `main`; `tools/fetch_after_pairs.py`
   stages them into the gitignored `build/pairs/` for verification.
+
+## 6c. r2 — "Budget €0" read fix (2026-11-04)
+
+**Symptom reported by the user:** the main app showed `Budget €0` on a real
+PES 2017 save. Cause: `Pes17Save.budget()` in `lib/pes17.py` was a hardcoded
+`return 0` stub left from the first read-only build, even though the two budget
+u32 words had since been measured for writing. Decryption and all other reads
+were fine; the save was not "undetected".
+
+**Fix:**
+
+* `pes17.BUDGET_MAIN` / `BUDGET_WAGE` (8,812,904 / 8,812,936),
+  `Pes17Save.measured_budget()` and `budget()` now read the u32 words from
+  `self.d`. `wage_commitment()` stays 0: FL26's sum-of-salaries is not mapped
+  for PES 2017, and the measured salary word must not be mislabelled as a
+  wage total.
+* `pes17_write.info()` returns
+  `budget={transfer_raw, salary_raw, transfer_offset, salary_offset, raw, note}`;
+  `/pes17.html` shows the detected words when **Load info** is clicked.
+* The blue banner and `layout_note` warn that the € figure is a **raw u32**.
+  FL26 stores its budget in 100-EUR units (`mlwrite.Save.budget()` multiplies
+  by 100), but PES 2017's currency scale has NOT been checked in game, so no
+  conversion is applied. Compare it with the number on screen.
+* Corrected the wage-pair numbers in docs / comments / UI defaults from the
+  earlier transcription `9689272 → 10247281` to the exact measured bytes
+  `9692344 → 10245745` (`data.dat[8812936:8812940]`: `b8 e4 93 00` →
+  `71 56 9c 00`). The `PAIRS` byte triples were always correct, so the
+  measured writes were unaffected; `verify_pairs.py` still passes ×4.
+* New `tests/test_pes17_budget.py` (7 regression tests).
+
+**Verification:**
+
+* `python3 -m unittest discover -s pes2017/tests -p 'test_*.py'` → **47 OK**.
+* `tools/fetch_after_pairs.py` staged 4/4; `tools/verify_pairs.py` →
+  **PASS ×4** (`offsets_match` / `bytes_reproduced` / `no_extra_changes`).
+* HTTP smoke on `build/realsmoke2` with pristine `ML00000011` (SHA
+  `41202a91…`): `/api/deals?slot=ML00000011` → `budget: 2535240`,
+  `/api/finance?slot=…` → `budget: 2535240`,
+  `/api/pes17/info?slot=…` → `budget.transfer_raw=2535240`,
+  `salary_raw=9692344`; `/api/state` layout note updated. Dry `pair` writes
+  17 / 13 / 30 / 21 B and custom `budget` 6 B all 200; unknown pair,
+  unmeasured `raw`, `/api/apply`, `/api/ai/move` → 400; save SHA unchanged.
+* Final deliverable: `pes2017/dist/TheGaffer_pes2017_pc414.zip`,
+  30,858,128 B, SHA-256
+  `4efc8653e47947560e62b2d478c58fb9dcde0ba75a635a3ab01a0fb5990741aa`,
+  287 entries, 0 `__pycache__`, `VERSION.txt`
+  `pc414-pes17-measuredpairs-r2 (2026-11-04)`.
+
+**Still unconfirmed:** whether `2,535,240` equals the amount PES 2017 shows
+on screen (currency scale), and whether a written save loads in the game
+(the 64-byte header hash is kept unchanged). Both need the user's Windows
+in-game check.
 
 ## 7. Sources
 

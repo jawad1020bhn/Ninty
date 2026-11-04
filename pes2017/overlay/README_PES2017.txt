@@ -13,9 +13,13 @@ BUILD HISTORY
    208-byte PES 2021 header).  That was fixed; decryption and byte-identical
    re-encryption of BOTH real files is proven in tests.  Reads + a small set
    of writes (offers, shirts) were measured on your files.
-3. This build: you supplied four game-generated "after" saves, one per
-   in-game change (formation, tactics, XI, budget), with the same common
+3. Measured-pairs build: you supplied four game-generated "after" saves, one
+   per in-game change (formation, tactics, XI, budget), with the same common
    "before" file ML00000011.  Those pairs mapped four more tables exactly.
+4. r2 (this build): the main app showed "Budget EUR 0" because the PES 2017
+   read adapter had a hardcoded 0 stub.  The two measured budget u32 words
+   are now read from your save and shown in the app and on the tools page.
+   The wage word in the docs was also corrected to the exact measured value.
 
 WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------
@@ -31,6 +35,24 @@ WHAT THE APP READS FROM YOUR REAL SAVE
 Note: description.dat says "Premier League" while the standings/EDIT tables
 place Birmingham in the Sky Bet Championship.  Both values are shown.
 Points / played / goals are still shown as 0: not mapped yet.
+
+BUDGET DISPLAY (r2)
+-------------------
+Earlier builds showed "Budget EUR 0": the PES 2017 read adapter had a
+hardcoded 0 stub, even though the budget words were measured for writing.
+r2 reads them from YOUR save.  The app's "Transfer budget" tile now shows the
+raw u32 word at data.dat offset 8,812,904:
+
+  before (the file you gave me)      2,535,240
+  after  (game-generated budget)     3,088,641
+  second word at 8,812,936           9,692,344 -> 10,245,745
+
+These are RAW save units, NOT confirmed EUR amounts.  FL26 stores its budget
+in 100-EUR units and the original app multiplies by 100; PES 2017's currency
+scale has NOT been checked in game, so no conversion is applied.  Compare the
+number with what PES 2017 shows on screen.  If the game shows a multiple
+(e.g. 10x or 100x), report the figure and the scale can be added.  The
+PES 2017 tools page ("Load info") shows both words and their offsets.
 
 WHAT CAN BE WRITTEN (MEASURED, ROUND-TRIP VERIFIED)
 ---------------------------------------------------
@@ -67,7 +89,7 @@ Four tables measured from YOUR before/after save pairs (lib/pes17_pairs.py):
   XI / squad order      1,256,728, 26 B permutation of squad slots 0..25
                         + 42 B order block, 24 B float sliders at 2,230,192
   budget u32            8,812,904 (2,535,240 -> 3,088,641)
-  wage budget u32       8,812,936 (9,689,272 -> 10,247,281)
+  wage budget u32       8,812,936 (9,692,344 -> 10,245,745)
                         budget pair also touched 15 companion bytes
                         (9,836,708 .. 9,845,147)
 
@@ -112,6 +134,12 @@ NOT in-game validated, and is flagged experimental.  Prefer an AI club
 HOW TO USE ON WINDOWS
 ---------------------
 1. Unzip this build anywhere (not inside the zip) on Windows.
+   Check VERSION.txt in that folder: it must say
+   "pc414-pes17-measuredpairs-r2 (2026-11-04)".  If it says
+   "pc414 (2026-11-01)" you unzipped the ORIGINAL program, which cannot
+   decrypt a PES 2017 save at all.
+   Both builds use port 8766, so close the old one first (or run
+   "The Gaffer.bat" from the new folder, which stops the old process).
 2. Double-click "The Gaffer.vbs" (or "The Gaffer.bat").
 3. In Setup > Save folder choose
       ...\Documents\KONAMI\Pro Evolution Soccer 2017\save
@@ -147,7 +175,7 @@ ops.json example:
   {"op":"pair","name":"formation"},
   {"op":"tactics","values":{"1256356":3}},
   {"op":"xi","order":[9,15,4,12,13,22,19,17,5,3,6,25,16,18,10,21,8,24,11,2,7,23,20,14,0,1]},
-  {"op":"budget","value":3088641,"wage":10247281}
+  {"op":"budget","value":3088641,"wage":10245745}
 ]
 
 DIFF TOOLS (on the development machine)
@@ -161,9 +189,10 @@ DIFF TOOLS (on the development machine)
 TESTS
 -----
     python3 -m unittest discover -s pes2017/tests -p 'test_*.py' -v
-40 tests pass, including tests that decrypt, read, modify and re-encrypt
-YOUR real ML00000011 / EDIT00000000 files (on copies only) and tests that
-prove all four measured pair patches against the game-generated after files.
+47 tests pass, including tests that decrypt, read, modify and re-encrypt
+YOUR real ML00000011 / EDIT00000000 files (on copies only), tests that
+prove all four measured pair patches against the game-generated after files,
+and r2 regression tests for the budget read side.
 
 TECHNICAL SOURCES
 -----------------

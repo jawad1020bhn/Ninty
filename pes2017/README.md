@@ -109,10 +109,17 @@ in memory and contains no `__pycache__` / `.pyc`.
 
 ## Verified
 
-* **40 unit tests pass**, including tests that decrypt, read, modify and
+* **47 unit tests pass**, including tests that decrypt, read, modify and
   re-encrypt the user's real `ML00000011` / `EDIT00000000` (on copies only),
-  and tests proving all four measured pair patches against the game-generated
-  after files.
+  tests proving all four measured pair patches against the game-generated
+  after files, and r2 regression tests for the budget read side
+  (`Pes17Save.budget()` / `/api/pes17/info`).
+* r2: `Pes17Save.budget()` no longer returns a hardcoded `0`. It reads the
+  measured u32 at `data.dat[8812904]` (2,535,240 on the supplied save), so the
+  app's transfer-budget tile and `/api/deals`, `/api/finance` show a real
+  number. `/api/pes17/info` also reports both budget words and their offsets.
+  These are **raw save units**; PES 2017's currency scale is unverified, so
+  no ×100 conversion (used by FL26) is applied.
 * `tools/fetch_after_pairs.py` staged all four after saves from `main`;
   `tools/verify_pairs.py`: **PASS** for formation/tactics/xi/budget —
   `offsets_match`, `bytes_reproduced`, `no_extra_changes` all true.

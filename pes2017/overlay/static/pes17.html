@@ -118,7 +118,8 @@ pre{background:#0b111b;border:1px solid #26364c;border-radius:8px;padding:12px;o
     <div>
       <h2>Budget u32</h2>
       <div class="row"><label>Value<input type="number" id="budgetVal" value="3088641"></label>
-      <label>Wage (optional)<input type="number" id="wageVal" placeholder="10247281"></label></div>
+      <label>Wage (optional)<input type="number" id="wageVal" placeholder="10245745"></label></div>
+      <div class="muted" style="font-size:.85em;margin-bottom:8px">The defaults are the game-generated values from your budget pair. Load info shows the raw u32 words currently in YOUR save (offsets 8,812,904 / 8,812,936); these are raw units, not confirmed EUR &mdash; PES 2017's currency scale has not been checked in game. The app's &euro; figure uses the first word unchanged.</div>
       <button id="queueBudget" class="ghost">Queue: budget</button>
     </div>
   </div>
@@ -153,7 +154,8 @@ async function loadInfo(){
     const r=await get('/api/pes17/info?slot='+encodeURIComponent(SLOT));
     show('summary','<b>'+esc(r.info.club)+'</b> &mdash; '+esc(r.info.league)+' &mdash; '+esc(r.info.date)+
       '<br>'+esc(r.clubs)+' clubs, '+esc(r.squad.length)+' players in your squad, '+esc(r.offers.length)+' active negotiations.'+
-      '<br>container: '+esc(r.container.file_header)+' B file header, '+esc(r.container.data_size)+' B data.dat, type '+esc(r.container.type)+', version '+esc(r.container.version));
+      '<br>container: '+esc(r.container.file_header)+' B file header, '+esc(r.container.data_size)+' B data.dat, type '+esc(r.container.type)+', version '+esc(r.container.version)+
+      (r.budget?'<br>detected budget words (raw u32): transfer <b>'+esc(r.budget.transfer_raw)+'</b> @ '+esc(r.budget.transfer_offset)+', salary <b>'+esc(r.budget.salary_raw)+'</b> @ '+esc(r.budget.salary_offset)+' &mdash; &euro; scale NOT confirmed in game':''));
     show('squad',tbl(r.squad,[['slot','#'],['shirt','Shirt'],['name','Player'],['id','ID']]));
     show('table',tbl(r.league_table,[['pos','Pos'],['club','Club'],['pts','Pts']]));
     show('offers',tbl(r.offers,[['buyer','Buyer'],['slot','Slot'],['pid','Player ID'],['transfer','Status']]));
