@@ -1,5 +1,5 @@
-THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (MEASURED-PAIRS BUILD)
-======================================================================
+THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (GAME UI BUILD r3)
+===================================================================
 
 This folder is The Gaffer pc414 with PES 2017 support added.  It is a private,
 modified build for personal use; please respect the original FREE TO USE
@@ -16,10 +16,15 @@ BUILD HISTORY
 3. Measured-pairs build: you supplied four game-generated "after" saves, one
    per in-game change (formation, tactics, XI, budget), with the same common
    "before" file ML00000011.  Those pairs mapped four more tables exactly.
-4. r2 (this build): the main app showed "Budget EUR 0" because the PES 2017
-   read adapter had a hardcoded 0 stub.  The two measured budget u32 words
-   are now read from your save and shown in the app and on the tools page.
-   The wage word in the docs was also corrected to the exact measured value.
+4. r2: the main app showed "Budget EUR 0" because the PES 2017 read adapter
+   had a hardcoded 0 stub.  The two measured budget u32 words are now read
+   from your save and shown in the app and on the tools page.  The wage word
+   in the docs was also corrected to the exact measured value.
+5. r3 (this build): GAME UI.  A dark "game HUD" skin replaces the website
+   look on both the main app and /pes17.html, and ~700 colorful emoji are
+   swapped at runtime for a 64-icon hand-drawn SVG vector pack.  A short
+   boot intro, a HUD strip and a GAME UI / CLASSIC UI toggle were added.
+   NO app logic, save code or endpoint was changed.
 
 WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------
@@ -53,6 +58,34 @@ scale has NOT been checked in game, so no conversion is applied.  Compare the
 number with what PES 2017 shows on screen.  If the game shows a multiple
 (e.g. 10x or 100x), report the figure and the scale can be added.  The
 PES 2017 tools page ("Load info") shows both words and their offsets.
+
+GAME UI (r3)
+------------
+The app now opens with a console-style HUD instead of a plain website:
+
+  * dark navy grid backdrop, angled "mission panel" cards with corner
+    ticks and a thin cyan accent edge, uppercase condensed headings,
+    glowing numeric stats, beveled buttons and HUD-style tables;
+  * a top status strip: THE GAFFER // PES 2017 - MASTER LEAGUE, with a
+    green "SAVE LINK LOCAL" LED;
+  * a short boot intro (once per browser tab, click/any key to skip,
+    "SKIP & DON'T SHOW AGAIN" disables it permanently);
+  * a 64-icon vector pack (static/game-skin.js) replaces the app's
+    colorful emoji with crisp SVG icons.  ~97% of the emoji in pc414 are
+    mapped; the two X close-button glyphs stay as text on purpose.
+    Icons also apply to content the app renders later (MutationObserver).
+
+  Files:  static/game-skin.css   (theme, scoped to body.game-skin)
+          static/game-skin.js    (SVG sprite, emoji swap, HUD, toggle)
+
+  TOGGLE: the "GAME UI" chip at the bottom-right switches to the original
+  "CLASSIC UI" look and restores the original emoji.  The choice is saved
+  in the browser.  Nothing in the skin touches the save file, the API or
+  any app logic.  It is fully offline: no external fonts, images or CDNs
+  were added (the original Google Fonts links are unchanged).
+
+  If the skin ever looks wrong on your display, click the chip once; the
+  classic layout is byte-for-byte the original pc414 UI.
 
 WHAT CAN BE WRITTEN (MEASURED, ROUND-TRIP VERIFIED)
 ---------------------------------------------------
@@ -135,7 +168,7 @@ HOW TO USE ON WINDOWS
 ---------------------
 1. Unzip this build anywhere (not inside the zip) on Windows.
    Check VERSION.txt in that folder: it must say
-   "pc414-pes17-measuredpairs-r2 (2026-11-04)".  If it says
+   "pc414-pes17-gameui-r3 (2026-11-04)".  If it says
    "pc414 (2026-11-01)" you unzipped the ORIGINAL program, which cannot
    decrypt a PES 2017 save at all.
    Both builds use port 8766, so close the old one first (or run
@@ -189,10 +222,12 @@ DIFF TOOLS (on the development machine)
 TESTS
 -----
     python3 -m unittest discover -s pes2017/tests -p 'test_*.py' -v
-47 tests pass, including tests that decrypt, read, modify and re-encrypt
+53 tests pass, including tests that decrypt, read, modify and re-encrypt
 YOUR real ML00000011 / EDIT00000000 files (on copies only), tests that
 prove all four measured pair patches against the game-generated after files,
-and r2 regression tests for the budget read side.
+r2 regression tests for the budget read side, and r3 checks for the game
+skin / SVG icon pack (icon map consistency, 97% emoji coverage, offline,
+JS syntax via node --check).
 
 TECHNICAL SOURCES
 -----------------

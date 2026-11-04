@@ -109,11 +109,20 @@ in memory and contains no `__pycache__` / `.pyc`.
 
 ## Verified
 
-* **47 unit tests pass**, including tests that decrypt, read, modify and
+* **53 unit tests pass**, including tests that decrypt, read, modify and
   re-encrypt the user's real `ML00000011` / `EDIT00000000` (on copies only),
   tests proving all four measured pair patches against the game-generated
-  after files, and r2 regression tests for the budget read side
-  (`Pes17Save.budget()` / `/api/pes17/info`).
+  after files, r2 regression tests for the budget read side
+  (`Pes17Save.budget()` / `/api/pes17/info`), and r3 static checks for the
+  game-HUD skin and its SVG icon pack.
+* **r3: GAME UI.** `static/game-skin.css` + `static/game-skin.js` turn the
+  website look into a console-style HUD (dark grid backdrop, angled mission
+  panels, glowing stats, HUD strip, boot intro) on both `index.html` and
+  `/pes17.html`. A 64-icon hand-drawn SVG sprite replaces ~97% of the app's
+  colorful emoji at runtime, including dynamically rendered content. The
+  bottom-right **GAME UI / CLASSIC UI** chip reverts to the original look.
+  Pure CSS/JS/DOM: no save code, endpoint or app logic changed, no external
+  assets added.
 * r2: `Pes17Save.budget()` no longer returns a hardcoded `0`. It reads the
   measured u32 at `data.dat[8812904]` (2,535,240 on the supplied save), so the
   app's transfer-budget tile and `/api/deals`, `/api/finance` show a real

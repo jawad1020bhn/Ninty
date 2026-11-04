@@ -303,7 +303,7 @@ were fine; the save was not "undetected".
   `salary_raw=9692344`; `/api/state` layout note updated. Dry `pair` writes
   17 / 13 / 30 / 21 B and custom `budget` 6 B all 200; unknown pair,
   unmeasured `raw`, `/api/apply`, `/api/ai/move` → 400; save SHA unchanged.
-* Final deliverable: `pes2017/dist/TheGaffer_pes2017_pc414.zip`,
+* r2 deliverable (superseded by r3): `pes2017/dist/TheGaffer_pes2017_pc414.zip`,
   30,858,128 B, SHA-256
   `4efc8653e47947560e62b2d478c58fb9dcde0ba75a635a3ab01a0fb5990741aa`,
   287 entries, 0 `__pycache__`, `VERSION.txt`
@@ -313,6 +313,72 @@ were fine; the save was not "undetected".
 on screen (currency scale), and whether a written save loads in the game
 (the 64-byte header hash is kept unchanged). Both need the user's Windows
 in-game check.
+
+## 6d. r3 — game-style UI and SVG icon pack (2026-11-04)
+
+The user asked for the app to "look like a game more than a website" and for
+"pro game icons instead of emoji". This is a **presentation-only** change:
+no save code, endpoint, config key or app logic was modified.
+
+**What shipped** (two new static files, copied by `patch.py`):
+
+* `static/game-skin.css` — scoped entirely under `body.game-skin`. Cyan/amber
+  HUD palette, dark grid + vignette backdrop and a faint CRT scanline wash,
+  angular "mission panel" cards with corner ticks and accent edges, uppercase
+  condensed headings with a leading light bar, glowing tabular stat numerals,
+  beveled buttons, HUD-style tables and scrollbars, a 38 px top status strip
+  (`THE GAFFER // PES 2017 · MASTER LEAGUE` + green SAVE LINK LED), a short
+  boot intro, and a bottom-right toggle chip.
+* `static/game-skin.js` — an inline 64-symbol hand-drawn 24×24 SVG sprite
+  (one consistent stroke grid, `currentColor`, no bitmaps or fonts), a
+  159-entry emoji→icon map, a text-node walker that swaps emoji for
+  `<svg><use></svg>`, a `MutationObserver` that also covers content rendered
+  later by the app, the HUD/toggle/boot DOM, and localStorage persistence.
+  `patch.py` hooks the CSS into `index.html` before `</head>` and the JS
+  before `</body>`; `pes17.html` links both directly.
+
+**Design decisions / safety:**
+
+* The original emoji character is retained in a visually hidden span inside
+  each icon wrapper, so `textContent` / `innerText` based logic in the
+  original app still sees the same text. Turning the skin off restores the
+  plain emoji (`restore()`), so the classic layout is fully reversible.
+* `✕` / `✗` close-button glyphs are intentionally left as text (21
+  occurrences); everything else pictographic is mapped. Coverage measured
+  against the original pc414 `index.html`: **684 / 705 = 97.0%**.
+* `<script>`, `<style>`, `<option>`, `<textarea>`, `<input>`, `<title>` and
+  SVG subtrees are skipped, so JS string constants and native dropdown
+  labels are untouched.
+* Fully offline: no `https://`, `@import`, `url()` or font CDN in either
+  file. No new binaries were added to the zip.
+
+**Verification:**
+
+* 53 unit tests OK (6 new `tests/test_game_skin.py` checks: file hooks,
+  `node --check` JS syntax, every mapped id has a `<symbol>`, ≥95% emoji
+  coverage with only `✕`/`✗` left, offline/self-contained + balanced CSS,
+  scoped/toggleable skin API).
+* jsdom DOM smoke (Node 22 + jsdom 30, `runScripts: outside-only`): sprite
+  injected with 64 symbols, `body.game-skin` on, HUD/toggle/boot present,
+  no JS errors; a dynamically inserted `<span>` with `🏆 ⚽ 🎯` produced 6
+  icon wrappers, a later `textContent` insertion produced 2 more, icon count
+  stayed stable across observer flushes (no loop), `textContent` preserved;
+  toggle off → 0 wrappers + original emoji restored, toggle on → converted
+  again. `/pes17.html` correctly gets no HUD/boot.
+* HTTP smoke on the real save: `/game-skin.css` 200 `text/css`,
+  `/game-skin.js` 200 `text/javascript`, `/` and `/pes17.html` 200 with both
+  hooks, `/api/state`, `/api/pes17/info`, `/api/deals` still 200 with
+  `budget: 2535240` and `salary_raw: 9692344`.
+* Final deliverable: `pes2017/dist/TheGaffer_pes2017_pc414.zip`,
+  30,870,409 B, SHA-256
+  `84dad4d0cd6fcb49c918edd1094fb04e296b6681f0f01fe304ae766ff759eeed`,
+  289 entries (2 new static files), 0 `__pycache__`, `VERSION.txt`
+  `pc414-pes17-gameui-r3 (2026-11-04)`.
+
+**Still unconfirmed:** the PES 2017 currency scale for the raw budget word,
+and whether a written save loads in the game (64-byte header hash preserved).
+Both require the user's Windows in-game check; the UI skin does not affect
+either.
 
 ## 7. Sources
 

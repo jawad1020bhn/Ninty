@@ -28,6 +28,7 @@ pre{background:#0b111b;border:1px solid #26364c;border-radius:8px;padding:12px;o
 .ok{color:#8ce6a8}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
 </style>
+<link rel="stylesheet" href="/game-skin.css">
 </head>
 <body>
 <header><h1>PES 2017 tools &mdash; The Gaffer pc414</h1>
@@ -175,5 +176,6 @@ $('clearq').onclick=()=>{QUEUE=[];qsync()};
 $('apply').onclick=async()=>{try{const r=await post('/api/pes17/write',{slot:SLOT,ops:QUEUE,dry:$('dry').checked});out(r);if(!r.dry)await loadInfo()}catch(e){out({error:String(e)})}};
 loadSlots().then(loadInfo);
 </script>
+<script src="/game-skin.js"></script>
 </body>
 </html>
