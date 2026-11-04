@@ -25,7 +25,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-sys.path.insert(0, os.path.join(ROOT, 'build', 'TheGaffer', 'TheGaffer', 'lib'))
+sys.path.insert(0, os.environ.get('GAFFER_LIB') or os.path.join(ROOT, 'build', 'TheGaffer', 'TheGaffer', 'lib'))
 sys.path.insert(0, os.path.join(ROOT, 'pes2017', 'overlay', 'lib'))
 
 import pescrypt  # noqa: E402

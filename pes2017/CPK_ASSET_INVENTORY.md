@@ -125,8 +125,8 @@ attempted by default. **This is cleanup, not deletion of the FL26 UI.**
 
 ## 6. Verification status
 
-* **127 unit tests OK** (10 for the harvester + 5 r7 wiring + 13 r8 cleanup
-  checks), `verify_pairs.py` **PASS**, `node --check` clean for both HTML
+* **142 unit tests OK** (10 for the harvester + 5 r7 wiring + 13 r8 cleanup
+  + 15 r9 first-run checks), `verify_pairs.py` **PASS**, `node --check` clean for both HTML
   inline scripts, and **76/76 HTTP checks** against a live server built from
   the pruned zip with the real `ML00000011` and a synthetic patch folder
   (r7 checks above, cleanup/manifest checks, regenerated `data/pes17/` player

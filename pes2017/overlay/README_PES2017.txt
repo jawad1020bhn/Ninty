@@ -1,4 +1,4 @@
-THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (PES 2017 CLEAN BUILD r8)
+THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (PES 2017 CLEAN BUILD r9)
 ===================================================================
 
 This folder is The Gaffer pc414 with PES 2017 support added.  It is a private,
@@ -52,6 +52,15 @@ BUILD HISTORY
    at /index.html, its art/scenes/stadiums and all lib/*.py are KEPT because
    they are still referenced.  realmoves_fetch_bg() is now blocked offline so
    removing the FL26 transfer cache does not trigger a Wikipedia fetch.
+10. r9: FIRST RUN WORKS.  The original pc414 default save_dir pointed at a
+   Football Life 2026 / PES 2021 folder.  On a PES 2017 PC that folder does
+   not exist, so a fresh install showed raw Windows errors
+   ([Errno 2] / [WinError 3]) instead of your save.  r9 removes that default,
+   auto-detects KONAMI\Pro Evolution Soccer 2017\save under your profile,
+   Documents and OneDrive (including Dokumenti), and adds a "Save folder"
+   card at the top of the dashboard plus GET /api/pes17/setup and
+   POST /api/pes17/setup/savefolder.  Paste the path once; it is written to
+   config.json and works immediately.  See FIRST_RUN.md.
 
 WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------
@@ -338,11 +347,26 @@ JSONs, all lib/*.py, and the portable python/ folder.  All 132 GET endpoints
 were compared against the unpruned r7 build: 132 identical status pairs,
 zero new errors.
 
+FIRST RUN - SAVE FOLDER (r9)
+----------------------------
+A fresh install has NO config.json and NO hard-coded FL26 save path any more.
+The dashboard looks for ...\KONAMI\Pro Evolution Soccer 2017\save in your
+profile, Documents and OneDrive (including localised names like Dokumenti).
+If it cannot find one, a "Save folder" card appears at the top instead of
+raw Windows errors.  Paste the full path that holds ML00000011 and
+EDIT00000000, e.g.
+    C:\Users\<you>\Documents\KONAMI\Pro Evolution Soccer 2017\save
+    C:\Users\<you>\OneDrive\Dokumenti\KONAMI\Pro Evolution Soccer 2017\save
+and press "Save folder".  It is saved to config.json and takes effect at
+once.  See the shipped FIRST_RUN.md for details.  Crests and CPK cards show
+0 on a fresh install - both are OPTIONAL and the save reads work without
+them.
+
 HOW TO USE ON WINDOWS
 ---------------------
 1. Unzip this build anywhere (not inside the zip) on Windows.
    Check VERSION.txt in that folder: it must say
-   "pc414-pes17-clean-r8 (2026-11-04)".  If it says
+   "pc414-pes17-clean-r9 (2026-11-04)".  If it says
    "pc414 (2026-11-01)" you unzipped the ORIGINAL program, which cannot
    decrypt a PES 2017 save at all.
    Both builds use port 8766, so close the old one first (or run
@@ -398,7 +422,7 @@ DIFF TOOLS (on the development machine)
 TESTS
 -----
     python3 -m unittest discover -s pes2017/tests -p 'test_*.py' -v
-127 tests pass, including tests that decrypt, read, modify and re-encrypt
+142 tests pass, including tests that decrypt, read, modify and re-encrypt
 YOUR real ML00000011 / EDIT00000000 files (on copies only), tests that
 prove all four measured pair patches against the game-generated after files,
 r2 regression tests for the budget read side, r3/r4 checks for the game
@@ -414,7 +438,11 @@ DDS/WESYS -> PNG, source read-only, CLI, no network) and the offline /
 dashboard wiring.  A live r7 HTTP smoke passed 42/42 checks.  r8 adds 13
 cleanup / shipped-zip / offline-guard tests; a live HTTP smoke of the PRUNED
 build passed 76/76 checks, including all 132 GET endpoints returning exactly
-the same status as the unpruned r7 build (zero new 5xx, no timeouts).
+the same status as the unpruned r7 build (zero new 5xx, no timeouts).  r9
+adds 15 first-run / save-folder tests; a fresh-install HTTP smoke (NO
+config.json) and a configured-install smoke passed 66/66 checks, and a
+133-GET sweep against r8 returned 132 identical statuses (the only new
+endpoint is /api/pes17/setup).
 
 TECHNICAL SOURCES
 -----------------

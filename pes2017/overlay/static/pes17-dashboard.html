@@ -3,183 +3,590 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>The Gaffer — PES 2017</title>
+<title>The Gaffer — Matchday · PES 2017</title>
 <style>
-:root{color-scheme:dark;--bg:#0b1119;--panel:#131c28;--panel2:#182434;--line:#26364b;--txt:#e6eef8;--dim:#8fa3bb;--accent:#5ad1b0;--accent2:#f4b454;--bad:#ff8f8f;--ok:#7fe0a8}
+/* r10 MATCHDAY IDENTITY — Stadium Dark / Deep Navy, one club accent.
+   No CDN, no external fonts, no images shipped. Pure CSS stadium art. */
+:root{
+  color-scheme:dark;
+  --bg:#070d16; --surface:#0d1623; --surface2:#131f2e; --surface3:#192737;
+  --line:#22334a; --line-soft:#1a2839;
+  --txt:#eef3f8; --dim:#93a5b9; --dim2:#6b7f95;
+  --club:#e0ad46; --club-ink:#16110a;
+  --accent:var(--club); --good:#57c98a; --warn:#e0ad46; --bad:#e2666c;
+  --fd:"Arial Narrow","Segoe UI Condensed","Roboto Condensed",system-ui,sans-serif;
+  --fb:"Segoe UI",system-ui,-apple-system,sans-serif;
+}
 *{box-sizing:border-box}
-body{margin:0;background:radial-gradient(1200px 600px at 15% -10%,#16283a 0%,var(--bg) 60%) fixed;color:var(--txt);font:14px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
-a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
-.wrap{max-width:1180px;margin:0 auto;padding:22px 20px 70px}
-header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:16px 20px;background:linear-gradient(100deg,#14263a,#101a26);border:1px solid var(--line);border-radius:14px}
-.brand{display:flex;align-items:center;gap:13px}
-.mark{width:42px;height:42px;border-radius:11px;background:linear-gradient(145deg,#1d4d5c,#0e2a35);border:1px solid #2e6b78;display:grid;place-items:center;flex:none}
-.mark svg{width:24px;height:24px;fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-h1{margin:0;font-size:17px;letter-spacing:.055em;text-transform:uppercase;font-weight:750}
-.sub{color:var(--dim);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase}
-.hdr-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#0e1824;border-radius:999px;padding:6px 12px;font-size:11px;letter-spacing:.06em;color:var(--dim);white-space:nowrap}
-.chip b{color:var(--accent);font-weight:700}
-.chip.amber b{color:var(--accent2)}
-button{font:inherit;cursor:pointer;border:1px solid #35566b;background:#17384a;color:var(--txt);border-radius:8px;padding:8px 13px;font-size:12.5px;transition:.15s}
-button:hover{background:#1e4c63;border-color:#4d819d}
-button.ghost{background:#16222f;border-color:var(--line);color:var(--dim)}
-button.ghost:hover{color:var(--txt);background:#1d2c3c}
-button:disabled{opacity:.5;cursor:default}
-.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;margin-top:16px}
-.card{background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:17px 18px;min-width:0}
-.card h2{margin:0 0 12px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:700;display:flex;justify-content:space-between;gap:10px;align-items:center}
-.hero{grid-column:span 12;display:flex;align-items:center;gap:20px;flex-wrap:wrap;background:linear-gradient(105deg,#173043,#111c29 65%)}
-.crest{width:92px;height:92px;flex:none;border-radius:16px;background:#0c1621;border:1px solid #2b4257;display:grid;place-items:center;overflow:hidden}
-.crest img{width:82px;height:82px;object-fit:contain}
-.crest span{font-size:26px;font-weight:800;color:#3f6c85;letter-spacing:.06em}
-.hero-main{flex:1;min-width:220px}
-.hero-main .club{font-size:25px;font-weight:750;letter-spacing:-.01em;margin:0}
-.hero-main .meta{color:var(--dim);font-size:13px;margin-top:4px}
-.pills{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
-.pill{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;border:1px solid #2a4d59;background:#10262c;color:var(--accent);border-radius:6px;padding:4px 9px}
-.pill.warn{border-color:#5a4526;background:#241d12;color:var(--accent2)}
-.c4{grid-column:span 4}.c6{grid-column:span 6}.c8{grid-column:span 8}.c12{grid-column:span 12}
-@media(max-width:860px){.c4,.c6,.c8{grid-column:span 12}}
-.big{font-size:29px;font-weight:760;letter-spacing:-.02em;color:#f2f9ff}
-.badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.1em;border:1px solid #8a6124;background:#3a2810;color:#ffc861;border-radius:5px;padding:2px 8px;margin-left:8px;vertical-align:middle}
+html,body{margin:0;min-height:100%}
+body{
+  background:
+    radial-gradient(ellipse 70% 42% at 50% -8%,rgba(224,173,70,.08),transparent 75%),
+    radial-gradient(ellipse 55% 45% at 100% 100%,rgba(26,48,76,.30),transparent 72%),
+    var(--bg);
+  background-attachment:fixed;
+  color:var(--txt);font:14px/1.5 var(--fb);
+}
+a{color:var(--club);text-decoration:none}a:hover{text-decoration:underline}
+button{font:inherit;cursor:pointer;transition:.16s}
+:focus-visible{outline:2px solid var(--club);outline-offset:2px}
+.gi-shell{max-width:1320px;margin:0 auto;padding:0 18px 90px}
+
+/* -------------------------------------------------------- console bar */
+.gi-topbar{
+  position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:16px;
+  height:62px;margin:0 -18px 0;padding:0 18px;
+  background:rgba(9,16,26,.97);border-bottom:1px solid var(--line);
+  backdrop-filter:blur(10px);
+}
+.gi-brand{display:flex;align-items:center;gap:11px;flex:none}
+.gi-mark{width:34px;height:34px;border-radius:5px;background:var(--club);color:var(--club-ink);
+  display:grid;place-items:center;font:800 13px/1 var(--fd);letter-spacing:.02em}
+.gi-brand b{display:block;font:700 16px/1.05 var(--fd);letter-spacing:.12em}
+.gi-brand i{display:block;font:600 9px/1.5 var(--fb);letter-spacing:.16em;color:var(--dim2);font-style:normal}
+.gi-tabs{display:flex;align-items:stretch;gap:2px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;height:100%}
+.gi-tabs::-webkit-scrollbar{display:none}
+.gi-tab{display:inline-flex;align-items:center;gap:8px;padding:0 14px;flex:none;
+  color:var(--dim);font:700 12px/1 var(--fd);letter-spacing:.14em;
+  border:0;border-bottom:3px solid transparent;background:none;white-space:nowrap}
+.gi-tab svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
+.gi-tab:hover{color:var(--txt);background:rgba(255,255,255,.035)}
+.gi-tab.on{color:var(--txt);border-bottom-color:var(--club);background:rgba(255,255,255,.045)}
+.gi-tab.on svg{color:var(--club)}
+.gi-tools{display:flex;align-items:center;gap:8px;flex:none}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);
+  background:var(--surface2);border-radius:99px;padding:6px 11px;font-size:10.5px;
+  letter-spacing:.06em;color:var(--dim);white-space:nowrap}
+.chip b{color:var(--club);font-weight:800}
+.gi-btn{background:var(--surface2);border:1px solid var(--line);border-radius:5px;
+  color:var(--txt);padding:8px 12px;font:700 11px/1 var(--fd);letter-spacing:.1em;text-transform:uppercase}
+.gi-btn:hover{border-color:var(--club);background:var(--surface3)}
+.gi-btn.primary{background:var(--club);border-color:var(--club);color:var(--club-ink)}
+.gi-btn.primary:hover{filter:brightness(1.12)}
+.gi-btn.ghost{color:var(--dim)}
+.gi-btn:disabled{opacity:.4;cursor:not-allowed}
+.gi-subbar{display:flex;align-items:center;gap:6px;min-height:40px;margin:0 -18px 18px;
+  padding:5px 18px;background:rgba(13,22,35,.72);border-bottom:1px solid var(--line-soft);
+  overflow-x:auto;scrollbar-width:none}
+.gi-subbar::-webkit-scrollbar{display:none}
+.gi-sub{display:inline-flex;align-items:center;gap:7px;flex:none;padding:6px 12px;
+  border:1px solid transparent;border-radius:99px;background:none;color:var(--dim);font-size:11px}
+.gi-sub:hover{background:var(--surface3);color:var(--txt)}
+.gi-sub.on{background:var(--club);border-color:var(--club);color:var(--club-ink);font-weight:700}
+.gi-sub svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7}
+
+/* ------------------------------------------------------------- hero */
+.gi-hero{
+  position:relative;overflow:hidden;
+  display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:22px;
+  padding:30px 32px;border:1px solid var(--line);border-radius:8px;
+  background:
+    linear-gradient(90deg,rgba(7,13,22,.96) 0%,rgba(7,13,22,.86) 48%,rgba(7,13,22,.35) 100%),
+    radial-gradient(ellipse 45% 120% at 82% 50%,rgba(47,106,80,.55),transparent 70%),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 1px,transparent 1px 62px),
+    linear-gradient(160deg,#102238,#0a1522 70%);
+  min-height:236px;
+}
+.gi-hero::after{content:"";position:absolute;right:8%;top:-30%;width:220px;height:400px;
+  border:1px solid rgba(255,255,255,.10);border-radius:50%;pointer-events:none}
+.gi-hero-left{display:flex;gap:22px;align-items:center;min-width:0;position:relative;z-index:1}
+.gi-crest{width:104px;height:104px;flex:none;border-radius:8px;background:rgba(9,17,27,.9);
+  border:1px solid var(--line);display:grid;place-items:center;overflow:hidden}
+.gi-crest img{width:92px;height:92px;object-fit:contain}
+.gi-crest span{font:800 30px/1 var(--fd);color:var(--club);letter-spacing:.06em}
+.gi-kicker{font:700 10px/1 var(--fb);letter-spacing:.34em;color:var(--club);text-transform:uppercase}
+.gi-hero h1{margin:9px 0 6px;font:800 clamp(30px,4.6vw,52px)/1 var(--fd);letter-spacing:.03em;text-transform:uppercase}
+.gi-hero-meta{color:var(--dim);font-size:13px}
+.gi-hero-pills{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
+.gi-pill{font:700 9.5px/1 var(--fb);letter-spacing:.12em;text-transform:uppercase;
+  border:1px solid var(--line);background:var(--surface2);color:var(--dim);
+  border-radius:4px;padding:5px 9px}
+.gi-pill.hot{border-color:var(--club);color:var(--club)}
+.gi-hero-right{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center;gap:10px}
+.gi-faceoff{display:grid;grid-template-columns:1fr 44px 1fr;align-items:center;gap:8px;
+  background:rgba(7,13,22,.72);border:1px solid var(--line);border-radius:6px;padding:14px 12px;text-align:center}
+.gi-faceoff .side{display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0}
+.gi-faceoff .badge{width:46px;height:46px;border-radius:50%;background:var(--surface3);
+  border:1px solid var(--line);display:grid;place-items:center;font:800 15px/1 var(--fd);color:var(--club)}
+.gi-faceoff .badge.tbc{color:var(--dim2);border-style:dashed;font-size:11px;letter-spacing:.05em}
+.gi-faceoff .nm{font:700 11px/1.2 var(--fd);letter-spacing:.06em;text-transform:uppercase;overflow-wrap:anywhere}
+.gi-faceoff .vs{font:800 13px/1 var(--fd);color:var(--club);letter-spacing:.08em}
+.gi-fixture-note{font-size:10.5px;color:var(--dim2);line-height:1.5}
+
+/* ------------------------------------------------------------- tiles */
+.gi-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
+.gi-tile{position:relative;background:var(--surface);border:1px solid var(--line);
+  border-radius:6px;padding:15px 16px;min-width:0;overflow:hidden}
+.gi-tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--club)}
+.gi-tile h3{margin:0 0 9px;font:700 10px/1 var(--fd);letter-spacing:.18em;color:var(--dim);text-transform:uppercase}
+.gi-tile .v{font:800 clamp(24px,3vw,34px)/1 var(--fd);letter-spacing:.02em;color:var(--txt)}
+.gi-tile .s{margin-top:7px;font-size:10.5px;color:var(--dim2);line-height:1.45}
+.gi-tag{display:inline-block;font:800 9px/1 var(--fb);letter-spacing:.1em;border:1px solid var(--club);
+  color:var(--club);border-radius:3px;padding:3px 6px;margin-left:7px;vertical-align:middle}
+
+/* ------------------------------------------------------------- screens */
+.gi-cols{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:14px;margin-top:14px}
+.gi-screen{background:var(--surface);border:1px solid var(--line);border-radius:6px;
+  padding:18px 18px 20px;min-width:0;margin-bottom:14px}
+.gi-screen > header{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  border-bottom:1px solid var(--line);padding-bottom:11px;margin-bottom:14px}
+.gi-screen h2{margin:0;font:700 13px/1 var(--fd);letter-spacing:.16em;text-transform:uppercase;color:var(--txt)}
+.gi-screen h2 svg{width:16px;height:16px;fill:none;stroke:var(--club);stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px;margin-right:8px}
+.gi-note{font-size:10.5px;color:var(--dim2);letter-spacing:.05em;text-transform:uppercase}
 .muted{color:var(--dim);font-size:12px}
-table{border-collapse:collapse;width:100%;font-size:12.5px}
-th{text-align:left;color:var(--dim);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line)}
-td{padding:6px 8px;border-bottom:1px solid #1d2b3b}
-tr:last-child td{border-bottom:0}
-[dir=rtl] th,[dir=rtl] td{text-align:right}
-.num{color:var(--accent);font-variant-numeric:tabular-nums;font-weight:650}
-.scroll{max-height:280px;overflow:auto}
+.gi-empty{padding:16px 4px;color:var(--dim2);font-size:12px}
+
+/* standings as a game table, not a spreadsheet */
+.gi-standings{display:flex;flex-direction:column}
+.gi-st{display:grid;grid-template-columns:34px minmax(0,1fr) 46px;align-items:center;gap:10px;
+  padding:8px 10px;border-bottom:1px solid var(--line-soft);border-radius:4px}
+.gi-st:last-child{border-bottom:0}
+.gi-st .pos{font:800 15px/1 var(--fd);color:var(--dim2);text-align:center}
+.gi-st .nm{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gi-st .pts{font:700 12px/1 var(--fd);text-align:right;color:var(--dim)}
+.gi-st.on{background:linear-gradient(90deg,rgba(224,173,70,.18),rgba(224,173,70,.02));
+  border-left:3px solid var(--club)}
+.gi-st.on .pos,.gi-st.on .pts{color:var(--club)}
+.gi-st.on .nm{font-weight:700;color:var(--txt)}
+
+/* player cards */
+.gi-players{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}
+.gi-player{background:var(--surface2);border:1px solid var(--line);border-radius:6px;
+  overflow:hidden;position:relative;transition:transform .18s,border-color .18s}
+.gi-player:hover{transform:translateY(-3px);border-color:var(--club)}
+.gi-player .ph{height:82px;display:grid;place-items:center;
+  background:linear-gradient(160deg,#1b2c42,#101c2b);position:relative}
+.gi-player .ph::after{content:"";position:absolute;inset:auto 0 0;height:1px;background:var(--club);opacity:.5}
+.gi-player .av{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;
+  background:var(--surface3);border:1px solid var(--line);font:800 17px/1 var(--fd);color:var(--club)}
+.gi-player .no{position:absolute;top:6px;left:8px;font:800 13px/1 var(--fd);color:var(--dim)}
+.gi-player .ovr{position:absolute;top:6px;right:8px;font:800 12px/1 var(--fd);color:var(--club)}
+.gi-player .bd{padding:8px 9px 10px}
+.gi-player .nm2{font:700 11.5px/1.25 var(--fb);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gi-player .st{display:flex;gap:4px;margin-top:7px}
+.gi-player .st i{flex:1;height:3px;background:var(--line);border-radius:2px;font-style:normal}
+.gi-player .st i.on{background:var(--club)}
+.gi-player .lg{font-size:9px;color:var(--dim2);margin-top:6px;letter-spacing:.04em}
+
+/* decisions / news */
+.gi-task{display:flex;gap:11px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line-soft)}
+.gi-task:last-child{border-bottom:0}
+.gi-task .ic{width:30px;height:30px;flex:none;border-radius:5px;background:var(--surface2);
+  border:1px solid var(--line);display:grid;place-items:center}
+.gi-task .ic svg{width:16px;height:16px;fill:none;stroke:var(--club);stroke-width:1.7;stroke-linecap:round}
+.gi-task b{display:block;font-size:12.5px;font-weight:700}
+.gi-task span{display:block;font-size:11px;color:var(--dim2);margin-top:2px;line-height:1.45}
+.gi-task .go{margin-left:auto;flex:none}
+.gi-news{padding:12px 0;border-bottom:1px solid var(--line-soft);font-size:12px}
+.gi-news:last-child{border-bottom:0}
+.gi-news b{display:block;font:700 10px/1 var(--fb);letter-spacing:.14em;color:var(--club);text-transform:uppercase;margin-bottom:5px}
+.gi-news p{margin:0;color:var(--dim);line-height:1.5;font-size:11.5px}
+.gi-kv{display:flex;justify-content:space-between;gap:10px;padding:8px 0;
+  border-bottom:1px solid var(--line-soft);font-size:12px}
+.gi-kv:last-child{border-bottom:0}
+.gi-kv b{font-weight:700;color:var(--txt);text-align:right}
+
+/* first-run / optional cards */
+.gi-mission{background:linear-gradient(120deg,#22190c,#101a27 62%);
+  border:1px solid #6b5222;border-radius:6px;padding:18px;margin-bottom:14px}
+.gi-mission h2{color:var(--club)}
+.gi-mission .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+input.path{flex:1;min-width:250px;background:var(--surface2);color:var(--txt);
+  border:1px solid var(--line);border-radius:5px;padding:10px 12px;
+  font:12px/1.4 ui-monospace,Consolas,monospace}
+input.path:focus{outline:none;border-color:var(--club);box-shadow:0 0 0 2px rgba(224,173,70,.16)}
+.bars{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px}
+.bar{border:1px solid var(--line);background:var(--surface2);border-radius:5px;
+  padding:6px 10px;font-size:11px;color:var(--dim);max-width:100%;overflow-wrap:anywhere}
+.bar b{color:var(--txt)}
+.bar.click{cursor:pointer;border-color:#6b5222}
+.bar.click:hover{background:#241d12}
 .crestgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:9px}
-.crestgrid div{background:#0d1722;border:1px solid var(--line);border-radius:9px;padding:8px 5px;text-align:center;font-size:10.5px;color:var(--dim);overflow:hidden}
+.crestgrid div{background:var(--surface2);border:1px solid var(--line);border-radius:6px;
+  padding:8px 5px;text-align:center;font-size:10.5px;color:var(--dim);overflow:hidden}
 .crestgrid img{width:52px;height:52px;object-fit:contain;display:block;margin:0 auto 5px}
 .crestgrid span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.kv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid #1d2b3b;font-size:12.5px}
-.kv:last-child{border-bottom:0}.kv b{font-weight:650;color:#dbe9f7}
-.bars{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
-.bar{border:1px solid var(--line);background:#0e1a26;border-radius:7px;padding:5px 9px;font-size:11px;color:var(--dim)}
-.bar b{color:var(--txt)}
-.foot{margin-top:20px;padding:14px 16px;border:1px dashed #3a4a5e;border-radius:12px;color:var(--dim);font-size:12px;background:#0e1722}
-.err{color:var(--bad)}.ok{color:var(--ok)}
-.skel{height:13px;background:linear-gradient(90deg,#1c2a3a,#243549,#1c2a3a);background-size:200% 100%;animation:sh 1.3s infinite;border-radius:4px}
+.scroll{max-height:300px;overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th{text-align:left;color:var(--dim);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  font-weight:700;padding:7px 8px;border-bottom:1px solid var(--line)}
+td{padding:6px 8px;border-bottom:1px solid var(--line-soft)}
+tr:last-child td{border-bottom:0}
+[dir=rtl] th,[dir=rtl] td{text-align:right}
+.num{color:var(--club);font-variant-numeric:tabular-nums;font-weight:700}
+.err{color:var(--bad)}.ok{color:var(--good)}
+.skel{height:12px;background:linear-gradient(90deg,#1c2a3a,#243549,#1c2a3a);
+  background-size:200% 100%;animation:sh 1.3s infinite;border-radius:3px}
 @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
-.langbtn{background:#16222f;border-color:var(--line);color:var(--dim)}
+.gi-foot{margin-top:16px;padding:14px 16px;border:1px dashed var(--line);border-radius:6px;
+  color:var(--dim);font-size:11.5px;background:rgba(13,22,35,.6)}
+.gi-bottom{position:fixed;left:0;right:0;bottom:0;z-index:61;display:none;
+  grid-template-columns:repeat(5,1fr);background:rgba(9,16,26,.98);border-top:1px solid var(--line)}
+.gi-bottom a{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;min-height:56px;padding:6px 2px;color:var(--dim);border-top:2px solid transparent;
+  font:700 9px/1 var(--fd);letter-spacing:.08em;text-decoration:none}
+.gi-bottom a.on{color:var(--club);border-top-color:var(--club);background:rgba(255,255,255,.04)}
+.gi-bottom svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round}
+.gi-enter{animation:gi-page-in .3s cubic-bezier(.2,.8,.3,1) both}
+@keyframes gi-page-in{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+
+@media(max-width:980px){
+  .gi-hero{grid-template-columns:minmax(0,1fr);min-height:0}
+  .gi-hero-right{max-width:360px}
+  .gi-tiles{grid-template-columns:repeat(2,1fr)}
+  .gi-cols{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:680px){
+  .gi-shell{padding:0 12px 120px}
+  .gi-topbar{margin:0 -12px;padding:0 12px;gap:8px}
+  .gi-brand b{font-size:13px}.gi-brand i{display:none}
+  .gi-tabs{display:none}
+  .gi-tools{margin-left:auto}
+  .gi-tools .chip{display:none}
+  .gi-subbar{margin:0 -12px 14px;padding:4px 12px}
+  .gi-hero{padding:20px 16px;gap:16px}
+  .gi-hero-left{gap:13px;align-items:flex-start}
+  .gi-crest{width:66px;height:66px}.gi-crest img{width:58px;height:58px}.gi-crest span{font-size:20px}
+  .gi-hero h1{font-size:27px}
+  .gi-tiles{grid-template-columns:repeat(2,1fr);gap:8px}
+  .gi-tile{padding:12px}.gi-tile .v{font-size:23px}
+  .gi-screen{padding:14px}
+  .gi-players{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+  .gi-player{min-height:0}
+  .gi-bottom{display:grid}
+  .gi-btn,.gi-sub{min-height:36px}
+  .gi-foot{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
-<div class="wrap">
-<header class="top">
-  <div class="brand">
-    <div class="mark"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></svg></div>
-    <div><h1 data-ar="ذا جافر — بي إس 2017">The Gaffer — PES 2017</h1>
-      <div class="sub" data-ar="لوحة تحكم محلية · بدون إنترنت">Local Master League dashboard · offline</div></div>
-  </div>
-  <div class="hdr-actions">
-    <span class="chip" data-ar="الإصدار: <b>r7</b>">Build <b>r7</b></span>
-    <span class="chip amber" data-ar="القراءة من ملف الحفظ <b>محلية</b>">Save reads <b>local</b></span>
-    <button id="langBtn" class="langbtn" type="button">العربية</button>
-    <button id="refresh" data-ar="تحديث">Refresh</button>
-    <a class="chip" href="/pes17.html" data-ar="أدوات الكتابة والفحص">Tools &amp; diagnostics ↗</a>
-    <a class="chip" href="/index.html" data-ar="واجهة FL26 القديمة">Classic app ↗</a>
+<div class="gi-shell">
+
+<header class="gi-topbar">
+  <div class="gi-brand"><div class="gi-mark">TG</div>
+    <div><b>THE GAFFER</b><i>PES 2017 · MASTER LEAGUE</i></div></div>
+  <nav class="gi-tabs" aria-label="Main sections">
+    <a class="gi-tab on" href="/" aria-current="page"><svg viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg>HOME</a>
+    <a class="gi-tab" href="#squad"><svg viewBox="0 0 24 24"><path d="M3 4h18v16H3z"/><path d="M12 4v16M3 12h18"/></svg>SQUAD</a>
+    <a class="gi-tab" href="#standings"><svg viewBox="0 0 24 24"><path d="M7 4h10v5.5a5 5 0 0 1-10 0z"/><path d="M12 14.5V18M8.5 21h7"/></svg>COMPETITIONS</a>
+    <a class="gi-tab" href="/pes17.html"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 1-5.4 5.4L4 17v3h3l5.3-5.3a4 4 0 0 1 5.4-5.4z"/></svg>TOOLS</a>
+    <a class="gi-tab" href="/index.html"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 10l2 2-2 2M13 14h4"/></svg>CLASSIC</a>
+  </nav>
+  <div class="gi-tools">
+    <span class="chip" data-ar="الإصدار: ">Build <b id="buildVer">r9</b></span>
+    <span class="chip" data-ar="بدون إنترنت"><b>Offline</b> by default</span>
+    <button id="setupBtn" class="gi-btn ghost" type="button" data-ar="مجلد الحفظ">Save folder</button>
+    <button id="langBtn" class="gi-btn ghost" type="button">العربية</button>
+    <button id="refresh" class="gi-btn primary" type="button" data-ar="تحديث">Refresh</button>
   </div>
 </header>
+<div class="gi-subbar" aria-label="Home sections">
+  <a class="gi-sub on" href="#hero">Matchday</a>
+  <a class="gi-sub" href="#squad">Squad</a>
+  <a class="gi-sub" href="#standings">League table</a>
+  <a class="gi-sub" href="#decisions">Manager decisions</a>
+  <a class="gi-sub" href="#clubinfo">Club info</a>
+  <a class="gi-sub" href="#crests">Crests</a>
+  <a class="gi-sub" href="#assets">CPK assets</a>
+</div>
 
-<div class="grid">
-  <section class="card hero">
-    <div class="crest" id="crestBox"><span>TG</span></div>
-    <div class="hero-main">
-      <p class="club" id="clubName">Loading your save…</p>
-      <div class="meta" id="clubMeta">Reading the local Master League file.</div>
-      <div class="pills">
-        <span class="pill">PES 2017 · t99p17v20</span>
-        <span class="pill" id="offlinePill">Offline by default</span>
-        <span class="pill warn">Writes: measured only</span>
+<main class="gi-enter">
+
+  <!-- ================= HERO ================= -->
+  <section class="gi-hero" id="hero">
+    <div class="gi-hero-left">
+      <div class="gi-crest" id="crestBox"><span>TG</span></div>
+      <div style="min-width:0">
+        <div class="gi-kicker">MATCHDAY · <span id="heroSeason">SEASON —</span></div>
+        <h1 id="clubName">Loading your save…</h1>
+        <div class="gi-hero-meta" id="clubMeta">Reading the local Master League file.</div>
+        <div class="gi-hero-pills">
+          <span class="gi-pill hot" id="heroLeague">PES 2017 · t99p17v20</span>
+          <span class="gi-pill" id="heroDate">—</span>
+          <span class="gi-pill" id="offlinePill">Offline by default</span>
+          <span class="gi-pill">Writes: measured only</span>
+        </div>
+        <div class="gi-hero-pills" style="margin-top:10px">
+          <span class="gi-pill" id="heroManager">Manager · your save</span>
+          <span class="gi-pill" id="heroStadium">Stadium · not stored in save</span>
+        </div>
       </div>
     </div>
-    <div style="min-width:190px">
-      <label class="sub" for="slot" style="display:block;margin-bottom:6px">Save slot</label>
-      <select id="slot" style="width:100%;background:#0d1824;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px"></select>
-      <div class="muted" id="container" style="margin-top:8px">-</div>
+    <div class="gi-hero-right">
+      <div class="gi-faceoff">
+        <div class="side"><div class="badge" id="faceHome">TG</div><span class="nm" id="faceHomeName">Your club</span></div>
+        <div class="vs">VS</div>
+        <div class="side"><div class="badge tbc">TBC</div><span class="nm">Opponent</span></div>
+      </div>
+      <div class="gi-fixture-note" id="faceNote">Next fixture is not measured in the PES 2017 read layer. No opponent or kick-off time is invented.</div>
+      <div class="gi-fixture-note" id="nextComp">Next competition: —</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:2px">
+        <label class="gi-note" for="slot">SAVE SLOT</label>
+        <select id="slot" style="flex:1;min-width:130px;background:var(--surface2);color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:7px"></select>
+      </div>
+      <div class="gi-fixture-note" id="container">-</div>
     </div>
   </section>
 
-  <section class="card c4">
-    <h2 data-ar="الميزانية (قيمة خام)">Transfer budget <span class="badge">RAW</span></h2>
-    <div class="big" id="budgetNum">—</div>
-    <div class="muted" id="budgetNote" style="margin-top:6px">Raw u32 save units. NOT confirmed EUR.</div>
-    <div class="kv" style="margin-top:10px"><span>Wage word</span><b id="wageNum">—</b></div>
-    <div class="kv"><span>Scale</span><b>not verified in game</b></div>
+  <!-- ================= TILES ================= -->
+  <section class="gi-tiles" aria-label="Matchday overview">
+    <div class="gi-tile"><h3>League position</h3><div class="v" id="tilePosition">—</div>
+      <div class="s" id="tilePositionNote">From the standings block in your save.</div></div>
+    <div class="gi-tile"><h3>Squad size</h3><div class="v" id="tileSquad">—</div>
+      <div class="s">Registered players read from the real save.</div></div>
+    <div class="gi-tile"><h3>Transfer budget <span class="gi-tag">RAW</span></h3><div class="v" id="budgetNum">—</div>
+      <div class="s" id="budgetNote">Raw u32 save units. NOT confirmed EUR.</div>
+      <div class="s" id="wageNum" style="margin-top:4px">—</div></div>
+    <div class="gi-tile"><h3>Next fixture</h3><div class="v" style="font-size:19px">TBC</div>
+      <div class="s">Fixture/results/news feeds are not decoded from the PES 2017 save.</div></div>
   </section>
 
-  <section class="card c4">
-    <h2 data-ar="التشكيلة (أرقام القمصان الحقيقية)">Squad · real shirt numbers</h2>
-    <div class="scroll" id="squad"><div class="skel"></div><div class="skel" style="margin-top:8px;width:80%"></div></div>
-  </section>
+  <div class="gi-cols">
+    <div>
+      <!-- ================= LEAGUE TABLE ================= -->
+      <section class="gi-screen" id="standings">
+        <header><h2><svg viewBox="0 0 24 24"><path d="M7 4h10v5.5a5 5 0 0 1-10 0z"/><path d="M12 14.5V18M8.5 21h7"/></svg>League table</h2>
+          <span class="gi-note" id="leagueName">—</span></header>
+        <div id="table"><div class="skel"></div><div class="skel" style="margin-top:8px;width:70%"></div></div>
+        <div class="gi-note" style="margin-top:12px">Position and club names are decoded. Played / W-D-L / points columns are not measured for PES 2017, so they are left blank rather than guessed.</div>
+      </section>
 
-  <section class="card c4">
-    <h2 data-ar="ترتيب الدوري">League table</h2>
-    <div class="scroll" id="table"><div class="skel"></div><div class="skel" style="margin-top:8px;width:70%"></div></div>
-  </section>
-
-  <section class="card c6">
-    <h2 data-ar="شعارات الأندية من مجلد الباتش">Club crests from your patch folder <span id="crestCount" class="muted">—</span></h2>
-    <div class="muted" id="crestReport">Scanning locally…</div>
-    <div class="crestgrid" id="crestGrid" style="margin-top:12px"></div>
-  </section>
-
-  <section class="card c6">
-    <h2 data-ar="محتويات أرشيف CPK">CPK asset inventory <span id="assetCount" class="muted">—</span></h2>
-    <div class="muted" id="assetReport">Scanning locally…</div>
-    <div class="bars" id="assetBars"></div>
-    <div style="margin-top:13px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <button id="harvest" data-ar="نسخ الأصول القابلة للاستخدام">Harvest crests / logos / art</button>
-      <span class="muted" id="harvestOut"></span>
+      <!-- ================= SQUAD ================= -->
+      <section class="gi-screen" id="squad">
+        <header><h2><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3.4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg>Squad hub</h2>
+          <a class="gi-note" href="/index.html">Open tactics →</a></header>
+        <div class="gi-players" id="squadCards"></div>
+        <div class="gi-note" style="margin-top:12px">Player photos, OVR, Form, Fitness and Morale are not in the measured PES 2017 read layer. Cards use shirt numbers and real names only. Optional face assets can be harvested from your patch folder below.</div>
+        <details style="margin-top:12px"><summary class="gi-note" style="cursor:pointer">Full squad list (table)</summary>
+          <div class="scroll" id="squadTable" style="margin-top:10px"><div class="skel"></div><div class="skel" style="margin-top:8px;width:80%"></div></div>
+        </details>
+      </section>
     </div>
-    <div class="muted" style="margin-top:10px" id="assetHint"></div>
+
+    <div>
+      <!-- ================= DECISIONS ================= -->
+      <section class="gi-screen" id="decisions">
+        <header><h2><svg viewBox="0 0 24 24"><path d="M9 3h6v3H9zM5 6h14v15H5z"/><path d="M9 12h6M9 16h4"/></svg>Manager decisions</h2>
+          <span class="gi-note" id="taskCount">—</span></header>
+        <div class="gi-task"><div class="ic"><svg viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v11H3z"/></svg></div>
+          <div><b><span data-ar="ضبط مجلد الحفظ">Set your save folder</span></b>
+            <span id="taskSlot">Needed before club data can be read.</span></div>
+          <a class="gi-btn ghost go" href="#" id="taskSetup">SET</a></div>
+        <div class="gi-task"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="9" r="5.5"/><path d="M15 13.5L21 20"/></svg></div>
+          <div><b>Optional club crests</b><span id="taskCrests">Point the patch folder at loose logos or a CPK to show real badges.</span></div>
+          <a class="gi-btn ghost go" href="#crests">VIEW</a></div>
+        <div class="gi-task"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3l9 5v6c0 5-4 7-9 8-5-1-9-3-9-8V8z"/><path d="M8 12l3 3 5-5"/></svg></div>
+          <div><b>In-game confirmation still required</b><span>A written save has not been loaded in PES 2017 on Windows. Budget scale and header hash are unverified.</span></div>
+          <a class="gi-btn ghost go" href="/pes17.html">TOOLS</a></div>
+      </section>
+
+      <!-- ================= NEWS ================= -->
+      <section class="gi-screen">
+        <header><h2><svg viewBox="0 0 24 24"><path d="M3 5h15v14H5a2 2 0 0 1-2-2z"/><path d="M18 9h3v8a2 2 0 0 1-2 2M6 8h9M6 11h9M6 14h6"/></svg>Club news</h2>
+          <span class="gi-note">OFFLINE</span></header>
+        <div class="gi-news"><b>NO FEED MAPPED</b><p>This build is offline by default and has no news feed, press feed or recent-results decoder for PES 2017. Nothing here is invented.</p></div>
+        <div class="gi-news"><b>NEXT COMPETITION</b><p id="newsComp">—</p></div>
+        <div class="gi-news"><b>RECENT RESULTS</b><p>Not measured in the PES 2017 read layer. Use the in-game calendar for results.</p></div>
+      </section>
+
+      <!-- ================= CLUB INFO ================= -->
+      <section class="gi-screen" id="clubinfo">
+        <header><h2><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg>Club info</h2>
+          <span class="gi-note">FROM SAVE</span></header>
+        <div class="gi-kv"><span>Club</span><b id="infoClub">—</b></div>
+        <div class="gi-kv"><span>League</span><b id="infoLeague">—</b></div>
+        <div class="gi-kv"><span>In-game date</span><b id="infoDate">—</b></div>
+        <div class="gi-kv"><span>Save type</span><b>PES 2017 · t99p17v20</b></div>
+        <div class="gi-kv"><span>Manager name</span><b>not stored in save</b></div>
+        <div class="gi-kv"><span>Stadium</span><b>not stored in save</b></div>
+        <div class="gi-kv"><span>Currency scale</span><b style="color:var(--warn)">not verified in game</b></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ================= r9 FIRST RUN (kept verbatim in behaviour) ================= -->
+  <section class="gi-mission gi-screen" id="setupCard" style="display:none">
+    <header><h2 data-ar="أول تشغيل: اختر مجلد حفظ بي إس 2017">First run · choose your PES 2017 save folder</h2>
+      <span class="gi-note">SETUP</span></header>
+    <div class="muted" id="setupMsg" data-ar="لم يتم ضبط مجلد الحفظ بعد.">Checking your save folder…</div>
+    <div class="row">
+      <input class="path" id="saveDir" type="text" spellcheck="false" dir="ltr"
+             placeholder="C:\Users\...\KONAMI\Pro Evolution Soccer 2017\save" aria-label="PES 2017 save folder">
+      <button id="saveDirBtn" class="gi-btn primary" type="button" data-ar="حفظ المجلد">Save folder</button>
+      <a class="chip" href="/index.html" data-ar="فتح الإعداد الكامل ↗">Full Setup ↗</a>
+    </div>
+    <div class="bars" id="setupCandidates"></div>
+    <div class="muted" id="setupOut" style="margin-top:9px"></div>
+    <div class="muted" style="margin-top:9px" data-ar="يجب أن يحتوي المجلد على ML00000011 و EDIT00000000. التطبيق يقرأ فقط ولا يعدل ملفات اللعبة.">The folder must contain ML00000011 (or another ML slot) and EDIT00000000. The app only reads them; it never changes the game or patch folder. It is saved to config.json next to the program.</div>
   </section>
 
-  <section class="card c12">
-    <h2 data-ar="الحدود والسلامة">Safety &amp; limits</h2>
-    <div class="kv"><span>Save container</span><b>176 B header · PES 2017 master key · byte-identical re-encryption</b></div>
-    <div class="kv"><span>Writes</span><b>measured pairs only · dry run by default · automatic backup · layout guard</b></div>
-    <div class="kv"><span>Network</span><b>no CDN fonts · no flag CDN · Wikipedia off by default · crests from your patch folder</b></div>
-    <div class="kv"><span>In-game status</span><b class="warn" style="color:var(--accent2)">written save not yet loaded in PES 2017 — user test still required</b></div>
+  <div class="gi-cols">
+    <section class="gi-screen" id="crests">
+      <header><h2><svg viewBox="0 0 24 24"><path d="M12 3l9 5v6c0 5-4 7-9 8-5-1-9-3-9-8V8z"/></svg>Club crests · optional</h2>
+        <span class="gi-note" id="crestCount">—</span></header>
+      <div class="muted" id="crestReport">Scanning locally…</div>
+      <div class="crestgrid" id="crestGrid" style="margin-top:12px"></div>
+    </section>
+    <section class="gi-screen" id="assets">
+      <header><h2><svg viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v11H3z"/><path d="M8 14h8"/></svg>CPK asset inventory · optional</h2>
+        <span class="gi-note" id="assetCount">—</span></header>
+      <div class="muted" id="assetReport">Scanning locally…</div>
+      <div class="bars" id="assetBars"></div>
+      <div style="margin-top:13px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button id="harvest" class="gi-btn" data-ar="نسخ الأصول القابلة للاستخدام">Harvest crests / logos / art</button>
+        <span class="muted" id="harvestOut"></span>
+      </div>
+      <div class="muted" style="margin-top:10px" id="assetHint"></div>
+    </section>
+  </div>
+
+  <section class="gi-screen">
+    <header><h2><svg viewBox="0 0 24 24"><path d="M12 3l9 5v6c0 5-4 7-9 8-5-1-9-3-9-8V8z"/><path d="M8 12l3 3 5-5"/></svg>Safety &amp; limits</h2>
+      <span class="gi-note">READ FIRST</span></header>
+    <div class="gi-kv"><span>Save container</span><b>176 B header · PES 2017 master key · byte-identical re-encryption</b></div>
+    <div class="gi-kv"><span>Writes</span><b>measured pairs only · dry run by default · automatic backup · layout guard</b></div>
+    <div class="gi-kv"><span>Network</span><b>no CDN fonts · no flag CDN · Wikipedia off by default · crests from your patch folder</b></div>
+    <div class="gi-kv"><span>In-game status</span><b style="color:var(--warn)">written save not yet loaded in PES 2017 — user test still required</b></div>
   </section>
+
+  <div class="gi-foot" data-ar="هذه الشاشة تقرأ ملفاتك المحلية فقط: شعارات الأندية وأصول CPK من مجلد الباتش، والفرق والميزانية من ملف الماستر ليج. لا تثبت أن اللعبة تقبل ملف حفظ مكتوب، ولا تعرف مقياس العملة داخل اللعبة. احتفظ بنسخة احتياطية دائما.">This screen only reads local files: club crests and CPK assets from your patch folder, club/squad/budget from your Master League save. It does not prove a written save is accepted by PES 2017, and the in-game currency scale is still unknown. Always keep a backup.</div>
+</main>
 </div>
 
-<div class="foot" data-ar="هذه اللوحة تقرأ ملفاتك المحلية فقط: شعارات الأندية وأصول CPK من مجلد الباتش، والفرق والميزانية من ملف الماستر ليج. لا تثبت أن اللعبة تقبل ملف حفظ مكتوب، ولا تعرف مقياس العملة داخل اللعبة. احتفظ بنسخة احتياطية دائما.">This dashboard only reads local files: club crests and CPK assets from your patch folder, club/squad/budget from your Master League save. It does not prove a written save is accepted by PES 2017, and the in-game currency scale is still unknown. Always keep a backup.</div>
-</div>
+<nav class="gi-bottom" aria-label="Quick navigation">
+  <a class="on" href="#hero"><svg viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg>HOME</a>
+  <a href="#squad"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3.4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg>SQUAD</a>
+  <a href="#standings"><svg viewBox="0 0 24 24"><path d="M7 4h10v5.5a5 5 0 0 1-10 0z"/><path d="M12 14.5V18M8.5 21h7"/></svg>TABLE</a>
+  <a href="/pes17.html"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 1-5.4 5.4L4 17v3h3l5.3-5.3a4 4 0 0 1 5.4-5.4z"/></svg>TOOLS</a>
+  <a href="/index.html"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 10l2 2-2 2M13 14h4"/></svg>CLASSIC</a>
+</nav>
 
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>Number(n||0).toLocaleString('en-US');
+function put(id,v){const e=$(id);if(e)e.textContent=(v==null||v==='')?'—':v}
+function html(id,v){const e=$(id);if(e)e.innerHTML=v}
 async function get(u){const r=await fetch(u);const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
 async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
 function tbl(rows,cols){if(!rows||!rows.length)return '<span class="muted">none</span>';return '<table><tr>'+cols.map(c=>'<th>'+esc(c[1])+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+cols.map(c=>'<td>'+(c[2]?'<span class="num">'+esc(r[c[0]])+'</span>':esc(r[c[0]]))+'</td>').join('')+'</tr>').join('')+'</table>'}
-function fail(el,e){$(el).innerHTML='<span class="err">'+esc(e)+'</span>'}
+/* r9: never show a raw Windows path error to the user. */
+function friendly(e){
+  const m=String((e&&e.message)||e||'');
+  if(/No such file|WinError\s*3|Errno 2|chemin d.access|not found|Folder not found/i.test(m))
+    return 'Save folder or save file not found. Use "Save folder" above to pick the folder that contains ML00000011 and EDIT00000000 (usually ...\\KONAMI\\Pro Evolution Soccer 2017\\save).';
+  return m;
+}
+function fail(el,e){const n=$(el);if(n)n.innerHTML='<span class="err">'+esc(friendly(e))+'</span>'}
+function standingsHtml(rows,mine){
+  if(!rows||!rows.length)return '<div class="gi-empty">No standings block decoded from this save.</div>';
+  return '<div class="gi-standings">'+rows.map(r=>{
+    const me=!!mine&&String(r.club||'').toLowerCase().indexOf(String(mine).toLowerCase())>=0;
+    return '<div class="gi-st'+(me?' on':'')+'"><b class="pos">'+esc(r.pos)+'</b><span class="nm">'+esc(r.club)+'</span><span class="pts">'+(r.pts?esc(r.pts):'—')+'</span></div>';
+  }).join('')+'</div>';
+}
+function positionOf(rows,mine){
+  if(!rows||!mine)return null;
+  const r=rows.find(x=>String(x.club||'').toLowerCase().indexOf(String(mine).toLowerCase())>=0);
+  return r?r.pos:null;
+}
+function playerCards(rows){
+  if(!rows||!rows.length)return '<div class="gi-empty">No squad read yet.</div>';
+  return rows.slice(0,11).map(p=>{
+    const name=String(p.name||'Player '+(p.id||''));
+    const ini=name.trim().split(/\s+/).map(w=>w[0]||'').slice(0,2).join('').toUpperCase()||'PL';
+    return '<div class="gi-player"><div class="ph"><span class="no">'+esc(p.shirt||'—')+'</span><span class="ovr">—</span><span class="av">'+esc(ini)+'</span></div>'+
+      '<div class="bd"><div class="nm2" title="'+esc(name)+'">'+esc(name)+'</div>'+
+      '<div class="st"><i></i><i></i><i></i><i></i></div>'+
+      '<div class="lg">OVR · FORM · FITNESS · MORALE not decoded</div></div></div>';
+  }).join('');
+}
 
-let SLOT='';
+let SLOT='',SETUP=null;
+function showSetup(st,msg){
+  SETUP=st||{};
+  $('setupCard').style.display='';
+  $('setupMsg').textContent=msg||SETUP.message||'No PES 2017 save folder configured. Choose the folder with your Master League save.';
+  const v=SETUP.candidates&&SETUP.candidates[0]||SETUP.save_dir||SETUP.suggested||'';
+  if(!$('saveDir').value)$('saveDir').value=v;
+  $('setupCandidates').innerHTML=(SETUP.candidates&&SETUP.candidates.length)
+    ? SETUP.candidates.map(p=>'<span class="bar click" data-p="'+esc(p)+'" title="click to use">Detected: <b>'+esc(p)+'</b></span>').join('')
+    : '<span class="bar click" data-p="'+esc(SETUP.suggested||'')+'">Suggested: <b>'+esc(SETUP.suggested||'')+'</b></span>';
+  put('taskSlot','Save folder not set. Click SET to choose it.');
+  put('taskCount','1 ACTION NEEDED');
+}
+function hideSetup(){
+  $('setupCard').style.display='none';
+  put('taskSlot','Configured · '+SLOT);
+  put('taskCount','OPTIONAL TASKS');
+}
+async function setup(force){
+  try{
+    const s=await get('/api/pes17/setup');
+    if(s.version)$('buildVer').textContent=(String(s.version).match(/r\d+/)||['r9'])[0];
+    if(force)showSetup(s);else if(!s.ok)showSetup(s);else hideSetup();
+    return s;
+  }catch(e){if(force)showSetup({},String(e));return null}
+}
+function noSave(msg){
+  $('clubName').textContent='Save folder not set';
+  $('clubMeta').textContent=msg||'Choose your PES 2017 save folder above, then Refresh.';
+  $('container').textContent='-';
+  $('budgetNum').textContent='—';$('wageNum').textContent='—';
+  $('squadTable').innerHTML='<span class="muted">Waiting for a save folder…</span>';
+  $('table').innerHTML='<span class="muted">Waiting for a save folder…</span>';
+  html('squadCards','<div class="gi-empty">Waiting for a save folder…</div>');
+  put('tilePosition','—');put('tileSquad','—');put('heroSeason','SEASON —');
+  put('faceHomeName','Your club');put('infoClub','—');put('infoLeague','—');put('infoDate','—');
+}
 async function slots(){
-  try{const s=await get('/api/slots');$('slot').innerHTML=(s||[]).map(x=>'<option value="'+esc(x.slot)+'">'+esc(x.slot)+'</option>').join('');if(s&&s.length)SLOT=s[0].slot}
-  catch(e){fail('clubMeta',e)}
+  try{
+    const s=await get('/api/slots');
+    $('slot').innerHTML=(s&&s.length)?s.map(x=>'<option value="'+esc(x.slot)+'">'+esc(x.slot)+'</option>').join(''):'<option value="">(no save slots found)</option>';
+    if(s&&s.length)SLOT=s[0].slot;
+  }catch(e){$('slot').innerHTML='<option value="">(save folder not set)</option>'}
 }
 async function info(){
   try{
     SLOT=$('slot').value||SLOT;
     const r=await get('/api/pes17/info?slot='+encodeURIComponent(SLOT));
+    if(r.ok===false){
+      const s=await setup();showSetup(s||r,r.message);noSave(r.message);return;
+    }
     const c=r.club||'',i=r.info||{};
-    $('clubName').textContent=i.club||c||'Unknown club';
+    const club=i.club||c||'Unknown club';
+    $('clubName').textContent=club;
     $('clubMeta').textContent=(i.league||'-')+' · '+(i.date||'-')+' · '+(r.league_name||'');
     $('container').textContent=r.container?(r.container.data_size+' B data.dat · '+r.container.file_header+' B header'):'-';
+    put('heroLeague',i.league||r.league_name||'PES 2017 · t99p17v20');
+    put('heroDate',i.date||'In-game date —');
+    put('leagueName',r.league_name||i.league||'LEAGUE');
+    put('heroManager','Manager · your local career');
+    const yr=String(i.date||'').match(/(\d{4})/);
+    put('heroSeason','SEASON '+(yr?(parseInt(yr[1],10)-1)+'/'+yr[1].slice(2):'—'));
+    put('nextComp','Next competition: '+(i.next_competition||'not stored in save'));
+    put('newsComp',i.next_competition||'Not present in the save description.');
+    put('faceHomeName',club);
+    put('faceHome',club.trim().split(/\s+/).map(w=>w[0]||'').slice(0,2).join('').toUpperCase()||'TG');
+    put('infoClub',club);put('infoLeague',i.league||r.league_name||'—');put('infoDate',i.date||'—');
     const b=r.budget||{};
     $('budgetNum').textContent=fmt(b.transfer!=null?b.transfer:b.value);
-    $('wageNum').textContent=fmt(b.salary!=null?b.salary:b.wage);
+    $('wageNum').textContent='Wage word: '+fmt(b.salary!=null?b.salary:b.wage);
     $('budgetNote').textContent=b.currency_verified===false?'RAW u32 save units. NOT confirmed EUR; display scale is unverified.':'Raw save units.';
     $('crestBox').innerHTML='<img alt="" src="/api/crest?club='+encodeURIComponent(i.club||c)+'" onerror="this.parentNode.innerHTML=\'<span>TG</span>\'">';
-    $('squad').innerHTML=tbl(r.squad,[['shirt','#',1],['name','Player'],['id','ID']]);
-    $('table').innerHTML=tbl(r.league_table,[['pos','Pos',1],['club','Club'],['pts','Pts']]);
-  }catch(e){fail('clubName',e);fail('squad',e);fail('table',e)}
+    const sq=r.squad||[];
+    $('squadTable').innerHTML=tbl(sq,[['shirt','#',1],['name','Player'],['id','ID']]);
+    html('squadCards',playerCards(sq));
+    put('tileSquad',sq.length+' PLAYERS');
+    const rows=r.league_table||[];
+    $('table').innerHTML=standingsHtml(rows,club);
+    const pos=positionOf(rows,club);
+    put('tilePosition',pos?('#'+pos):'—');
+    put('tilePositionNote',pos?('Your club sits '+pos+' in '+(r.league_name||'the league')+'.'):'Position not found in the decoded standings block.');
+    put('taskCrests','Optional. '+(r.info&&r.info.club?('Crest lookup for '+r.info.club+'.'):''));
+  }catch(e){noSave(friendly(e));fail('squadTable',e);fail('table',e)}
 }
 async function crests(){
   try{
@@ -187,11 +594,11 @@ async function crests(){
     $('crestCount').textContent=r.logos_found+' logos / '+r.clubs_matched+' clubs';
     $('crestReport').innerHTML=r.available
       ? '<span class="ok">Read locally from '+(r.auto?'folders next to pes_exe':'your patch folder')+'. No network request for crests.</span>'
-      : '<span class="err">No crests found. Set a patch folder in Tools → card 3c.</span>';
+      : '<span class="muted">Optional — no patch folder configured. The save works without crests. If you have loose logos or a livecpk/CPK patch, set pes17_patch_dir in Tools → card 3c.</span>';
     const sm=r.sample||[];
     $('crestGrid').innerHTML=sm.length?sm.map(x=>{const n=x.name||('#'+x.id);
       return '<div><img alt="" src="/api/crest?club='+encodeURIComponent(n)+'"><span title="'+esc(n)+'">'+esc(n)+'</span></div>'}).join('')
-      : '<span class="muted">no sample crests</span>';
+      : '<span class="muted">no sample crests (optional)</span>';
   }catch(e){fail('crestReport',e)}
 }
 async function assets(){
@@ -203,7 +610,7 @@ async function assets(){
       +'<span class="bar">PES17-ready <b>'+(u.YES||0)+'</b></span><span class="bar">needs ID map <b>'+(u.MAP||0)+'</b></span>';
     $('assetReport').innerHTML=r.files
       ? '<span class="ok">Catalogued '+r.cpk_entries+' CPK entries and '+r.loose_files+' loose files, read-only.</span>'
-      : '<span class="err">Nothing found. Point pes17_patch_dir at the patch folder, then Refresh.</span>';
+      : '<span class="muted">Optional — no patch/CPK folder found. Point pes17_patch_dir at a folder holding PES 2021 CPK files, then Refresh. No real .cpk ships with this build.</span>';
     $('assetHint').textContent=r.hint||'';
   }catch(e){fail('assetReport',e)}
 }
@@ -213,7 +620,19 @@ $('harvest').onclick=async()=>{
     $('harvestOut').innerHTML='<span class="ok">'+r.written+' files, '+fmt(r.bytes)+' B → '+esc(r.out)+'</span>';
   }catch(e){fail('harvestOut',e)}finally{$('harvest').disabled=false}
 };
-$('refresh').onclick=()=>{info();crests();assets()};
+$('saveDirBtn').onclick=async()=>{
+  $('saveDirBtn').disabled=true;$('setupOut').textContent='saving…';
+  try{
+    const r=await post('/api/pes17/setup/savefolder',{save_dir:$('saveDir').value});
+    if(r.ok){$('setupOut').innerHTML='<span class="ok">Saved. Reading your save…</span>';hideSetup();await boot()}
+    else{$('setupOut').innerHTML='<span class="err">'+esc(r.message||r.error)+'</span>';showSetup(r)}
+  }catch(e){$('setupOut').innerHTML='<span class="err">'+esc(friendly(e))+'</span>'}
+  finally{$('saveDirBtn').disabled=false}
+};
+$('setupBtn').onclick=()=>{setup(true)};
+$('taskSetup').onclick=e=>{e.preventDefault();setup(true);$('setupCard').scrollIntoView({behavior:'smooth',block:'center'})};
+$('setupCandidates').onclick=e=>{const b=e.target.closest('.bar.click');if(b&&b.dataset.p)$('saveDir').value=b.dataset.p};
+$('refresh').onclick=()=>{setup().then(()=>{slots().then(()=>{info();crests();assets()})})};
 $('slot').onchange=info;
 
 /* Bilingual: only elements with a direct text node are translated. */
@@ -231,7 +650,8 @@ function setLang(ar){
 }
 $('langBtn').onclick=()=>setLang(document.documentElement.lang!=='ar');
 try{setLang(localStorage.getItem(LK)==='ar')}catch(e){setLang(false)}
-slots().then(()=>{info();crests();assets()});
+async function boot(){await setup();await slots();info();crests();assets()}
+boot();
 </script>
 </body>
 </html>

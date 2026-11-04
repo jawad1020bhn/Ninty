@@ -93,3 +93,16 @@ said **no** to that. Also still outstanding: a real PES 2021 → `t99p17v20`
 team/player/competition ID map, real CPK decoding, and the Windows in-game
 save-load / header-hash / budget-scale test. **None of this cleanup proves a
 written save is accepted by PES 2017.**
+
+## r9 follow-up (first run)
+
+r8's cleanup removed `data/realmoves.json` but did not touch the hard-coded
+FL26 `DEFAULT_CFG['save_dir']`. A user's first run on Windows (no
+`config.json`) therefore still hit a nonexistent PES 2021 path and the
+dashboard printed raw `[Errno 2]` / `[WinError 3]` errors. r9 fixes that: the
+default is empty, `lib/pes17_setup.py` auto-detects a real PES 2017 save
+folder, `GET /api/pes17/setup` + owner-only `POST
+/api/pes17/setup/savefolder` let the user set it from the dashboard, and
+`/api/slots` / `/api/pes17/info` return friendly structured responses instead
+of 500s. `FIRST_RUN.md` documents the one-time step. The r8 keep/removal list
+is unchanged; `prune.KEEP` gained `lib/pes17_setup.py` and `FIRST_RUN.md`.

@@ -1,4 +1,4 @@
-# The Gaffer — PES 2017 compatibility pack (r8: CPK harvest + safe cleanup)
+# The Gaffer — PES 2017 compatibility pack (r9: first-run save-folder fix)
 
 Source of the PES 2017 port of `TheGaffer_pc414_20261103.zip` (a Football
 Manager style companion for Football Life 26 / PES 2021 / FL27 Master League).
@@ -31,6 +31,20 @@ tables. Full measurements and honest validation status:
 Real result: Birmingham City FC, `10/1/2029`, 26-player squad with real names,
 Sky Bet Championship table (20 rows), 0 active negotiations.
 
+## MATCHDAY UI refresh (r10 overlay)
+
+The shipped `VERSION.txt` is still `pc414-pes17-clean-r9 (2026-11-04)` — this
+is a **visual/navigation revision of the static files only**, not a new save
+format or endpoint change. `game-skin.js` / `game-skin.css` now provide 108
+dedicated SVG icons (no emoji, no generic Badge fallback), a Stadium Dark
+palette with the club colour as the only accent, console-style top navigation
+with a Quick Switcher, and mobile bottom nav. `pes17-dashboard.html` is a
+MATCHDAY home screen (hero, standings rail, player cards, manager decisions).
+Full change list and honest limitations: [`UI_REPORT.md`](UI_REPORT.md).
+
+The r9 first-run save-folder flow, measured-only writes, dry-run/backups,
+layout guard and offline defaults are unchanged.
+
 ## Files
 
 ```
@@ -41,7 +55,12 @@ pes2017/
   overlay/lib/pes17_pairs.py         four tables measured from real before/after save pairs
   overlay/lib/pes17_crests.py       offline club-crest reader for the local patch folder
   overlay/lib/pes17_assets.py       offline CPK asset inventory + harvester
-  overlay/static/pes17-dashboard.html  dedicated PES 2017 landing page
+  overlay/lib/pes17_setup.py        r9 first-run save-folder detection + friendly status
+  FIRST_RUN.md                      Windows first-run guide (shipped in the build)
+  overlay/static/pes17-dashboard.html  r10 MATCHDAY home screen (also the landing page)
+  overlay/static/game-skin.js        r10 icon sprite + console navigation + game feel
+  overlay/static/game-skin.css       r10 Stadium Dark identity, scoped/toggleable
+  UI_REPORT.md                       r10 UI change list + honest limitations
   prune.py                          curated r8 cleanup of FL26/FL27/Sider leftovers
   CLEANUP_REPORT.md                 what r8 removed, what it kept and why
   tools/harvest_cpk.py              standalone offline CLI for the harvester
@@ -57,13 +76,16 @@ pes2017/
   overlay/config_pes2017.example.json
   patch.py                           52 asserted text patches + 2 asserted regexes
   build.py                           extract original zip -> patch -> prune -> dist/TheGaffer_pes2017_pc414.zip
+                                      (GAFFER_ORIGINAL_ZIP=... since the original zip
+                                       was removed from the repo by the r8 cleanup)
   tests/test_prune.py                13 r8 cleanup / shipped-zip / offline-guard tests
+  tests/test_pes17_setup.py          15 r9 detection / status / wiring tests
   tests/sample.py                    synthetic but structurally faithful PES 2017 saves
   tests/test_pes17.py                15 unit tests (crypto, detection, parsing, EDIT DB, write guard)
   tests/test_pes17_write.py          10 tests: 176 B header, container round-trip, real-file reads/writes
   tests/test_pes17_pairs.py          15 tests: measured pairs, custom ops, engine integration, real after files
   REAL_SAVE_REPORT.md                measurements + validation status
-  dist/TheGaffer_pes2017_pc414.zip   the ready-to-unzip Windows build (28,090,107 B, SHA 8383d70e...)
+  dist/TheGaffer_pes2017_pc414.zip   the ready-to-unzip Windows build (28,097,505 B, SHA cbea780e...)
 ```
 
 Rebuild / test:
@@ -120,7 +142,7 @@ in memory and contains no `__pycache__` / `.pyc`.
 
 ## Verified
 
-* **127 unit tests pass**, including tests that decrypt, read, modify and
+* **142 unit tests pass**, including tests that decrypt, read, modify and
   re-encrypt the user's real `ML00000011` / `EDIT00000000` (on copies only),
   tests proving all four measured pair patches against the game-generated
   after files, r2 regression tests for the budget read side
@@ -132,7 +154,9 @@ in memory and contains no `__pycache__` / `.pyc`.
   asset inventory/harvester (all 8 classes, DDS/WESYS conversion, source
   read-only, CLI, no network) plus the PES 2017-only offline wiring, and r8
   tests for the curated cleanup rules, the shipped zip contents/manifest and
-  the offline guard that replaces the removed FL26 transfer cache.
+  the offline guard that replaces the removed FL26 transfer cache, and r9
+  tests for PES 2017 save-folder detection, friendly first-run status, the
+  `/api/pes17/setup` endpoints and the dashboard setup card.
 * **r3: GAME UI.** `static/game-skin.css` + `static/game-skin.js` turn the
   website look into a console-style HUD (dark grid backdrop, angled mission
   panels, glowing stats, HUD strip) on both `index.html` and `/pes17.html`.
@@ -162,12 +186,28 @@ in memory and contains no `__pycache__` / `.pyc`.
   landing page; `/index.html` always remains reachable. **Not a full
   rewrite** — the 20,074-line FL26 UI and its endpoints still exist.
   42/42 HTTP checks with the real save + synthetic patch folder.
+* **r9: first run actually works.** pc414 shipped a hard-coded FL26 save path
+  (`%USERPROFILE%\OneDrive\Dokumenti\KONAMI\eFootball PES 2021 SEASON
+  UPDATE\2026\save`), so on a PES 2017 PC with no `config.json` the dashboard
+  printed raw `[Errno 2]` / `[WinError 3]` exceptions and no save data. r9 sets
+  that default to empty, auto-detects a real
+  `KONAMI\Pro Evolution Soccer 2017\save` folder (profile, Documents,
+  OneDrive, localised names like `Dokumenti`), and adds `GET
+  /api/pes17/setup` plus owner-only `POST /api/pes17/setup/savefolder`. The
+  dashboard now shows a **Save folder** card with clickable detected paths,
+  friendly messages instead of OS errors, a dynamic build label, and clearer
+  "optional" wording for the crest/CPK cards. `list_slots()` and
+  `/api/pes17/info` no longer raise on a missing folder. Shipped
+  [`FIRST_RUN.md`](FIRST_RUN.md) explains the one-time step. **66/66 live HTTP
+  checks** (fresh install + configured install) and a **133-GET differential
+  sweep** against r8 (132 identical, the 1 difference being the new setup
+  endpoint) pass. `verify_pairs.py` still PASSes.
 * **r8: conservative cleanup, not a rewrite.** `prune.py` removes 111
   FL26/FL27/Sider-only files (10.01 MB) from the shipped build:
   `addons/regenfix/`, `addons/michele/`, `lua/`, `FL_key.bin`,
   `FL_key_README.txt`, and the five FL26 databases that PES 2017 regenerates
   into `data/pes17/` from the real `EDIT00000000`. Every deletion is listed in
-  `CLEANUP_MANIFEST.txt`; `prune.apply()` asserts that all 43 required paths
+  `CLEANUP_MANIFEST.txt`; `prune.apply()` asserts that all 45 required paths
   survive. Kept on purpose: the classic FL26 UI at `/index.html` and the
   art/scenes/stadiums/i18n/small metadata it serves, all `lib/*.py` and the
   portable `python/*`. Because the FL26 `data/realmoves.json` cache is gone,

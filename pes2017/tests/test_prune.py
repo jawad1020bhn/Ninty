@@ -153,10 +153,10 @@ class ShippedZipTests(unittest.TestCase):
         self.assertIn('TheGaffer/CLEANUP_REPORT.md', self.names)
         self.assertIn('SAFE CLEANUP MANIFEST', self.manifest)
 
-    def test_version_is_r8(self):
+    def test_version_is_r9(self):
         if not self.version:
             self.skipTest('dist zip not built yet')
-        self.assertEqual(self.version, 'pc414-pes17-clean-r8 (2026-11-04)')
+        self.assertEqual(self.version, 'pc414-pes17-clean-r9 (2026-11-04)')
 
     def test_shipped_server_has_the_offline_guard(self):
         if not self.version:
