@@ -36,6 +36,12 @@ pre{background:#0b111b;border:1px solid #26364c;border-radius:8px;padding:12px;o
 .crest-cell{background:#0e1622;border:1px solid #2c3e55;border-radius:8px;padding:9px 6px;text-align:center;font-size:11px;color:#b9c9dc}
 .crest-cell img{width:64px;height:64px;object-fit:contain;display:block;margin:0 auto 6px}
 .crest-cell span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cb-wrap{position:relative;display:inline-grid;place-items:center;vertical-align:middle;flex:none}
+.cb-wrap .cb-svg{display:block;width:100%;height:100%;transition:opacity .14s}
+.cb-wrap .cb-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .14s}
+.cb-wrap.has-img .cb-svg{opacity:0}
+.cb-wrap.has-img .cb-img{opacity:1}
+.club-cell{display:inline-flex;align-items:center;gap:7px}
 </style>
 <link rel="stylesheet" href="/game-skin.css">
 </head>
@@ -194,7 +200,58 @@ async function get(u){const r=await fetch(u);const j=await r.json();if(!r.ok)thr
 async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
 function show(el,html){$(el).innerHTML=html}
 function out(o){show('out',esc(JSON.stringify(o,null,1)))}
-function tbl(rows,cols){if(!rows||!rows.length)return '<span class="muted">none</span>';return '<table><tr>'+cols.map(c=>'<th>'+esc(c[1])+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+cols.map(c=>'<td>'+esc(r[c[0]])+'</td>').join('')+'</tr>').join('')+'</table>'}
+let CLUB_COLORS={},CREST_REV=1,LAST_INFO_DATA=null;
+function clubKey(s){
+  return String(s||'').replace(/^\s*\d{1,3}[\s.\-]+/,'')
+    .replace(/\u0391/g,'A').replace(/\u0392/g,'B').replace(/\u0395/g,'E').replace(/\u039f/g,'O')
+    .normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+    .replace(/\b(fc|cf|afc|sc|ac|ssc|bc|fk|sk|club|cd|ud)\b/g,' ')
+    .replace(/[^a-z0-9]+/g,'');
+}
+async function loadClubColors(){
+  try{
+    const raw=await get('/api/clubcolors');
+    const map={};
+    Object.keys(raw||{}).forEach(k=>{
+      const v=raw[k];
+      if(Array.isArray(v)&&v.length>=2){map[k.toLowerCase()]=v;const ck=clubKey(k);if(ck)map[ck]=v;}
+    });
+    CLUB_COLORS=map;
+  }catch(e){}
+}
+function clubColors(name){
+  const s=String(name||'');
+  const hit=CLUB_COLORS[s.toLowerCase()]||CLUB_COLORS[clubKey(s)];
+  if(hit)return hit;
+  let h=0;for(let i=0;i<s.length;i++)h=((h<<5)-h+s.charCodeAt(i))|0;
+  const hue=Math.abs(h)%360;
+  return ['hsl('+hue+',58%,36%)','hsl('+((hue+38)%360)+',52%,22%)'];
+}
+function clubInitials(name){
+  const clean=String(name||'').replace(/^\s*\d{1,3}[\s.\-]+/,'').trim();
+  if(!clean)return 'FC';
+  const words=clean.split(/\s+/).filter(w=>w&&!/^(fc|cf|afc|sc|ac|cd|ud|bc)$/i.test(w));
+  const src=words.length?words:clean.split(/\s+/);
+  return src.length>=2?(src[0][0]+src[1][0]).toUpperCase():src[0].slice(0,3).toUpperCase();
+}
+function crestBadge(club,sz){
+  const n=String(club||'').trim();
+  const s=Number(sz)||24;
+  if(!n)return '';
+  const [c1,c2]=clubColors(n);
+  const ini=clubInitials(n);
+  const url='/api/crest?club='+encodeURIComponent(n)+'&v='+CREST_REV;
+  return '<span class="cb-wrap" style="width:'+s+'px;height:'+s+'px" title="'+esc(n)+'">'+
+    '<svg class="cb-svg" viewBox="0 0 36 40" width="'+s+'" height="'+s+'" aria-hidden="true">'+
+      '<path d="M3 3h30v17c0 10.5-15 17-15 17S3 30.5 3 20Z" fill="'+esc(c1)+'"/>'+
+      '<path d="M18 3h15v17c0 10.5-15 17-15 17Z" fill="'+esc(c2)+'" fill-opacity=".86"/>'+
+      '<path d="M3 3h30v17c0 10.5-15 17-15 17S3 30.5 3 20Z" fill="none" stroke="rgba(255,255,255,.34)" stroke-width="1.6"/>'+
+      '<text x="18" y="23" text-anchor="middle" fill="#ffffff" stroke="rgba(0,0,0,.55)" stroke-width="2.2" paint-order="stroke" font-family="Segoe UI,sans-serif" font-weight="800" font-size="10.5">'+esc(ini)+'</text>'+
+    '</svg>'+
+    '<img class="cb-img" alt="" loading="lazy" src="'+url+'" onload="this.parentNode.classList.add(\'has-img\')" onerror="this.remove()">'+
+  '</span>';
+}
+function tbl(rows,cols){if(!rows||!rows.length)return '<span class="muted">none</span>';return '<table><tr>'+cols.map(c=>'<th>'+esc(c[1])+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+cols.map(c=>{const v=r[c[0]];return '<td>'+(c[2]==='club'&&v?'<span class="club-cell">'+crestBadge(v,22)+'<span>'+esc(v)+'</span></span>':esc(v))+'</td>'}).join('')+'</tr>').join('')+'</table>'}
 function fillTeams(list){
   TEAMS=list||[];
   const opts=TEAMS.map(t=>'<option value="'+esc(t.tid)+'">'+esc(t.name)+' (tid '+esc(t.tid)+')</option>').join('');
@@ -228,16 +285,21 @@ function renderLayout(l){
 async function loadSlots(){
   try{const s=await get('/api/slots');$('slot').innerHTML=(s||[]).map(x=>'<option value="'+esc(x.slot)+'">'+esc(x.slot)+'</option>').join('');if(s&&s.length)SLOT=s[0].slot}catch(e){out({error:String(e)})}
 }
+function renderInfoViews(r){
+  if(!r||!r.info)return;
+  show('summary','<span class="club-cell">'+crestBadge(r.info.club,32)+'<b>'+esc(r.info.club)+'</b></span> &mdash; '+esc(r.info.league)+' &mdash; '+esc(r.info.date)+
+    '<br>'+esc(r.clubs)+' clubs, '+esc(r.squad.length)+' players in your squad, '+esc(r.offers.length)+' active negotiations.'+
+    '<br>container: '+esc(r.container.file_header)+' B file header, '+esc(r.container.data_size)+' B data.dat, type '+esc(r.container.type)+', version '+esc(r.container.version));
+  show('squad',tbl(r.squad,[['slot','#'],['shirt','Shirt'],['name','Player'],['id','ID']]));
+  show('table',tbl(r.league_table,[['pos','Pos'],['club','Club','club'],['pts','Pts']]));
+  show('offers',tbl(r.offers,[['buyer','Buyer','club'],['slot','Slot'],['pid','Player ID'],['transfer','Status']]));
+}
 async function loadInfo(){
   try{
     SLOT=$('slot').value;
     const r=await get('/api/pes17/info?slot='+encodeURIComponent(SLOT));
-    show('summary','<b>'+esc(r.info.club)+'</b> &mdash; '+esc(r.info.league)+' &mdash; '+esc(r.info.date)+
-      '<br>'+esc(r.clubs)+' clubs, '+esc(r.squad.length)+' players in your squad, '+esc(r.offers.length)+' active negotiations.'+
-      '<br>container: '+esc(r.container.file_header)+' B file header, '+esc(r.container.data_size)+' B data.dat, type '+esc(r.container.type)+', version '+esc(r.container.version));
-    show('squad',tbl(r.squad,[['slot','#'],['shirt','Shirt'],['name','Player'],['id','ID']]));
-    show('table',tbl(r.league_table,[['pos','Pos'],['club','Club'],['pts','Pts']]));
-    show('offers',tbl(r.offers,[['buyer','Buyer'],['slot','Slot'],['pid','Player ID'],['transfer','Status']]));
+    LAST_INFO_DATA=r;
+    renderInfoViews(r);
     renderBudget(r.budget);
     fillTeams(r.teams);out({ok:true,league_name:r.league_name,info:r.info,budget:r.budget});
   }catch(e){out({error:String(e)});show('summary','<span class="err">'+esc(e)+'</span>')}
@@ -285,6 +347,7 @@ $('harvestAssets').onclick=async()=>{
   $('harvestAssets').disabled=true;
   try{const r=await post('/api/pes17/assets/extract',{classes:['crest','emblem','art'],limit:200});
     show('assetReport','<span class="ok">Harvested '+esc(r.written)+' files ('+esc(r.bytes)+' B) into '+esc(r.out)+'. Source untouched.</span>');
+    await loadCrests(true);
   }catch(e){show('assetReport','<span class="err">'+esc(e)+'</span>')}
   finally{$('harvestAssets').disabled=false}
 };
@@ -293,8 +356,9 @@ loadAssets(false);
 /* ------------------------------------------------------------------ *
  * PES 2017 patch-folder crests (r6).  Diagnostic + offline crest previews.
  * ------------------------------------------------------------------ */
-function renderCrests(r){
+function renderCrests(r,bump){
   if(!r||!r.ok){show('crestReport','<span class="err">'+esc(r&&r.error||'crest scan failed')+'</span>');$('crestGrid').innerHTML='';return}
+  if(bump){CREST_REV++;if(LAST_INFO_DATA)renderInfoViews(LAST_INFO_DATA)}
   const bits=[
     'Source: '+(r.auto?'auto-detected from pes_exe':'explicit patch folder')+'.',
     'Folders: '+((r.roots||[]).length?esc((r.roots||[]).join(' | ')):'none'),
@@ -307,26 +371,26 @@ function renderCrests(r){
   show('crestReport',bits.join('<br>'));
   const sm=r.sample||[];
   $('crestGrid').innerHTML=sm.length?sm.map(x=>{
-    const nm=x.name||('#'+x.id);
-    return '<div class="crest-cell"><img alt="" src="/api/crest?club='+encodeURIComponent(nm)+'">'+
-      '<span title="'+esc(nm)+'">'+esc(nm)+'</span><span class="muted">#'+esc(x.id)+' '+esc(x.source)+'</span></div>';
+    const nm=x.name||String(x.id||'');
+    const lbl=x.name||('#'+x.id);
+    return '<div class="crest-cell">'+crestBadge(nm,56)+
+      '<span title="'+esc(lbl)+'" style="margin-top:5px">'+esc(lbl)+'</span><span class="muted">#'+esc(x.id)+' '+esc(x.source)+'</span></div>';
   }).join(''):'<span class="muted">no sample crests</span>';
 }
 async function loadCrests(rescan){
-  try{renderCrests(await get('/api/pes17/crests'+(rescan?'?rescan=1':'')))}
+  try{renderCrests(await get('/api/pes17/crests'+(rescan?'?rescan=1':'')),!!rescan)}
   catch(e){show('crestReport','<span class="err">'+esc(e)+'</span>')}
 }
 $('setCrestsDir').onclick=async()=>{
-  try{renderCrests(await post('/api/pes17/crests/dir',{dir:$('patchDir').value.trim()}))}
+  try{renderCrests(await post('/api/pes17/crests/dir',{dir:$('patchDir').value.trim()}),true);loadAssets(true)}
   catch(e){show('crestReport','<span class="err">'+esc(e)+'</span>')}
 };
 $('clearCrestsDir').onclick=async()=>{
   $('patchDir').value='';
-  try{renderCrests(await post('/api/pes17/crests/dir',{dir:''}))}
+  try{renderCrests(await post('/api/pes17/crests/dir',{dir:''}),true);loadAssets(true)}
   catch(e){show('crestReport','<span class="err">'+esc(e)+'</span>')}
 };
 $('rescanCrests').onclick=()=>loadCrests(true);
-loadCrests(false);
 
 /* ------------------------------------------------------------------ *
  * Bilingual tools page (r5).  Only direct text nodes are translated, so
@@ -348,7 +412,7 @@ function setLang(ar){
 }
 $('langBtn').onclick=()=>setLang(document.documentElement.lang!=='ar');
 try{setLang(localStorage.getItem(LANG_KEY)==='ar')}catch(e){setLang(false)}
-loadSlots().then(loadInfo);
+loadClubColors().then(()=>{loadCrests(false);loadSlots().then(loadInfo)});
 </script>
 <script src="/game-skin.js"></script>
 </body>

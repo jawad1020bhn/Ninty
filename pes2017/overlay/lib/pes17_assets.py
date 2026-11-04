@@ -48,12 +48,14 @@ MAP_NEEDED = ('crest', 'emblem', 'kit', 'face', 'coach')
 DEFAULT_EXTRACT = ('crest', 'emblem', 'art')
 IMG_EXT = ('.png', '.jpg', '.jpeg', '.dds', '.ftex', '.bmp', '.webp', '.gif')
 MAX_FILES = 40000
-MAX_ARCHIVES = 60
+MAX_ARCHIVES = 128
 MAX_DEPTH = 8
 MAX_BYTES = 8 * 1024 * 1024
 CACHE_TTL = 300.0
 
-RE_CREST = re.compile(r'/render/symbol/flag/e_(\d+)_([^/]+?)\.(png|dds)$', re.I)
+RE_CREST = re.compile(
+    r'(?:^|/)render/symbol/flag/(?:e|emblem|flag|crest|logo)_0*(\d+)(?:_([^/.]+?))?\.(png|dds)$',
+    re.I)
 RE_EMBLEM = re.compile(r'/render/symbol/emblem[^/]*/emb_(\d+)_([^/]+?)\.(png|dds)$', re.I)
 RE_KIT = re.compile(r'/uniform/texture/.*?u(\d{3,4})p(\d+)\.ftex$', re.I)
 RE_FACE = re.compile(r'/render/symbol/player/(\d+)\.(dds|png)$', re.I)
@@ -74,8 +76,8 @@ def classify(path):
     ext = ('.' + base.rsplit('.', 1)[-1]) if '.' in base else ''
     m = RE_CREST.search(p)
     if m:
-        return ('crest', int(m.group(1)), m.group(2), ext, 'MAP',
-                'Team emblem; PES 2021 team ids must be mapped to PES 2017 ids.')
+        return ('crest', int(m.group(1)), m.group(2) or '', ext, 'MAP',
+                'Team emblem; mapped by PES 2017 stable team ID.')
     m = RE_EMBLEM.search(p)
     if m:
         return ('emblem', int(m.group(1)), m.group(2), ext, 'MAP',
@@ -224,13 +226,19 @@ def _unwesys(raw):
 
 
 def _to_png(raw, ext):
-    if ext == '.dds':
+    if raw[:8] == b'\x89PNG\r\n\x1a\n':
+        return raw, '.png'
+    if raw[:2] == b'\xff\xd8':
+        return raw, '.jpg'
+    if len(raw) >= 12 and raw[:4] == b'RIFF' and raw[8:12] == b'WEBP':
+        return raw, '.webp'
+    if raw[:4] == b'DDS ' or ext == '.dds':
         try:
             import dds
             return dds.dds_to_png(raw), '.png'
         except Exception:
             return None, ext
-    if ext == '.ftex':
+    if raw[:4] == b'FTEX' or ext == '.ftex':
         try:
             import ftex, dds
             w, h, rgba = ftex.decode(raw, 2)
@@ -254,7 +262,7 @@ def _read_row(row):
         return _unwesys(cpkread.Cpk(row['source']).read(row['entry']))
     p = row.get('_abs') or row['entry']
     with open(p, 'rb') as f:
-        return f.read(MAX_BYTES + 1)
+        return _unwesys(f.read(MAX_BYTES + 1))
 
 
 def harvest(source, out_dir, classes=None, limit=200, max_bytes=MAX_BYTES,

@@ -139,7 +139,7 @@ button{font:inherit;cursor:pointer;transition:.16s}
 
 /* standings as a game table, not a spreadsheet */
 .gi-standings{display:flex;flex-direction:column}
-.gi-st{display:grid;grid-template-columns:34px minmax(0,1fr) 46px;align-items:center;gap:10px;
+.gi-st{display:grid;grid-template-columns:34px 26px minmax(0,1fr) 46px;align-items:center;gap:10px;
   padding:8px 10px;border-bottom:1px solid var(--line-soft);border-radius:4px}
 .gi-st:last-child{border-bottom:0}
 .gi-st .pos{font:800 15px/1 var(--fd);color:var(--dim2);text-align:center}
@@ -149,6 +149,14 @@ button{font:inherit;cursor:pointer;transition:.16s}
   border-left:3px solid var(--club)}
 .gi-st.on .pos,.gi-st.on .pts{color:var(--club)}
 .gi-st.on .nm{font-weight:700;color:var(--txt)}
+
+/* club crest wrapper: vector shield base + live patch PNG overlay */
+.cb-wrap{position:relative;display:inline-grid;place-items:center;flex:none;vertical-align:middle}
+.cb-wrap .cb-svg{display:block;width:100%;height:100%;transition:opacity .14s}
+.cb-wrap .cb-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .14s}
+.cb-wrap.has-img .cb-svg{opacity:0}
+.cb-wrap.has-img .cb-img{opacity:1}
+.gi-faceoff .badge{overflow:hidden;padding:0}
 
 /* player cards */
 .gi-players{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}
@@ -424,9 +432,17 @@ tr:last-child td{border-bottom:0}
 
   <div class="gi-cols">
     <section class="gi-screen" id="crests">
-      <header><h2><svg viewBox="0 0 24 24"><path d="M12 3l9 5v6c0 5-4 7-9 8-5-1-9-3-9-8V8z"/></svg>Club crests · optional</h2>
+      <header><h2><svg viewBox="0 0 24 24"><path d="M12 3l9 5v6c0 5-4 7-9 8-5-1-9-3-9-8V8z"/></svg>Club crests · game / patch folder</h2>
         <span class="gi-note" id="crestCount">—</span></header>
       <div class="muted" id="crestReport">Scanning locally…</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;align-items:center">
+        <input class="path" id="dashPatchDir" type="text" spellcheck="false" dir="ltr"
+               placeholder="D:\...\Pro Evolution Soccer 2017  or  ...\download" aria-label="PES 2017 game or patch folder">
+        <button id="dashSetPatchBtn" class="gi-btn primary" type="button">Set folder</button>
+        <button id="dashRescanPatchBtn" class="gi-btn ghost" type="button">Rescan</button>
+        <button id="dashClearPatchBtn" class="gi-btn ghost" type="button" title="Clear override and use auto-detected PES 2017 folder">Auto</button>
+      </div>
+      <div class="bars" id="dashPatchCands"></div>
       <div class="crestgrid" id="crestGrid" style="margin-top:12px"></div>
     </section>
     <section class="gi-screen" id="assets">
@@ -480,11 +496,81 @@ function friendly(e){
   return m;
 }
 function fail(el,e){const n=$(el);if(n)n.innerHTML='<span class="err">'+esc(friendly(e))+'</span>'}
+
+let CLUB_COLORS={},CREST_REV=1,LAST_INFO=null;
+function clubKey(s){
+  return String(s||'').replace(/^\s*\d{1,3}[\s.\-]+/,'')
+    .replace(/\u0391/g,'A').replace(/\u0392/g,'B').replace(/\u0395/g,'E').replace(/\u039f/g,'O')
+    .normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+    .replace(/\b(fc|cf|afc|sc|ac|ssc|bc|fk|sk|club|cd|ud)\b/g,' ')
+    .replace(/[^a-z0-9]+/g,'');
+}
+async function loadClubColors(){
+  try{
+    const raw=await get('/api/clubcolors');
+    const map={};
+    Object.keys(raw||{}).forEach(k=>{
+      const v=raw[k];
+      if(Array.isArray(v)&&v.length>=2){
+        map[k.toLowerCase()]=v;
+        const ck=clubKey(k);if(ck)map[ck]=v;
+      }
+    });
+    CLUB_COLORS=map;
+  }catch(e){}
+}
+function clubColors(name){
+  const s=String(name||'');
+  const hit=CLUB_COLORS[s.toLowerCase()]||CLUB_COLORS[clubKey(s)];
+  if(hit)return hit;
+  let h=0;for(let i=0;i<s.length;i++)h=((h<<5)-h+s.charCodeAt(i))|0;
+  const hue=Math.abs(h)%360;
+  return ['hsl('+hue+',58%,36%)','hsl('+((hue+38)%360)+',52%,22%)'];
+}
+function clubInitials(name){
+  const clean=String(name||'').replace(/^\s*\d{1,3}[\s.\-]+/,'').trim();
+  if(!clean)return 'FC';
+  const words=clean.split(/\s+/).filter(w=>w&&!/^(fc|cf|afc|sc|ac|cd|ud|bc)$/i.test(w));
+  const src=words.length?words:clean.split(/\s+/);
+  if(src.length>=2)return (src[0][0]+src[1][0]).toUpperCase();
+  return src[0].slice(0,3).toUpperCase();
+}
+function crestBadge(club,sz){
+  const n=String(club||'').trim();
+  const s=Number(sz)||28;
+  if(!n)return '<span class="cb-wrap" style="width:'+s+'px;height:'+s+'px"></span>';
+  const [c1,c2]=clubColors(n);
+  const ini=clubInitials(n);
+  const fs=s>=64?11.5:(s>=34?10.5:10);
+  const url='/api/crest?club='+encodeURIComponent(n)+'&v='+CREST_REV;
+  return '<span class="cb-wrap" style="width:'+s+'px;height:'+s+'px" title="'+esc(n)+'">'+
+    '<svg class="cb-svg" viewBox="0 0 36 40" width="'+s+'" height="'+s+'" aria-hidden="true">'+
+      '<path d="M3 3h30v17c0 10.5-15 17-15 17S3 30.5 3 20Z" fill="'+esc(c1)+'"/>'+
+      '<path d="M18 3h15v17c0 10.5-15 17-15 17Z" fill="'+esc(c2)+'" fill-opacity=".86"/>'+
+      '<path d="M3 3h30v17c0 10.5-15 17-15 17S3 30.5 3 20Z" fill="none" stroke="rgba(255,255,255,.34)" stroke-width="1.6"/>'+
+      '<text x="18" y="23" text-anchor="middle" fill="#ffffff" stroke="rgba(0,0,0,.55)" stroke-width="2.2" paint-order="stroke" font-family="Barlow Condensed,Segoe UI,sans-serif" font-weight="800" font-size="'+fs+'">'+esc(ini)+'</text>'+
+    '</svg>'+
+    '<img class="cb-img" alt="" loading="lazy" src="'+url+'" onload="this.parentNode.classList.add(\'has-img\')" onerror="this.remove()">'+
+  '</span>';
+}
+function refreshLiveCrests(){
+  CREST_REV++;
+  if(!LAST_INFO)return;
+  const club=LAST_INFO.club||'';
+  if(club){
+    $('crestBox').innerHTML=crestBadge(club,88);
+    $('faceHome').innerHTML=crestBadge(club,36);
+  }
+  if(LAST_INFO.rows){
+    $('table').innerHTML=standingsHtml(LAST_INFO.rows,club);
+  }
+}
+
 function standingsHtml(rows,mine){
   if(!rows||!rows.length)return '<div class="gi-empty">No standings block decoded from this save.</div>';
   return '<div class="gi-standings">'+rows.map(r=>{
     const me=!!mine&&String(r.club||'').toLowerCase().indexOf(String(mine).toLowerCase())>=0;
-    return '<div class="gi-st'+(me?' on':'')+'"><b class="pos">'+esc(r.pos)+'</b><span class="nm">'+esc(r.club)+'</span><span class="pts">'+(r.pts?esc(r.pts):'—')+'</span></div>';
+    return '<div class="gi-st'+(me?' on':'')+'"><b class="pos">'+esc(r.pos)+'</b>'+crestBadge(r.club,24)+'<span class="nm">'+esc(r.club)+'</span><span class="pts">'+(r.pts?esc(r.pts):'—')+'</span></div>';
   }).join('')+'</div>';
 }
 function positionOf(rows,mine){
@@ -522,15 +608,26 @@ function hideSetup(){
   put('taskSlot','Configured · '+SLOT);
   put('taskCount','OPTIONAL TASKS');
 }
+function renderPatchCandidates(st){
+  const el=$('dashPatchCands');if(!el)return;
+  const gc=(st&&st.game_candidates)||[];
+  if(!$('dashPatchDir').value&&st&&st.patch_dir)$('dashPatchDir').value=st.patch_dir;
+  el.innerHTML=gc.length
+    ? gc.map(p=>'<span class="bar click" data-gp="'+esc(p)+'" title="Click to set this PES 2017 folder">Detected: <b>'+esc(p)+'</b></span>').join('')
+    : '';
+}
 async function setup(force){
   try{
     const s=await get('/api/pes17/setup');
+    SETUP=s||{};
     if(s.version)$('buildVer').textContent=(String(s.version).match(/r\d+/)||['r9'])[0];
+    renderPatchCandidates(s);
     if(force)showSetup(s);else if(!s.ok)showSetup(s);else hideSetup();
     return s;
   }catch(e){if(force)showSetup({},String(e));return null}
 }
 function noSave(msg){
+  LAST_INFO=null;
   $('clubName').textContent='Save folder not set';
   $('clubMeta').textContent=msg||'Choose your PES 2017 save folder above, then Refresh.';
   $('container').textContent='-';
@@ -539,7 +636,8 @@ function noSave(msg){
   $('table').innerHTML='<span class="muted">Waiting for a save folder…</span>';
   html('squadCards','<div class="gi-empty">Waiting for a save folder…</div>');
   put('tilePosition','—');put('tileSquad','—');put('heroSeason','SEASON —');
-  put('faceHomeName','Your club');put('infoClub','—');put('infoLeague','—');put('infoDate','—');
+  put('faceHomeName','Your club');$('faceHome').textContent='TG';$('crestBox').innerHTML='<span>TG</span>';
+  put('infoClub','—');put('infoLeague','—');put('infoDate','—');
 }
 async function slots(){
   try{
@@ -557,6 +655,8 @@ async function info(){
     }
     const c=r.club||'',i=r.info||{};
     const club=i.club||c||'Unknown club';
+    const rows=r.league_table||[];
+    LAST_INFO={club:club,rows:rows};
     $('clubName').textContent=club;
     $('clubMeta').textContent=(i.league||'-')+' · '+(i.date||'-')+' · '+(r.league_name||'');
     $('container').textContent=r.container?(r.container.data_size+' B data.dat · '+r.container.file_header+' B header'):'-';
@@ -569,18 +669,17 @@ async function info(){
     put('nextComp','Next competition: '+(i.next_competition||'not stored in save'));
     put('newsComp',i.next_competition||'Not present in the save description.');
     put('faceHomeName',club);
-    put('faceHome',club.trim().split(/\s+/).map(w=>w[0]||'').slice(0,2).join('').toUpperCase()||'TG');
+    $('faceHome').innerHTML=crestBadge(club,36);
     put('infoClub',club);put('infoLeague',i.league||r.league_name||'—');put('infoDate',i.date||'—');
     const b=r.budget||{};
     $('budgetNum').textContent=fmt(b.transfer!=null?b.transfer:b.value);
     $('wageNum').textContent='Wage word: '+fmt(b.salary!=null?b.salary:b.wage);
     $('budgetNote').textContent=b.currency_verified===false?'RAW u32 save units. NOT confirmed EUR; display scale is unverified.':'Raw save units.';
-    $('crestBox').innerHTML='<img alt="" src="/api/crest?club='+encodeURIComponent(i.club||c)+'" onerror="this.parentNode.innerHTML=\'<span>TG</span>\'">';
+    $('crestBox').innerHTML=crestBadge(club,88);
     const sq=r.squad||[];
     $('squadTable').innerHTML=tbl(sq,[['shirt','#',1],['name','Player'],['id','ID']]);
     html('squadCards',playerCards(sq));
     put('tileSquad',sq.length+' PLAYERS');
-    const rows=r.league_table||[];
     $('table').innerHTML=standingsHtml(rows,club);
     const pos=positionOf(rows,club);
     put('tilePosition',pos?('#'+pos):'—');
@@ -588,18 +687,34 @@ async function info(){
     put('taskCrests','Optional. '+(r.info&&r.info.club?('Crest lookup for '+r.info.club+'.'):''));
   }catch(e){noSave(friendly(e));fail('squadTable',e);fail('table',e)}
 }
-async function crests(){
+function renderCrestsReport(r){
+  $('crestCount').textContent=(r.logos_found||0)+' logos / '+(r.clubs_matched||0)+' clubs';
+  if(r.roots&&r.roots.length&&!$('dashPatchDir').value&&r.explicit)$('dashPatchDir').value=r.roots[0];
+  $('crestReport').innerHTML=r.available
+    ? '<span class="ok">Read locally from '+(r.auto?'your auto-detected PES 2017 install':'your configured patch/game folder')+
+      ' ('+esc((r.roots||[]).slice(0,2).join(' · '))+') · '+fmt(r.cpk_archives||0)+' CPK(s). Offline only.</span>'
+    : '<span class="muted">Club shields are shown until you point at your PES 2017 game or patch folder below (for example ...\\Pro Evolution Soccer 2017 or ...\\download with your patch CPKs). Saves do not embed club crests.</span>';
+  const sm=r.sample||[];
+  $('crestGrid').innerHTML=sm.length?sm.map(x=>{const n=x.name||String(x.id||'');const lbl=x.name||('#'+x.id);
+    return '<div>'+crestBadge(n,48)+'<span title="'+esc(lbl)+'" style="margin-top:5px">'+esc(lbl)+'</span></div>'}).join('')
+    : '<span class="muted">no patch crests indexed yet (shield fallback active)</span>';
+}
+async function crests(rescan){
   try{
-    const r=await get('/api/pes17/crests');
-    $('crestCount').textContent=r.logos_found+' logos / '+r.clubs_matched+' clubs';
-    $('crestReport').innerHTML=r.available
-      ? '<span class="ok">Read locally from '+(r.auto?'folders next to pes_exe':'your patch folder')+'. No network request for crests.</span>'
-      : '<span class="muted">Optional — no patch folder configured. The save works without crests. If you have loose logos or a livecpk/CPK patch, set pes17_patch_dir in Tools → card 3c.</span>';
-    const sm=r.sample||[];
-    $('crestGrid').innerHTML=sm.length?sm.map(x=>{const n=x.name||('#'+x.id);
-      return '<div><img alt="" src="/api/crest?club='+encodeURIComponent(n)+'"><span title="'+esc(n)+'">'+esc(n)+'</span></div>'}).join('')
-      : '<span class="muted">no sample crests (optional)</span>';
+    const r=await get('/api/pes17/crests'+(rescan?'?rescan=1':''));
+    renderCrestsReport(r);
+    if(rescan)refreshLiveCrests();
   }catch(e){fail('crestReport',e)}
+}
+async function setDashPatchDir(dir){
+  $('dashSetPatchBtn').disabled=true;
+  try{
+    const r=await post('/api/pes17/crests/dir',{dir:dir});
+    renderCrestsReport(r);
+    refreshLiveCrests();
+    assets();
+  }catch(e){fail('crestReport',e)}
+  finally{$('dashSetPatchBtn').disabled=false}
 }
 async function assets(){
   try{
@@ -610,7 +725,7 @@ async function assets(){
       +'<span class="bar">PES17-ready <b>'+(u.YES||0)+'</b></span><span class="bar">needs ID map <b>'+(u.MAP||0)+'</b></span>';
     $('assetReport').innerHTML=r.files
       ? '<span class="ok">Catalogued '+r.cpk_entries+' CPK entries and '+r.loose_files+' loose files, read-only.</span>'
-      : '<span class="muted">Optional — no patch/CPK folder found. Point pes17_patch_dir at a folder holding PES 2021 CPK files, then Refresh. No real .cpk ships with this build.</span>';
+      : '<span class="muted">Optional — no patch/CPK folder found. Point pes17_patch_dir at your PES 2017 game or download folder, then Refresh. No real .cpk ships with this build.</span>';
     $('assetHint').textContent=r.hint||'';
   }catch(e){fail('assetReport',e)}
 }
@@ -618,13 +733,18 @@ $('harvest').onclick=async()=>{
   $('harvest').disabled=true;$('harvestOut').textContent='working…';
   try{const r=await post('/api/pes17/assets/extract',{classes:['crest','emblem','art'],limit:200});
     $('harvestOut').innerHTML='<span class="ok">'+r.written+' files, '+fmt(r.bytes)+' B → '+esc(r.out)+'</span>';
+    await crests(true);
   }catch(e){fail('harvestOut',e)}finally{$('harvest').disabled=false}
 };
+$('dashSetPatchBtn').onclick=()=>setDashPatchDir($('dashPatchDir').value);
+$('dashRescanPatchBtn').onclick=()=>crests(true);
+$('dashClearPatchBtn').onclick=()=>{$('dashPatchDir').value='';setDashPatchDir('')};
+$('dashPatchCands').onclick=e=>{const b=e.target.closest('.bar.click');if(b&&b.dataset.gp){$('dashPatchDir').value=b.dataset.gp;setDashPatchDir(b.dataset.gp)}};
 $('saveDirBtn').onclick=async()=>{
   $('saveDirBtn').disabled=true;$('setupOut').textContent='saving…';
   try{
     const r=await post('/api/pes17/setup/savefolder',{save_dir:$('saveDir').value});
-    if(r.ok){$('setupOut').innerHTML='<span class="ok">Saved. Reading your save…</span>';hideSetup();await boot()}
+    if(r.ok){$('setupOut').innerHTML='<span class="ok">Saved. Reading your save…</span>';hideSetup();CREST_REV++;await boot()}
     else{$('setupOut').innerHTML='<span class="err">'+esc(r.message||r.error)+'</span>';showSetup(r)}
   }catch(e){$('setupOut').innerHTML='<span class="err">'+esc(friendly(e))+'</span>'}
   finally{$('saveDirBtn').disabled=false}
@@ -632,7 +752,7 @@ $('saveDirBtn').onclick=async()=>{
 $('setupBtn').onclick=()=>{setup(true)};
 $('taskSetup').onclick=e=>{e.preventDefault();setup(true);$('setupCard').scrollIntoView({behavior:'smooth',block:'center'})};
 $('setupCandidates').onclick=e=>{const b=e.target.closest('.bar.click');if(b&&b.dataset.p)$('saveDir').value=b.dataset.p};
-$('refresh').onclick=()=>{setup().then(()=>{slots().then(()=>{info();crests();assets()})})};
+$('refresh').onclick=()=>{CREST_REV++;setup().then(()=>{slots().then(()=>{info();crests();assets()})})};
 $('slot').onchange=info;
 
 /* Bilingual: only elements with a direct text node are translated. */
@@ -650,7 +770,7 @@ function setLang(ar){
 }
 $('langBtn').onclick=()=>setLang(document.documentElement.lang!=='ar');
 try{setLang(localStorage.getItem(LK)==='ar')}catch(e){setLang(false)}
-async function boot(){await setup();await slots();info();crests();assets()}
+async function boot(){await loadClubColors();await setup();await slots();info();crests();assets()}
 boot();
 </script>
 </body>

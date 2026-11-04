@@ -141,6 +141,13 @@ EDIT_NAME_OFF = 0x34
 EDIT_NAME_LEN = 46
 EDIT_HEIGHT = 0x0C
 EDIT_WEIGHT = 0x0D
+EDIT_TEAM0 = 3948120        # 800-slot x 480 B EDIT team table (before COMP_NAMES0)
+EDIT_TEAM_STRIDE = 480
+EDIT_TEAM_SLOTS = 800
+EDIT_TEAM_NAME_OFF = 152
+EDIT_TEAM_NAME_LEN = 70
+EDIT_TEAM_ABBR_OFF = 222
+EDIT_TEAM_ABBR_LEN = 10
 
 # 22 (of the app's 25) attributes can be read directly from the PES 2017
 # player entry.  (name in the app, byte offset, bit offset, bit length)
@@ -580,13 +587,33 @@ def _ovr(attrs, pos, form=3):
         return max(40, min(99, round(sum(a) / len(a))))
 
 
+def edit_teams(data):
+    """-> list of {tid, name, abbr, idx} from EDIT00000000's 480 B team table."""
+    if len(data) < EDIT_TEAM0 + EDIT_TEAM_STRIDE:
+        return []
+    end = min(len(data) - EDIT_TEAM_STRIDE, COMP_NAMES0 - EDIT_TEAM_STRIDE,
+              EDIT_TEAM0 + EDIT_TEAM_SLOTS * EDIT_TEAM_STRIDE)
+    out, seen = [], set()
+    idx = 0
+    for o in range(EDIT_TEAM0, end + 1, EDIT_TEAM_STRIDE):
+        tid = struct.unpack_from('<I', data, o)[0]
+        name = _text(bytes(data[o + EDIT_TEAM_NAME_OFF:o + EDIT_TEAM_NAME_OFF + EDIT_TEAM_NAME_LEN]))
+        abbr = _text(bytes(data[o + EDIT_TEAM_ABBR_OFF:o + EDIT_TEAM_ABBR_OFF + EDIT_TEAM_ABBR_LEN]))
+        if 0 < tid < EDIT_SENTINEL and tid not in seen and _plausible_name(name):
+            seen.add(tid)
+            out.append(dict(tid=tid, name=name, abbr=abbr, idx=idx))
+        idx += 1
+    return out
+
+
 def import_edit(src, outdir):
     """Build players.json / ratings.json / positions.json / playpos.json.
 
     Returns a small stats dict.  The generated files use exactly the shapes
     the app's reload_db() expects.
     """
-    players = parse_edit(_edit_data(src))
+    ed = _edit_data(src)
+    players = parse_edit(ed)
     os.makedirs(outdir, exist_ok=True)
 
     def dump(name, obj):
@@ -604,15 +631,36 @@ def import_edit(src, outdir):
             [p['attrs'][k] for k in AB],
         ]
     dump('ratings.json', dict(ab=AB, f='PES 2017 EDIT00000000', p=ratings))
-    return dict(players=len(players), dir=outdir, source=str(src))
+    eteams = edit_teams(ed)
+    if eteams:
+        tp = os.path.join(outdir, 'teamids.json')
+        ids = {}
+        if os.path.isfile(tp):
+            try:
+                with open(tp, encoding='utf-8') as f:
+                    ids = json.load(f)
+            except Exception:
+                ids = {}
+        for t in eteams:
+            ids.setdefault(str(t['tid']), t['name'])
+        dump('teamids.json', ids)
+    return dict(players=len(players), teams=len(eteams), dir=outdir, source=str(src))
 
 
-def import_teams(folder, outdir):
-    """teamids.json from the ML save club table (id -> club name)."""
+def import_teams(folder, outdir, edit_src=None):
+    """teamids.json from the ML save club table (+ optional EDIT00000000)."""
     with open(os.path.join(folder, 'data.dat'), 'rb') as f:
         teams = team_records(f.read())
     os.makedirs(outdir, exist_ok=True)
     ids = {}
+    if os.path.isfile(os.path.join(outdir, 'teamids.json')):
+        try:
+            with open(os.path.join(outdir, 'teamids.json'), encoding='utf-8') as f:
+                old = json.load(f)
+            if isinstance(old, dict):
+                ids.update(old)
+        except Exception:
+            pass
     for t in teams:
         # Stable team id is what standings / EDIT league arrays / negotiations
         # use; keep the raw bit-packed id as an alias too.
@@ -620,9 +668,111 @@ def import_teams(folder, outdir):
             ids[str(t['tid'])] = t['name']
         if t['id'] and str(t['id']) not in ids:
             ids[str(t['id'])] = t['name']
+    if edit_src and os.path.exists(edit_src):
+        try:
+            for t in edit_teams(_edit_data(edit_src)):
+                ids.setdefault(str(t['tid']), t['name'])
+        except Exception:
+            pass
     with open(os.path.join(outdir, 'teamids.json'), 'w', encoding='utf-8') as f:
         json.dump(ids, f, ensure_ascii=False, indent=1)
     return dict(teams=len(teams))
+
+
+_TEAMIDS_SIG = {'key': None}
+
+
+def ensure_teamids(cfg, outdir, force=False):
+    """Populate `outdir/teamids.json` directly from `save_dir` (ML* + EDIT00000000).
+
+    Works on the very first request to `/` or `/pes17.html` without requiring
+    `/api/state` or `slot_folder()` to decrypt a working copy first.  Read-only
+    against `save_dir`; writes only inside `outdir`.
+    """
+    if not cfg or not outdir:
+        return False
+    sd = (cfg.get('save_dir') or '').strip()
+    ed = (cfg.get('edit_dat') or (os.path.join(sd, 'EDIT00000000') if sd else '')).strip()
+    tp = os.path.join(outdir, 'teamids.json')
+
+    ml_path = ''
+    if sd and os.path.isdir(sd):
+        try:
+            mls = []
+            for fn in os.listdir(sd):
+                if fn.upper().startswith('ML') and len(fn) >= 10:
+                    fp = os.path.join(sd, fn)
+                    if os.path.isfile(fp):
+                        mls.append((os.path.getmtime(fp), fp))
+            if mls:
+                mls.sort(reverse=True)
+                ml_path = mls[0][1]
+        except OSError:
+            pass
+
+    if not ml_path and not (ed and os.path.exists(ed)):
+        return os.path.isfile(tp)
+
+    sig_parts = []
+    for p in (ml_path, ed):
+        if p and os.path.exists(p):
+            try:
+                st = os.stat(p)
+                sig_parts.append((p, int(st.st_mtime), st.st_size))
+            except OSError:
+                pass
+    sig = (outdir, tuple(sig_parts))
+    if not force and _TEAMIDS_SIG['key'] == sig and os.path.isfile(tp):
+        return True
+
+    ids = {}
+    if os.path.isfile(tp):
+        try:
+            with open(tp, encoding='utf-8') as f:
+                cur = json.load(f)
+            if isinstance(cur, dict):
+                ids.update(cur)
+        except Exception:
+            pass
+
+    wrote = False
+    if ml_path:
+        try:
+            import pescrypt
+            with open(ml_path, 'rb') as f:
+                raw = f.read()
+            parts = pescrypt.decrypt_bytes(raw, KEY_PES17)
+            for t in team_records(parts['data.dat']):
+                if t['tid']:
+                    ids[str(t['tid'])] = t['name']
+                    wrote = True
+                if t['id'] and str(t['id']) not in ids:
+                    ids[str(t['id'])] = t['name']
+                    wrote = True
+        except Exception:
+            pass
+
+    if ed and os.path.exists(ed):
+        try:
+            for t in edit_teams(_edit_data(ed)):
+                if str(t['tid']) not in ids:
+                    ids[str(t['tid'])] = t['name']
+                wrote = True
+        except Exception:
+            pass
+
+    if wrote and ids:
+        try:
+            os.makedirs(outdir, exist_ok=True)
+            tmp = tp + '.tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                json.dump(ids, f, ensure_ascii=False, indent=1)
+            os.replace(tmp, tp)
+            _TEAMIDS_SIG['key'] = sig
+            return True
+        except OSError:
+            pass
+    return os.path.isfile(tp)
 
 
 # --------------------------------------------------------------------------
@@ -1069,20 +1219,27 @@ def looks_like_pes17_path(path):
 def find_exe(save_dir):
     """Try to locate PES2017.exe next to the save folder / known installs."""
     cands = []
-    up = save_dir
+    up = save_dir or ''
     for _ in range(4):
+        if not up:
+            break
         up = os.path.dirname(up)
         cands.append(up)
     for root in (r'C:\Program Files (x86)\Steam\steamapps\common\Pro Evolution Soccer 2017',
                  r'C:\Program Files\Steam\steamapps\common\Pro Evolution Soccer 2017',
                  r'D:\Program Files (x86)\Steam\steamapps\common\Pro Evolution Soccer 2017',
-                 r'C:\Games\Pro Evolution Soccer 2017'):
+                 r'C:\Games\Pro Evolution Soccer 2017',
+                 r'D:\Games\Pro Evolution Soccer 2017'):
         cands.append(root)
     for c in cands:
         p = os.path.join(c, 'PES2017.exe')
         if os.path.isfile(p):
             return p
-    return ''
+    try:
+        import pes17_setup
+        return pes17_setup.autodetect_exe(save_dir=save_dir)
+    except Exception:
+        return ''
 
 
 if __name__ == '__main__':

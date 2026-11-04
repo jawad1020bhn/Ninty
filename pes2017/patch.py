@@ -360,6 +360,12 @@ def state(slot):
      """def pes17_tools_info(slot):
     # Real-save PES 2017 info (read side), independent of the FL26 views.
     import pes17_write
+    if _GAME['v'] != 'pes17':
+        _GAME['v'] = 'pes17'
+    try:
+        pes17.ensure_teamids(CFG, os.path.join(HERE, 'data', 'pes17'))
+    except Exception as _ex:
+        print('[pes17] teamids:', _ex)
     src = os.path.join(CFG['save_dir'], slot)
     c = pes17_write.Pes17Container.load(src)
     ep = CFG.get('edit_dat') or os.path.join(CFG['save_dir'], 'EDIT00000000')
@@ -663,6 +669,8 @@ def players_data(slot):
      """def crest_img(name):
     b = game_logo(name)""",
      """def crest_img(name):
+    if CFG.get('pes17_only', True) and _GAME['v'] != 'pes17':
+        _GAME['v'] = 'pes17'
     if _GAME['v'] == 'pes17' or CFG.get('pes17_patch_dir'):
         try:
             import pes17_crests
@@ -675,7 +683,9 @@ def players_data(slot):
 
     ('server.py',
      """        return len(_game_logo_index()) >= 50""",
-     """        if _GAME['v'] == 'pes17' or CFG.get('pes17_patch_dir'):
+     """        if CFG.get('pes17_only', True) and _GAME['v'] != 'pes17':
+            _GAME['v'] = 'pes17'
+        if _GAME['v'] == 'pes17' or CFG.get('pes17_patch_dir'):
             try:
                 import pes17_crests
                 if pes17_crests.count(CFG) >= 1:
@@ -875,14 +885,105 @@ def players_data(slot):
     ('server.py',
      r"""            if self.path == '/api/pes17/crests/dir':""",
      r"""            if self.path == '/api/pes17/setup/savefolder':
-                import pes17_setup
+                import pes17_setup, pes17_crests
                 try:
                     _sd = pes17_setup.validate_save_dir(body.get('save_dir'))
                 except ValueError as _ex:
                     return self.send(400, dict(ok=False, error=str(_ex)))
-                _cfg_update(save_dir=_sd)
+                _kw = dict(save_dir=_sd)
+                if pes17_setup.is_fl26_exe(CFG.get('pes_exe')):
+                    _exe = pes17_setup.autodetect_exe(_sd)
+                    if _exe:
+                        _kw['pes_exe'] = _exe
+                _cfg_update(**_kw)
+                _GAME['v'] = 'pes17'
+                try:
+                    pes17.ensure_teamids(CFG, os.path.join(HERE, 'data', 'pes17'), force=True)
+                except Exception:
+                    pass
+                pes17_crests.clear()
                 return self.send(200, pes17_setup.status(CFG, HERE))
             if self.path == '/api/pes17/crests/dir':""", 1),
+
+    # ------------------------------------------- r11: PES 2017 game/crest auto-detect & startup sync
+    # Clear pc414's hardcoded FL26 executable path and auto-detect a local
+    # PES 2017 installation so patch/CPK crests work out of the box.
+    ('server.py',
+     r"""    'pes_exe': r'D:\FL 26\FL 2026 start.exe',""",
+     r"""    'pes_exe': '',   # r11: never inherit pc414's FL26 exe; load_cfg() finds a local PES 2017 install""", 1),
+
+    ('server.py',
+     r"""    if not cfg.get('save_dir'):
+        import pes17_setup
+        cfg['save_dir'] = pes17_setup.autodetect()""",
+     r"""    if not cfg.get('save_dir'):
+        import pes17_setup
+        cfg['save_dir'] = pes17_setup.autodetect()
+    import pes17_setup as _p17s
+    if _p17s.is_fl26_exe(cfg.get('pes_exe')):
+        cfg['pes_exe'] = _p17s.autodetect_exe(cfg.get('save_dir') or '')""", 1),
+
+    ('server.py',
+     r"""            if self.path == '/api/pes17/crests/dir':
+                import pes17_crests
+                _pd = (body.get('dir') or '').strip()
+                if _pd and not os.path.isdir(_pd):
+                    return self.send(400, dict(error='Not a folder: %s' % _pd))
+                _cfg_update(pes17_patch_dir=_pd)
+                pes17_crests.clear()
+                return self.send(200, pes17_crests.report(CFG, True))""",
+     r"""            if self.path == '/api/pes17/crests/dir':
+                import pes17_crests, pes17_setup
+                try:
+                    _pd = pes17_setup.validate_patch_dir(body.get('dir'))
+                except ValueError as _ex:
+                    return self.send(400, dict(error=str(_ex)))
+                _cfg_update(pes17_patch_dir=_pd)
+                pes17_crests.clear()
+                return self.send(200, pes17_crests.report(CFG, True))""", 1),
+
+    ('server.py',
+     r"""                return self.send(200, pes17_assets.harvest(
+                    _src, _out, classes=(body.get('classes') or
+                                         list(pes17_assets.DEFAULT_EXTRACT)),
+                    limit=_lim))""",
+     r"""                _hr = pes17_assets.harvest(
+                    _src, _out, classes=(body.get('classes') or
+                                         list(pes17_assets.DEFAULT_EXTRACT)),
+                    limit=_lim)
+                try:
+                    import pes17_crests
+                    pes17_crests.clear()
+                except Exception:
+                    pass
+                return self.send(200, _hr)""", 1),
+
+    ('server.py',
+     r"""            if u.path == '/api/crest':
+                b = crest_img(parse_qs(u.query).get('club', [''])[0])
+                if b is None:
+                    return self.send(404, b'', 'image/png')
+                return self.send(200, b, 'image/png')""",
+     r"""            if u.path == '/api/crest':
+                b = crest_img(parse_qs(u.query).get('club', [''])[0])
+                if b is None:
+                    return self.send(404, b'', 'image/png')
+                _ct = ('image/jpeg' if b[:2] == b'\xff\xd8' else
+                       'image/webp' if b[:4] == b'RIFF' else
+                       'image/bmp' if b[:2] == b'BM' else 'image/png')
+                return self.send(200, b, _ct)""", 1),
+
+    ('server.py',
+     r"""    CFG = load_cfg()
+    if not a.dev_folder and not _single_instance(a.port or CFG['port'], show=not a.no_browser):""",
+     r"""    CFG = load_cfg()
+    if CFG.get('pes17_only', True) or pes17.looks_like_pes17_path(CFG.get('save_dir')):
+        _GAME['v'] = 'pes17'
+        try:
+            pes17.ensure_teamids(CFG, os.path.join(HERE, 'data', 'pes17'))
+        except Exception as _ex:
+            print('[pes17] startup teamids:', _ex)
+    if not a.dev_folder and not _single_instance(a.port or CFG['port'], show=not a.no_browser):""", 1),
 ]
 
 
