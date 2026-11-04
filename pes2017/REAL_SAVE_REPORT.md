@@ -124,6 +124,12 @@ To finish: supply one before/after `ML00000011` pair per in-game action (one
 change per pair), plus `EDIT00000000`, and (optionally) the game path/exe and
 patch version. `lib/pes17_layout.py diff before after` maps the tables.
 
+Upload folders are already prepared at `Needed files/pairs/<name>_before` and
+`<name>_after` (11 pairs: formation, xi, tactics, contract, budget, my_offer,
+forced_transfer, loan, youth, training, points). `pes2017/tools/prepare_pairs.bat`
+creates the same structure locally on Windows; it only makes folders/notes and
+never touches a save.
+
 ## 7. Sources
 
 * `the4chancup/pesXdecrypter` — `src/masterkey.c`, `src/crypt.c` (`struct FileHeader` = 176 B for PES 2016–2017).
