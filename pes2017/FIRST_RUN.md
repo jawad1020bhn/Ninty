@@ -1,8 +1,8 @@
 # First run on Windows — choose your PES 2017 save folder
 
 **Build `pc414-pes17-clean-r9`.** Unzip this program anywhere (not inside the
-zip), then run `The Gaffer.vbs`. Open `http://localhost:8766/` — the PES 2017
-dashboard is the landing page.
+zip), then run `The Gaffer.vbs`. Open `http://localhost:8766/` — the Classic UI
+(`index.html`) is the default landing page, and PES 2017 tools are at `/pes17.html`.
 
 ## The one thing you must do
 
@@ -15,16 +15,17 @@ The original pc414 program shipped a hard-coded save path for *Football Life
 
 If that folder is missing (it is, on a PES 2017 PC), older builds printed raw
 errors like `[Errno 2] No such file or directory` or
-`[WinError 3] Le chemin d'accès spécifié est introuvable` in the dashboard.
+`[WinError 3] Le chemin d'accès spécifié est introuvable`.
 **r9 removes that default.** On first run the app now:
 
 1. looks for a real `KONAMI\Pro Evolution Soccer 2017\save` folder under your
    profile, `Documents` and OneDrive (including localised names such as
    `Dokumenti`), and uses it automatically if it contains `ML*` saves;
-2. otherwise shows a **Save folder** card at the top of the dashboard instead
-   of raw Windows errors.
+2. otherwise shows a **Save folder** card at the top of the PES 2017 tools
+   page instead of raw Windows errors. Open it using the **PES 2017 tools**
+   button in the Classic sidebar, or visit `/pes17.html`.
 
-Paste the full path into that card and press **Save folder**. It is written to
+Paste the full path into that card and press **Use this folder**. It is written to
 `config.json` next to the program and takes effect immediately — no restart
 needed. Typical paths:
 
@@ -38,7 +39,7 @@ The folder must contain your Master League file (`ML00000011` or similar) and,
 for real player names, `EDIT00000000`. The app **reads** these files; it never
 changes the game or patch folder.
 
-You can also use the classic Setup (`Classic app ↗` → Setup → Save folder). Both
+You can also use the Classic sidebar's **Setup** → **Save folder**. Both
 write the same `config.json` key. `config_pes2017.example.json` shows every
 option; rename it to `config.json` only if you want to set things by hand.
 

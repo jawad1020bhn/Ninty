@@ -137,8 +137,8 @@ class WiringTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.patch = open(os.path.join(ROOT, 'pes2017', 'patch.py'), encoding='utf-8').read()
-        cls.dash = open(os.path.join(ROOT, 'pes2017', 'overlay', 'static',
-                                     'pes17-dashboard.html'), encoding='utf-8').read()
+        cls.tools = open(os.path.join(ROOT, 'pes2017', 'overlay', 'static',
+                                      'pes17.html'), encoding='utf-8').read()
         cls.build = open(os.path.join(ROOT, 'pes2017', 'build.py'), encoding='utf-8').read()
         cls.zp = os.path.join(ROOT, 'pes2017', 'dist', 'TheGaffer_pes2017_pc414.zip')
         if os.path.isfile(cls.zp):
@@ -157,16 +157,16 @@ class WiringTests(unittest.TestCase):
         self.assertIn("'/api/pes17/setup/savefolder'", self.patch)
         self.assertIn('pes17_setup.unavailable(', self.patch)
 
-    def test_dashboard_has_setup_card_and_no_raw_errors(self):
+    def test_tools_has_setup_card_and_no_raw_errors(self):
         for needle in ('id="setupCard"', 'id="saveDir"', 'id="saveDirBtn"',
                        'id="setupBtn"', 'id="buildVer"', 'function friendly(',
                        "'/api/pes17/setup'", "'/api/pes17/setup/savefolder'",
                        'Waiting for a save folder'):
-            self.assertIn(needle, self.dash)
-        self.assertNotIn('Build <b>r7</b>', self.dash)
-        self.assertIn('>r9<', self.dash)
-        self.assertNotIn('fonts.googleapis', self.dash)
-        self.assertNotIn('flagcdn', self.dash)
+            self.assertIn(needle, self.tools)
+        self.assertNotIn('Build <b>r7</b>', self.tools)
+        self.assertIn('>r9<', self.tools)
+        self.assertNotIn('fonts.googleapis', self.tools)
+        self.assertNotIn('flagcdn', self.tools)
 
     def test_build_accepts_an_external_original_zip(self):
         self.assertIn('GAFFER_ORIGINAL_ZIP', self.build)
@@ -177,8 +177,12 @@ class WiringTests(unittest.TestCase):
         if not self.names:
             self.skipTest('dist zip not built yet')
         for rel in ('TheGaffer/lib/pes17_setup.py', 'TheGaffer/FIRST_RUN.md',
-                    'TheGaffer/static/pes17-dashboard.html'):
+                    'TheGaffer/static/index.html', 'TheGaffer/static/pes17.html'):
             self.assertIn(rel, self.names)
+        for removed in ('TheGaffer/static/pes17-dashboard.html',
+                        'TheGaffer/static/game-skin.css',
+                        'TheGaffer/static/game-skin.js'):
+            self.assertNotIn(removed, self.names)
         self.assertEqual(self.version, 'pc414-pes17-clean-r9 (2026-11-04)')
         self.assertIn("'save_dir': '',   # r9:", self.server)
         self.assertNotIn("eFootball PES 2021 SEASON UPDATE\\\\2026\\\\save',", self.server)

@@ -70,15 +70,14 @@ with no game-version assumptions: **KEEP**, and r7 reuses them in the harvester.
   `GET /api/pes17/assets` (diagnostic), `POST /api/pes17/assets/extract`
   (owner-only, writes to `data/pes17/harvest/`), `source_for(cfg)` auto-detects
   `download/`, `Data/`, `patch/`, `content/`, `livecpk/` next to `pes_exe`.
-* `GET /api/pes17/mode` — reports PES 2017 / offline / dashboard mode.
-* Card **3d** on `/pes17.html` and the new **PES 2017 dashboard** show the
-  inventory and can trigger a harvest.
+* `GET /api/pes17/mode` — reports PES 2017 / offline mode.
+* Card **3d** on `/pes17.html` shows the inventory and can trigger a harvest.
 
 ## 4. PES 2017-only cleanup performed in r7
 
-| FL26/FL27 leftover | r7 action |
+| FL26/FL27 leftover | action |
 |---|---|
-| `/` served the 20,074-line FL26 `index.html` | `/` now serves `static/pes17-dashboard.html` (dedicated PES 2017 dashboard) when `pes17_only` is true; classic app still at `/index.html`, tools at `/pes17.html`. |
+| Landing page `/` | `/` serves the Classic UI (`static/index.html`) by default, with PES 2017 tools at `/pes17.html`. |
 | 7 Google Fonts `<link>` tags fetched on every load | removed at build time by asserted regex patches; system fonts used. |
 | `flagcdn.com` in `index.html` (4 sites) | removed at build time; flag `<img>` tags resolve locally and hide on error. |
 | `flag_img()` server-side `urllib` download from `flagcdn.com/w160/` | short-circuited to `None` when `pes17_only`; cached local flags still served. |

@@ -3,6 +3,10 @@
 Asked: *"no, clean things that can be removed safely"* — i.e. **not** the full
 FL26 UI rewrite, just delete the leftovers that are provably unused.
 
+The verification figures below record the r8 build at the time of cleanup.
+The current build opens the Classic application at `/`, retains the tools at
+`/pes17.html`, and no longer ships the old dashboard or `game-skin` overlay.
+
 `pes2017/prune.py` runs inside `build.py` after `patch.apply()`. It removes a
 **curated list of 111 files (10.01 MB uncompressed)** from the freshly
 extracted build tree only. It never touches the repository, the original zip,
@@ -40,10 +44,10 @@ file deletion.
 
 ## Kept on purpose (and why)
 
-* **Classic FL26 website**: `static/index.html`, `static/art/*`,
-  `static/leagues/*`, `game-skin.css/js`, `favicon.png`. It is still reachable
-  at `/index.html` when `pes17_only:false`, so deleting it would break a
-  supported path — that is the full rewrite the user declined.
+* **Classic application**: `static/index.html`, `static/art/*`,
+  `static/leagues/*`, `favicon.png` and the local `hud-*` presentation assets.
+  It is the default at `/` as well as `/index.html`; deleting it would break
+  the application.
 * **ID-independent art / text**: `data/art/*`, `data/myscenes/*`,
   `data/stadiums/*`, `data/i18n/*`, `fm_text.json`, `scenes.json`. The classic
   app serves these through `/api/art`, `/api/myscene`, `/api/scene`,
@@ -57,7 +61,7 @@ file deletion.
 * **All `lib/*.py`**: `server.py` imports most of them at startup. Total 0.98 MB.
   (`lib/realmoves.py` stays but its background fetch is now guarded offline.)
 * **Bundled `python/*`**: portable Windows Python, required to run the app.
-* **PES 2017 runtime**: dashboard, tools page, `pes17*`, `pescrypt`,
+* **PES 2017 runtime**: tools page, `pes17*`, `pescrypt`,
   `cpkread/dds/ftex/bc7`, launchers, docs, `tools/harvest_cpk.py`,
   `CPK_ASSET_INVENTORY.md`.
 
@@ -102,7 +106,7 @@ FL26 `DEFAULT_CFG['save_dir']`. A user's first run on Windows (no
 dashboard printed raw `[Errno 2]` / `[WinError 3]` errors. r9 fixes that: the
 default is empty, `lib/pes17_setup.py` auto-detects a real PES 2017 save
 folder, `GET /api/pes17/setup` + owner-only `POST
-/api/pes17/setup/savefolder` let the user set it from the dashboard, and
+/api/pes17/setup/savefolder` let the user set it from the tools page, and
 `/api/slots` / `/api/pes17/info` return friendly structured responses instead
 of 500s. `FIRST_RUN.md` documents the one-time step. The r8 keep/removal list
 is unchanged; `prune.KEEP` gained `lib/pes17_setup.py` and `FIRST_RUN.md`.

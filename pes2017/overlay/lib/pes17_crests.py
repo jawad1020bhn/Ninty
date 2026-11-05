@@ -683,14 +683,18 @@ def _to_png(raw, ext):
     if len(raw) >= 12 and raw[:4] == b'RIFF' and raw[8:12] == b'WEBP':
         return raw
     if raw[:4] == b'DDS ':
+        out = None
         try:
             import dds
-            return dds.dds_to_png(raw)
+            out = dds.dds_to_png(raw)
         except Exception:
-            try:
-                return _dds_extra_to_png(raw)
-            except Exception:
-                return None
+            out = None
+        if out:
+            return out
+        try:
+            return _dds_extra_to_png(raw)
+        except Exception:
+            return None
     if raw[:4] == b'FTEX' or ext == 'ftex':
         try:
             import ftex, dds

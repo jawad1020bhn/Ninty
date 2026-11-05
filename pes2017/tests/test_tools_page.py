@@ -13,8 +13,6 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OVERLAY = os.path.join(ROOT, 'pes2017', 'overlay')
 TOOLS = os.path.join(OVERLAY, 'static', 'pes17.html')
-JS = os.path.join(OVERLAY, 'static', 'game-skin.js')
-CSS = os.path.join(OVERLAY, 'static', 'game-skin.css')
 PATCH = os.path.join(ROOT, 'pes2017', 'patch.py')
 PAIRS = os.path.join(OVERLAY, 'lib', 'pes17_pairs.py')
 
@@ -27,12 +25,16 @@ def read(p):
 class ToolsPageR5Tests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.tools, cls.js, cls.css = read(TOOLS), read(JS), read(CSS)
+        cls.tools = read(TOOLS)
         cls.patch, cls.pairs = read(PATCH), read(PAIRS)
 
-    def test_skin_hooks_still_present(self):
-        self.assertIn('href="/game-skin.css"', self.tools)
-        self.assertIn('src="/game-skin.js"', self.tools)
+    def test_classic_ui_is_default_and_overlay_skin_removed(self):
+        for removed in ('pes17-dashboard.html', 'game-skin.css', 'game-skin.js'):
+            self.assertFalse(os.path.exists(os.path.join(OVERLAY, 'static', removed)), removed)
+            self.assertNotIn(removed, self.tools)
+            self.assertNotIn(removed, self.patch)
+        self.assertIn('id="pes17ToolsBtn"', self.patch)
+        self.assertIn("location.href='/pes17.html'", self.patch)
 
     def test_budget_is_labelled_raw_not_eur(self):
         self.assertIn('class="raw-badge"', self.tools)
@@ -43,10 +45,10 @@ class ToolsPageR5Tests(unittest.TestCase):
         self.assertIn("currency_verified=False", read(os.path.join(
             OVERLAY, 'lib', 'pes17_write.py')))
 
-    def test_banner_says_raw_and_mentions_layout_check(self):
-        self.assertIn('RAW save word', self.patch)
-        self.assertIn('checks the save layout before any write', self.patch)
-        self.assertIn('not confirmed EUR', self.patch)
+    def test_main_screen_suppresses_pes17_banner_and_f7_warning(self):
+        self.assertNotIn('<b>PES 2017 save.</b>', self.patch)
+        self.assertIn("if(S.layout&&S.layout.pes17){banner('',false);}", self.patch)
+        self.assertIn("if(S&&S.layout&&S.layout.pes17){const x=$('#f7Bar');if(x)x.remove();return;}", self.patch)
 
     def test_layout_guard_is_wired_into_the_page_and_server(self):
         self.assertIn('id="verifyLayout"', self.tools)
@@ -65,18 +67,9 @@ class ToolsPageR5Tests(unittest.TestCase):
         # labels keep their inputs: data-ar lives on the text span, not <label>
         self.assertNotIn('<label data-ar', self.tools)
 
-    def test_theme_picker_and_intro_default(self):
-        # r10 MATCHDAY UI: the r5 HUD was replaced by a console-style bar,
-        # but the localStorage theme key is kept for existing users.
-        self.assertIn("THEME_KEY = 'gaffer_game_theme'", self.js)
-        self.assertIn('giThemeBtn', self.js)
-        self.assertIn('cycleTheme', self.js)
-        self.assertIn('lsGet(INTRO_KEY)', self.js)
-        self.assertIn('giIntroBtn', self.js)
-        self.assertIn('SOUND_KEY', self.js)
-        self.assertIn('data-gi-theme="gold"', self.css)
-        self.assertIn('data-gi-theme="pitch"', self.css)
-        self.assertIn('.gi-hud-btn {', self.css)
+    def test_tools_back_link_points_to_classic_ui(self):
+        self.assertIn('<a href="/"', self.tools)
+        self.assertIn('Back to the Classic UI', self.tools)
 
     def test_tools_page_inline_javascript_is_syntactically_valid(self):
         if not shutil.which('node'):
@@ -157,21 +150,20 @@ class ToolsPageR7Tests(unittest.TestCase):
     def setUpClass(cls):
         cls.patch = read(PATCH)
         cls.tools = read(TOOLS)
-        cls.dash = read(os.path.join(OVERLAY, 'static', 'pes17-dashboard.html'))
         cls.module = read(os.path.join(OVERLAY, 'lib', 'pes17_assets.py'))
         cls.config = read(os.path.join(OVERLAY, 'config_pes2017.example.json'))
         cls.inv = read(os.path.join(OVERLAY, '..', 'CPK_ASSET_INVENTORY.md'))
 
-    def test_harvest_endpoints_and_dashboard_landing_are_wired(self):
+    def test_harvest_endpoints_and_classic_landing_are_wired(self):
         for needle in ("if u.path == '/api/pes17/assets':",
                        "if self.path == '/api/pes17/assets/extract':",
                        "if u.path == '/api/pes17/mode':",
-                       "name = 'pes17-dashboard.html'",
                        "'/api/pes17/assets/extract'",
-                       'lib/pes17_assets.py', 'static/pes17-dashboard.html',
+                       'lib/pes17_assets.py', 'static/pes17.html',
                        'tools/harvest_cpk.py', 'CPK_ASSET_INVENTORY.md',
                        'pc414-pes17-clean-r9'):
             self.assertIn(needle, self.patch)
+        self.assertNotIn('pes17-dashboard.html', self.patch)
 
     def test_offline_cleanup_is_asserted(self):
         self.assertIn('REGEX_PATCHES', self.patch)
@@ -188,15 +180,14 @@ class ToolsPageR7Tests(unittest.TestCase):
                        '/api/pes17/assets', '/api/pes17/assets/extract'):
             self.assertIn(needle, self.tools)
 
-    def test_dashboard_is_self_contained_and_honest(self):
-        self.assertIn('/api/pes17/info', self.dash)
-        self.assertIn('/api/crest?club=', self.dash)
-        self.assertIn('/api/pes17/crests', self.dash)
-        self.assertIn('/api/pes17/assets', self.dash)
-        for bad in ('fonts.googleapis', 'flagcdn', 'https://'):
-            self.assertNotIn(bad, self.dash)
-        self.assertIn('NOT confirmed EUR', self.dash)
-        self.assertIn('not yet loaded in PES 2017', self.dash)
+    def test_tools_page_is_self_contained_and_honest(self):
+        self.assertIn('/api/pes17/info', self.tools)
+        self.assertIn('/api/crest?club=', self.tools)
+        self.assertIn('/api/pes17/crests', self.tools)
+        self.assertIn('/api/pes17/assets', self.tools)
+        for bad in ('fonts.googleapis', 'flagcdn', 'https://', 'game-skin'):
+            self.assertNotIn(bad, self.tools)
+        self.assertIn('NOT CONFIRMED EUR', self.tools)
 
     def test_asset_reader_and_inventory_are_offline(self):
         for bad in ('urllib', 'requests', 'socket.', 'https://', 'http://'):

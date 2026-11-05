@@ -58,7 +58,9 @@ RE_CREST = re.compile(
     re.I)
 RE_EMBLEM = re.compile(r'/render/symbol/emblem[^/]*/emb_(\d+)_([^/]+?)\.(png|dds)$', re.I)
 RE_KIT = re.compile(r'/uniform/texture/.*?u(\d{3,4})p(\d+)\.ftex$', re.I)
-RE_FACE = re.compile(r'/render/symbol/player/(\d+)\.(dds|png)$', re.I)
+RE_FACE = re.compile(
+    r'(?:^|/)(?:render/symbol/player|minifaces?)/(?:player_|face_|miniface_)?0*(\d+)\.(dds|png|jpg|jpeg|webp)$',
+    re.I)
 RE_COACH = re.compile(r'/render/symbol/coach/coach_(\d+)\.(png|dds)$', re.I)
 RE_PESDB = re.compile(r'^common/etc/pesdb/[^/]+\.bin$', re.I)
 

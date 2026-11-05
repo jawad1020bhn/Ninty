@@ -1,5 +1,10 @@
 # Real PES 2017 save report — t99p17v20 (four measured save pairs)
 
+This report preserves measurements and historical build notes. In the current
+build the Classic application is the default at `/`, the tools remain at
+`/pes17.html`, and the earlier dashboard and `game-skin` overlay were removed.
+The current interface uses local matchday HUD assets instead.
+
 **Input (supplied by the user on `main`)**
 
 | file | bytes | SHA-256 (first 16) |
