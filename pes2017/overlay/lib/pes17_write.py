@@ -107,15 +107,19 @@ def info(container, edit_container=None, date_order=None):
     folder = _decrypted_folder(container)
     try:
         edit_data = edit_container.data if edit_container else None
-        names = {}
+        names, pos_by_id = {}, {}
         if edit_data:
-            names = {p['id']: p['name'] for p in pes17.parse_edit(edit_data)}
+            for p in pes17.parse_edit(edit_data):
+                names[p['id']] = p['name']
+                pos_by_id[p['id']] = (pes17.POS_NAMES[p['pos']]
+                                      if 0 <= p['pos'] < len(pes17.POS_NAMES) else '')
         r = pes17.read_save(folder, names, date_order or pes17.configured_date_order(),
                             edit_data)
         data = container.data
         teams = pes17.team_records(data)
         mine = pes17.find_club(teams, r['info']['club'])
         sq = r.get('squad', [])
+        shirts = pes17.shirt_numbers(data, mine) if mine else [0] * pes17.SHIRT_SLOTS
         out = dict(
             ok=True, pes17=True,
             container=dict(file_header=len(container.parts['header.dat']),
@@ -124,11 +128,13 @@ def info(container, edit_container=None, date_order=None):
                            version=container.parts['version.txt'].decode('utf-16-le', 'replace').strip('\0')),
             info=r['info'], clubs=r['clubs'],
             squad=[dict(slot=x['slot'], id=x['id'], name=x['name'],
-                        shirt=(pes17.shirt_numbers(data, mine)[x['slot']] if mine else 0))
+                        pos=pos_by_id.get(x['id'], ''),
+                        shirt=(shirts[x['slot']] if x['slot'] < len(shirts) else 0))
                    for x in sq],
             league_table=r.get('league_table', []),
             league_name=r.get('league_name', ''),
-            offers=pes17.read_offers(data, teams),
+            offers=[dict(o, name=names.get(o['pid'], ''))
+                    for o in pes17.read_offers(data, teams)],
             teams=[dict(tid=t['tid'], name=t['name']) for t in teams],
             budget=dict(
                 transfer_raw=_read_u32(data, pes17_pairs.BUDGET_MAIN),

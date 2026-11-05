@@ -31,19 +31,22 @@ tables. Full measurements and honest validation status:
 Real result: Birmingham City FC, `10/1/2029`, 26-player squad with real names,
 Sky Bet Championship table (20 rows), 0 active negotiations.
 
-## MATCHDAY UI refresh (r10 overlay)
+## Classic UI by default
 
-The shipped `VERSION.txt` is still `pc414-pes17-clean-r9 (2026-11-04)` — this
-is a **visual/navigation revision of the static files only**, not a new save
-format or endpoint change. `game-skin.js` / `game-skin.css` now provide 108
-dedicated SVG icons (no emoji, no generic Badge fallback), a Stadium Dark
-palette with the club colour as the only accent, console-style top navigation
-with a Quick Switcher, and mobile bottom nav. `pes17-dashboard.html` is a
-MATCHDAY home screen (hero, standings rail, player cards, manager decisions).
-Full change list and honest limitations: [`UI_REPORT.md`](UI_REPORT.md).
+The shipped `VERSION.txt` is `pc414-pes17-clean-r9 (2026-11-04)`. Opening `/`
+loads the original **Classic UI** (`static/index.html`) directly, with the
+dedicated PES 2017 read/write & asset tools reachable at `/pes17.html` via the
+sidebar **PES 2017 tools** button. The separate dashboard and the previous
+`game-skin` overlay have been removed; the PES 2017 banner and F7 connection
+message are suppressed on the main screen.
 
+The classic interface now has a matchday command-deck presentation shared
+with the tools page. Its locally bundled, layered SVG emblems replace the
+original emoji, including directional morale indicators. The icon renderer
+also handles older saved messages and preserves translation lookups, text-only
+controls and existing navigation. No online icon library or font is required.
 The r9 first-run save-folder flow, measured-only writes, dry-run/backups,
-layout guard and offline defaults are unchanged.
+layout guard, offline defaults, club crests and player mini-faces remain active.
 
 ## Files
 
@@ -54,13 +57,10 @@ pes2017/
   overlay/lib/pes17_write.py         real-save container I/O + whitelisted, round-trip-verified writes
   overlay/lib/pes17_pairs.py         four tables measured from real before/after save pairs
   overlay/lib/pes17_crests.py       offline club-crest reader for the local patch folder
+  overlay/lib/pes17_faces.py        offline player mini-face scanner & decoder for CPK / loose files
   overlay/lib/pes17_assets.py       offline CPK asset inventory + harvester
   overlay/lib/pes17_setup.py        r9 first-run save-folder detection + friendly status
   FIRST_RUN.md                      Windows first-run guide (shipped in the build)
-  overlay/static/pes17-dashboard.html  r10 MATCHDAY home screen (also the landing page)
-  overlay/static/game-skin.js        r10 icon sprite + console navigation + game feel
-  overlay/static/game-skin.css       r10 Stadium Dark identity, scoped/toggleable
-  UI_REPORT.md                       r10 UI change list + honest limitations
   prune.py                          curated r8 cleanup of FL26/FL27/Sider leftovers
   CLEANUP_REPORT.md                 what r8 removed, what it kept and why
   tools/harvest_cpk.py              standalone offline CLI for the harvester
@@ -72,9 +72,13 @@ pes2017/
   tools/ct_player_table.py           cross-check the Cheat Engine table against the ML player records
   tools/prepare_pairs.bat            Windows CMD script that prepares pair folders
   overlay/static/pes17.html          PES 2017 tools page (read + write UI)
+  overlay/static/hud-icons.svg       local layered matchday icon sprite
+  overlay/static/hud-icons.js        safe DOM renderer for icon tokens
+  overlay/static/hud-ui.css          classic and tools matchday presentation
+  pro_ui.py                          asserted build-time icon/i18n transformation
   overlay/README_PES2017.txt         user docs, shipped in the zip
   overlay/config_pes2017.example.json
-  patch.py                           52 asserted text patches + 2 asserted regexes
+  patch.py                           asserted compatibility and offline patches
   build.py                           extract original zip -> patch -> prune -> dist/TheGaffer_pes2017_pc414.zip
                                       (GAFFER_ORIGINAL_ZIP=... since the original zip
                                        was removed from the repo by the r8 cleanup)
@@ -84,14 +88,15 @@ pes2017/
   tests/test_pes17.py                15 unit tests (crypto, detection, parsing, EDIT DB, write guard)
   tests/test_pes17_write.py          10 tests: 176 B header, container round-trip, real-file reads/writes
   tests/test_pes17_pairs.py          15 tests: measured pairs, custom ops, engine integration, real after files
+  tests/test_pro_ui.py               icon, translation and shipped-HUD regressions
   REAL_SAVE_REPORT.md                measurements + validation status
-  dist/TheGaffer_pes2017_pc414.zip   the ready-to-unzip Windows build (28,097,505 B, SHA cbea780e...)
+  dist/TheGaffer_pes2017_pc414.zip   the ready-to-unzip Windows build
 ```
 
 Rebuild / test:
 
 ```bash
-python3 pes2017/build.py
+python3 pes2017/build.py --source /path/to/TheGaffer_pc414_20261103.zip
 python3 -m unittest discover -s pes2017/tests -p 'test_*.py' -v
 ```
 
@@ -121,7 +126,8 @@ in memory and contains no `__pycache__` / `.pyc`.
   New ops: `pair`, `formation`, `tactics`, `xi`, `budget`.
 * `lib/pes17_pairs.py` — the 17/13/30/21 bytes PES 2017 changed in the four
   real pairs, plus validated builders for custom values.
-* `static/index.html` — PES 2017 banner links to the tools page.
+* `static/index.html` — Classic remains the default; a sidebar button opens the
+  PES 2017 tools, and the obsolete PES 2017/F7 banners are suppressed.
 * `static/pes17.html` — tools UI: slot picker, real-save info, squad/table/
   offers, queued ops, dry-run, backups, RAW budget badge + display-only
   scale, layout verification checkbox, Arabic toggle.
@@ -142,12 +148,12 @@ in memory and contains no `__pycache__` / `.pyc`.
 
 ## Verified
 
-* **142 unit tests pass**, including tests that decrypt, read, modify and
+* The automated suite includes tests that decrypt, read, modify and
   re-encrypt the user's real `ML00000011` / `EDIT00000000` (on copies only),
   tests proving all four measured pair patches against the game-generated
   after files, r2 regression tests for the budget read side
-  (`Pes17Save.budget()` / `/api/pes17/info`), r3/r4 static checks for the
-  game-HUD skin and its SVG icon pack (including 100% glyph coverage), r5
+  (`Pes17Save.budget()` / `/api/pes17/info`), matchday HUD/icon and i18n
+  regressions, r5
   tests for the layout guard, real shirt numbers / XI and RAW budget labels,
   r6 tests for offline patch-folder crests (loose files, CPK/WESYS, DDS
   decoding, stable-id mapping, read-only behaviour), and r7 tests for the CPK
@@ -156,20 +162,13 @@ in memory and contains no `__pycache__` / `.pyc`.
   tests for the curated cleanup rules, the shipped zip contents/manifest and
   the offline guard that replaces the removed FL26 transfer cache, and r9
   tests for PES 2017 save-folder detection, friendly first-run status, the
-  `/api/pes17/setup` endpoints and the dashboard setup card.
-* **r3: GAME UI.** `static/game-skin.css` + `static/game-skin.js` turn the
-  website look into a console-style HUD (dark grid backdrop, angled mission
-  panels, glowing stats, HUD strip) on both `index.html` and `/pes17.html`.
-  The bottom-right **GAME UI / CLASSIC UI** chip reverts to the original look.
-  Pure CSS/JS/DOM: no external assets added. r5 adds a HUD accent picker and
-  makes the boot intro OFF by default.
-* **r4: exhaustive icons.** All **926 symbolic glyph occurrences / 170
-  distinct characters** in pc414 (`U+1F000–1FAFF`, `U+2600–27BF`,
-  `U+2B00–2BFF`, `U+2190–21FF`) are explicitly mapped to one of 69 SVG
-  symbols — including the `✕`/`✗` close buttons, plain `→`/`←`/`↑`/`↓`
-  arrows, `🅰`/`🆕`/`🃏` squared badges and ZWJ family sequences. A
-  Unicode `u`-flag catch-all converts any unknown or future emoji to a
-  neutral vector badge, so no color glyph can reappear in app content.
+  `/api/pes17/setup` endpoints and the tools-page setup card.
+* **Matchday presentation.** The Classic application and tools page use one
+  local HUD and a layered football icon sprite. Build-time tokenization keeps
+  emoji-bearing comparison strings and translation keys intact; the DOM
+  renderer displays SVGs instead of emoji and handles legacy saved messages.
+  Unsupported incoming emoji fall back to a neutral information emblem. Normal
+  text arrows remain text, and implicit option values are preserved.
 * **r7: harvest before cleanup + PES 2017-only mode.** There is no real
   `.cpk` archive in this workspace, so `pes17/CPK_ASSET_INVENTORY.md` lists
   everything the shipped `cpkread`/`dds`/`ftex`/`bc7` readers can pull from a
@@ -179,12 +178,10 @@ in memory and contains no `__pycache__` / `.pyc`.
   `tools/harvest_cpk.py` produce a read-only manifest and can copy selected
   assets into the app folder, converting DDS/FTEX/WESYS to PNG; the app also
   exposes `GET /api/pes17/assets` and owner-only
-  `POST /api/pes17/assets/extract`. Cleanup: `/` now serves a dedicated
-  `pes17-dashboard.html`, the 7 Google Fonts links and 4 flagcdn references
-  are stripped at build time, `flag_img()` no longer downloads, and
-  `_wiki_web()` defaults to false. `pes17_only:false` restores the FL26
-  landing page; `/index.html` always remains reachable. **Not a full
-  rewrite** — the 20,074-line FL26 UI and its endpoints still exist.
+  `POST /api/pes17/assets/extract`. Cleanup strips the 7 Google Fonts links
+  and 4 flagcdn references at build time, `flag_img()` no longer downloads,
+  and `_wiki_web()` defaults to false. `/` serves the Classic application.
+  **Not a full rewrite** — the FL26 UI and its endpoints still exist.
   42/42 HTTP checks with the real save + synthetic patch folder.
 * **r9: first run actually works.** pc414 shipped a hard-coded FL26 save path
   (`%USERPROFILE%\OneDrive\Dokumenti\KONAMI\eFootball PES 2021 SEASON
@@ -194,7 +191,7 @@ in memory and contains no `__pycache__` / `.pyc`.
   `KONAMI\Pro Evolution Soccer 2017\save` folder (profile, Documents,
   OneDrive, localised names like `Dokumenti`), and adds `GET
   /api/pes17/setup` plus owner-only `POST /api/pes17/setup/savefolder`. The
-  dashboard now shows a **Save folder** card with clickable detected paths,
+  tools page shows a **Save folder** card with clickable detected paths,
   friendly messages instead of OS errors, a dynamic build label, and clearer
   "optional" wording for the crest/CPK cards. `list_slots()` and
   `/api/pes17/info` no longer raise on a missing folder. Shipped
@@ -207,7 +204,7 @@ in memory and contains no `__pycache__` / `.pyc`.
   `addons/regenfix/`, `addons/michele/`, `lua/`, `FL_key.bin`,
   `FL_key_README.txt`, and the five FL26 databases that PES 2017 regenerates
   into `data/pes17/` from the real `EDIT00000000`. Every deletion is listed in
-  `CLEANUP_MANIFEST.txt`; `prune.apply()` asserts that all 45 required paths
+  `CLEANUP_MANIFEST.txt`; `prune.apply()` asserts that all required paths
   survive. Kept on purpose: the classic FL26 UI at `/index.html` and the
   art/scenes/stadiums/i18n/small metadata it serves, all `lib/*.py` and the
   portable `python/*`. Because the FL26 `data/realmoves.json` cache is gone,

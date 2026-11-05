@@ -20,16 +20,13 @@ BUILD HISTORY
    had a hardcoded 0 stub.  The two measured budget u32 words are now read
    from your save and shown in the app and on the tools page.  The wage word
    in the docs was also corrected to the exact measured value.
-5. r3: GAME UI.  A dark "game HUD" skin replaces the website look on both
-   the main app and /pes17.html, and colorful emoji are swapped at runtime
-   for a hand-drawn SVG vector pack.  A short boot intro, a HUD strip and a
-   GAME UI / CLASSIC UI toggle were added.
-6. r4: EXHAUSTIVE ICONS.  All 926 symbolic glyph occurrences
-   (170 distinct characters) in pc414 are now explicitly mapped to SVG
-   icons: the X close buttons, plain arrows, squared A / NEW / joker badges
-   and ZWJ family sequences were the last gaps.  A Unicode catch-all with
-   the 'u' flag also converts any unknown / future emoji to a neutral
-   vector badge.  NO app logic, save code or endpoint was changed.
+5. MATCHDAY PRESENTATION.  The Classic app remains the default at / and
+   uses an integrated football-management presentation shared with the
+   PES 2017 tools page.  The former separate dashboard and game-skin toggle
+   have been removed.
+6. LOCAL ICONS.  Original emoji are replaced with layered SVG game emblems.
+   The renderer also handles older saved messages, with a neutral fallback
+   for unknown pictographs.  Regular text arrows remain text.
 7. r6: PATCH-FOLDER CLUB CRESTS.  The app can now read club logos straight
    from the local PES 2017 patch folder, offline, instead of downloading
    crests from Wikipedia.  Loose PNG/JPG/DDS/FTEX logos and
@@ -39,8 +36,8 @@ BUILD HISTORY
 8. r7: CPK HARVEST + PES 2017-ONLY MODE.  An offline inventory of everything
    the shipped CPK readers can reach (competition emblems, kit textures,
    player/coach portraits, pesdb tables, generic art), a harvester that can
-   copy them before you delete the PES 2021 files, a dedicated PES 2017
-   dashboard at /, and no external CDNs by default.  See the CPK ASSET
+   copy them before you delete the PES 2021 files, and no external CDNs by
+   default.  The Classic application remains at /.  See the CPK ASSET
    INVENTORY / HARVEST and PES 2017-ONLY MODE sections below and the shipped
    CPK_ASSET_INVENTORY.md.
 9. r8: SAFE CLEANUP (not a rewrite).  111 FL26/FL27/Sider-only files
@@ -58,7 +55,7 @@ BUILD HISTORY
    ([Errno 2] / [WinError 3]) instead of your save.  r9 removes that default,
    auto-detects KONAMI\Pro Evolution Soccer 2017\save under your profile,
    Documents and OneDrive (including Dokumenti), and adds a "Save folder"
-   card at the top of the dashboard plus GET /api/pes17/setup and
+   card on the PES 2017 tools page plus GET /api/pes17/setup and
    POST /api/pes17/setup/savefolder.  Paste the path once; it is written to
    config.json and works immediately.  See FIRST_RUN.md.
 
@@ -104,10 +101,9 @@ The tools page now shows a RAW / NOT CONFIRMED EUR badge instead of a bare
 currency amount, and /api/pes17/info reports currency_verified=false plus
 unit="raw u32 save units".  A "Display scale (view only)" selector (x1, x10,
 x100, x1000) lets you compare the raw word with the number PES 2017 shows on
-screen; it is display-only and NEVER writes to the save.  The blue banner in
-the main app says the same.  Report the in-game figure and the correct scale
-can be applied -- until then the EUR sign in the original FL26 UI is only
-presentation.
+screen; it is display-only and NEVER writes to the save.  Report the in-game
+figure and the correct scale can be applied -- until then the EUR sign in
+the Classic UI is only presentation.
 
 LAYOUT GUARD (r5)
 -----------------
@@ -130,43 +126,28 @@ without refusing.  Synthetic test buffers (<10 MB) are reported, never
 written to a user's save.  This is a save-file comparison, NOT in-game
 validation.
 
-GAME UI (r3)
-------------
-The app now opens with a console-style HUD instead of a plain website:
+MATCHDAY PRESENTATION
+---------------------
+The Classic application opens directly at /.  Its sidebar and navigation,
+matchday controls, panels and the PES 2017 tools page use the same dark,
+football-management presentation.  There is no separate dashboard or skin
+switch.  The PES 2017 tools remain at /pes17.html, also reachable from the
+sidebar.
 
-  * dark navy grid backdrop, angled "mission panel" cards with corner
-    ticks and a thin cyan accent edge, uppercase condensed headings,
-    glowing numeric stats, beveled buttons and HUD-style tables;
-  * a top status strip: THE GAFFER // PES 2017 - MASTER LEAGUE, with a
-    green "SAVE LINK LOCAL" LED;
-  * r5: a HUD accent picker (ICE / AMBER / PITCH, remembered locally)
-    and an INTRO: ON/OFF chip.  The boot intro is now OFF by default;
-    turning it on plays it once per tab, and "SKIP & DON'T SHOW AGAIN"
-    disables it again;
-  * a 69-icon vector pack (static/game-skin.js) replaces EVERY one of the
-    926 symbolic glyph occurrences (170 distinct characters) in pc414 with
-    crisp SVG icons: colorful emoji, dingbats, stars, arrows, X close
-    buttons, squared A/NEW badges and ZWJ family sequences.  A Unicode
-    catch-all also converts any unknown / future emoji to a neutral badge.
-    Icons apply to content the app renders later (MutationObserver).
-    Arrows and X's are drawn in a muted colour so they read as typography.
+  * Layered local SVG emblems replace emoji in the shipped UI and in older
+    saved messages.  Morale has directional indicators; unknown pictographs
+    use a neutral emblem.  Normal text arrows remain text.
+  * The icon renderer preserves text-only controls and translations.  No
+    external icon library, font or network connection is required.
+  * Files: static/hud-icons.svg, static/hud-icons.js, static/hud-ui.css.
 
-  Files:  static/game-skin.css   (theme, scoped to body.game-skin)
-          static/game-skin.js    (SVG sprite, emoji swap, HUD, toggle)
-
-  TOGGLE: the "GAME UI" chip at the bottom-right switches to the original
-  "CLASSIC UI" look and restores the original emoji.  The choice is saved
-  in the browser.  Nothing in the skin touches the save file, the API or
-  any app logic.  It is fully offline: no external fonts, images or CDNs
-  were added (the original Google Fonts links are unchanged).
-
-  If the skin ever looks wrong on your display, click the chip once; the
-  classic layout is byte-for-byte the original pc414 UI.
+This is a presentation update.  Save-writing restrictions, layout checks,
+dry runs, backups and API behaviour remain in force.
 
 WHAT CAN BE WRITTEN (MEASURED, ROUND-TRIP VERIFIED)
 ---------------------------------------------------
-Open  http://localhost:8766/pes17.html  (or the "PES 2017 tools" link in the
-main app banner).  The page reads your real save and lets you queue ops:
+Open  http://localhost:8766/pes17.html  (or the "PES 2017 tools" button in
+the Classic sidebar).  The page reads your real save and lets you queue ops:
 
   offer_add     inject an active transfer negotiation into a club's block
   offer_clear   restore an empty negotiation slot
@@ -297,7 +278,7 @@ contents only, never modifies the source, and has no network access.
       --classes crest,emblem,art
 
 Or use /pes17.html card "3d. CPK assets in the patch folder" (Scan assets /
-Harvest crests / logos / art), or the dashboard card.  Manifest fields:
+Harvest crests / logos / art).  Manifest fields:
 CLASS, id, size, PES 2017 usability (YES / MAP / NO) and the reason.
 
   crest   common/render/symbol/flag/e_<id>_r.png|dds        MAP (team ids)
@@ -315,22 +296,21 @@ CPK_ASSET_INVENTORY.md.
 
 GET  /api/pes17/assets             diagnostic inventory
 POST /api/pes17/assets/extract     harvest selected classes (PC only)
-GET  /api/pes17/mode               reports PES 2017 / offline / dashboard mode
+GET  /api/pes17/mode               reports PES 2017 and offline mode
 
-PES 2017-ONLY MODE (r7)
------------------------
-"pes17_only": true in config.json (default) makes / serve the dedicated PES
-2017 dashboard instead of the 20,074-line FL26 website.  The classic app is
-still at /index.html and the write tools at /pes17.html; set pes17_only to
-false to restore the old landing page.  Build-time cleanup removes the 7
-Google Fonts links and 4 flagcdn references from index.html, flag_img() no
-longer downloads flags, and wiki_web defaults to false -- so club crests and
-all other assets come from YOUR local patch folder with no CDN, font or
-Wikipedia request.  Set "wiki_web": true only if you want those lookups back.
+PES 2017-ONLY MODE
+------------------
+The Classic application is served at / (and /index.html) regardless of the
+PES 2017-only setting.  The PES 2017 read/write tools are at /pes17.html.
+"pes17_only": true in config.json keeps PES 2017 defaults active.  Build-time
+cleanup removes the Google Fonts links and flag CDN references from the
+Classic app, flag_img() no longer downloads flags, and wiki_web defaults to
+false.  Local patch assets can be used without a CDN or Wikipedia request.
+Set "wiki_web": true only if you want those lookups back.
 
-LIMIT: the FL26 UI and its app-side endpoints still exist; this build makes
-them opt-in, it does NOT delete them.  A true 100% PES 2017 rewrite, and a
-real PES 2021 -> t99p17v20 team/player/competition ID map, are still needed.
+LIMIT: the FL26 UI and its app-side endpoints still exist; the PES 2017
+edition is not a complete rewrite.  A real PES 2021 -> t99p17v20
+team/player/competition ID map is still needed.
 
 SAFE CLEANUP (r8)
 -----------------
@@ -350,14 +330,14 @@ zero new errors.
 FIRST RUN - SAVE FOLDER (r9)
 ----------------------------
 A fresh install has NO config.json and NO hard-coded FL26 save path any more.
-The dashboard looks for ...\KONAMI\Pro Evolution Soccer 2017\save in your
+The app looks for ...\KONAMI\Pro Evolution Soccer 2017\save in your
 profile, Documents and OneDrive (including localised names like Dokumenti).
-If it cannot find one, a "Save folder" card appears at the top instead of
-raw Windows errors.  Paste the full path that holds ML00000011 and
+If it cannot find one, open PES 2017 tools from the Classic sidebar; the
+"Save folder" card appears at the top instead of raw Windows errors.  Paste the full path that holds ML00000011 and
 EDIT00000000, e.g.
     C:\Users\<you>\Documents\KONAMI\Pro Evolution Soccer 2017\save
     C:\Users\<you>\OneDrive\Dokumenti\KONAMI\Pro Evolution Soccer 2017\save
-and press "Save folder".  It is saved to config.json and takes effect at
+and press "Use this folder".  It is saved to config.json and takes effect at
 once.  See the shipped FIRST_RUN.md for details.  Crests and CPK cards show
 0 on a fresh install - both are OPTIONAL and the save reads work without
 them.
@@ -376,7 +356,7 @@ HOW TO USE ON WINDOWS
       ...\Documents\KONAMI\Pro Evolution Soccer 2017\save
    (or wherever your ML00000011 / EDIT00000000 live), then Save paths.
    Keep EDIT00000000 in that folder (or set "edit_dat" in config.json).
-   A blue banner confirms PES 2017 mode; it links to /pes17.html.
+   The Classic sidebar's "PES 2017 tools" button opens /pes17.html.
 4. Back up your save folder anyway.  Close PES 2017 before writing.
 5. TEST IN GAME: apply a "pair" op (e.g. formation), load the written save in
    PES 2017 and confirm the change appears.  That is the only remaining
@@ -422,12 +402,10 @@ DIFF TOOLS (on the development machine)
 TESTS
 -----
     python3 -m unittest discover -s pes2017/tests -p 'test_*.py' -v
-142 tests pass, including tests that decrypt, read, modify and re-encrypt
-YOUR real ML00000011 / EDIT00000000 files (on copies only), tests that
-prove all four measured pair patches against the game-generated after files,
-r2 regression tests for the budget read side, r3/r4 checks for the game
-skin / SVG icon pack (100% symbolic-glyph coverage, ZWJ sequences,
-catch-all, offline, JS syntax), and r5 tests for the layout guard
+The suite includes tests that decrypt, read, modify and re-encrypt real
+ML00000011 / EDIT00000000 files (on copies only), tests that prove the four
+measured pair patches against game-generated after files, budget read-side
+regressions, matchday icon / translation checks, and layout guard tests
 (refusal on a different-size or broken-table save, all four custom ops,
 report/opt-out modes, real shirt numbers / XI, RAW budget labels), and r6
 tests for the offline crest reader (loose files, CPK/WESYS, DDS -> PNG,
@@ -435,7 +413,7 @@ stable-id mapping, auto-detection, read-only, no network API).  A live HTTP
 smoke on the real save with a synthetic patch folder passed 32/32 checks
 (r6), plus r7 tests for the CPK asset inventory / harvester (8 classes,
 DDS/WESYS -> PNG, source read-only, CLI, no network) and the offline /
-dashboard wiring.  A live r7 HTTP smoke passed 42/42 checks.  r8 adds 13
+PES 2017 tools wiring.  A live r7 HTTP smoke passed 42/42 checks.  r8 adds 13
 cleanup / shipped-zip / offline-guard tests; a live HTTP smoke of the PRUNED
 build passed 76/76 checks, including all 132 GET endpoints returning exactly
 the same status as the unpruned r7 build (zero new 5xx, no timeouts).  r9

@@ -735,11 +735,14 @@ def players_data(slot):
      """    return bool(CFG.get('wiki_web', False))  # r7: offline by default in the PES 2017 edition; set wiki_web:true to allow Wikipedia lookups""", 1),
 
     ('server.py',
-     """            name = 'index.html' if u.path in ('/', '') else u.path.lstrip('/').replace('\\\\', '/')""",
-     """            name = 'index.html' if u.path in ('/', '') else u.path.lstrip('/').replace('\\\\', '/')
-            if u.path in ('/', '') and CFG.get('pes17_only', True) and os.path.isfile(
-                    os.path.join(HERE, 'static', 'pes17-dashboard.html')):
-                name = 'pes17-dashboard.html'   # r7: PES 2017 dashboard is the landing page""", 1),
+     """def crest_prefetch(names, prio=False):
+    if _game_crests_on():
+        return dict(queued=0, left=0, game=True)""",
+     """def crest_prefetch(names, prio=False):
+    if _game_crests_on():
+        return dict(queued=0, left=0, game=True)
+    if not _wiki_web():
+        return dict(queued=0, left=0, offline=True)""", 1),
 
     ('server.py',
      """            if u.path == '/api/pes17/crests':
@@ -772,23 +775,22 @@ def players_data(slot):
                     limit=_lim))
             if self.path == '/api/pes17/crests/dir':""", 1),
 
-    # ------------------------------------------------------------------- UI
+    # ------------------------------------------------------------------- Classic UI (default at /)
     ('static/index.html',
      """if(S.layout&&S.layout.game27){let seen=false;""",
-     """if(S.layout&&S.layout.pes17){banner('<b>PES 2017 save.</b> The app reads your club, squad, players, shirt numbers, league table and negotiations from your real Master League + EDIT files. FL26-style writes stay blocked; measured formation, tactics, XI and budget write tools are here: <a href="/pes17.html" style="color:#fff;text-decoration:underline">PES 2017 tools</a>. The &euro; figure in the app is a RAW save word, not confirmed EUR (PES 2017 currency scale is not verified in game). The tools page labels it as raw and checks the save layout before any write. Always keep a backup.',false);}else if(S.layout&&S.layout.game27){let seen=false;""", 1),
-
-    # ------------------------------------------------------------- GAME UI
-    # Loaded LAST in <head> / at the very end of <body> so the skin wins over
-    # the app's inline styles and sees the DOM after the app's own scripts.
-    ('static/index.html',
-     """</head>""",
-     """<link rel="stylesheet" href="/game-skin.css">
-</head>""", 1),
+     """if(S.layout&&S.layout.pes17){banner('',false);}else if(S.layout&&S.layout.game27){let seen=false;""", 1),
 
     ('static/index.html',
-     """</body>""",
-     """<script src="/game-skin.js"></script>
-</body>""", 1),
+     """async function f7Bar(){
+  const home=$('#p-home');if(!home||!home.classList.contains('on'))return;""",
+     """async function f7Bar(){
+  if(S&&S.layout&&S.layout.pes17){const x=$('#f7Bar');if(x)x.remove();return;}
+  const home=$('#p-home');if(!home||!home.classList.contains('on'))return;""", 1),
+
+    ('static/index.html',
+     """<button class="sf-l" id="stpBtn" type="button"><span class="sf-ic">⚙</span><span data-hr="Postavljanje" data-en="Setup">Setup</span></button>""",
+     """<button class="sf-l" id="stpBtn" type="button"><span class="sf-ic">⚙</span><span data-hr="Postavljanje" data-en="Setup">Setup</span></button>
+        <button class="sf-l" id="pes17ToolsBtn" type="button" onclick="location.href='/pes17.html'"><span class="sf-ic">🛠</span><span data-hr="PES 2017 alati" data-en="PES 2017 tools">PES 2017 tools</span></button>""", 1),
 
     # ------------------------------------------- r8: offline guard after cleaning realmoves.json
     # The shipped FL26 Wikipedia transfer cache is removed by prune.py.  Without
@@ -984,6 +986,167 @@ def players_data(slot):
         except Exception as _ex:
             print('[pes17] startup teamids:', _ex)
     if not a.dev_folder and not _single_instance(a.port or CFG['port'], show=not a.no_browser):""", 1),
+
+    # ------------------------------------------- r12: PES 2017 player mini-faces
+    # Hook `pes17_faces` into `game_face()` and `/api/wiki/img` so PES 2017
+    # CPK (`DpFileList.bin` order), loose `livecpk`/`minifaces`, WESYS-wrapped
+    # textures, and harvested face assets render across `/`, `/pes17.html`,
+    # and `/index.html`.
+    ('server.py',
+     """def game_face(pid):
+    \"\"\"Lice iz igre (livecpk/*/common/render/symbol/player/<pid>.dds, npr. UML_Minifaces) kao PNG; kesira se u data/gface. Regeni se preskacu (datoteka je lice starog igraca).\"\"\"
+    if 'dirs' not in _GF:""",
+     """def _img_mime(b):
+    if not b:
+        return 'image/png'
+    if b[:2] == b'\\xff\\xd8':
+        return 'image/jpeg'
+    if len(b) >= 12 and b[:4] == b'RIFF' and b[8:12] == b'WEBP':
+        return 'image/webp'
+    if b[:2] == b'BM':
+        return 'image/bmp'
+    return 'image/png'
+
+
+def _clear_face_caches():
+    try:
+        import pes17_faces
+        pes17_faces.clear()
+    except Exception:
+        pass
+    _GF.clear()
+    _GL.pop('kitidx', None)
+    _GL.pop('roots', None)
+
+
+def game_face(pid):
+    \"\"\"Lice iz igre (livecpk/*/common/render/symbol/player/<pid>.dds, npr. UML_Minifaces) kao PNG; kesira se u data/gface. Regeni se preskacu (datoteka je lice starog igraca).\"\"\"
+    if CFG.get('pes17_only', True) and _GAME['v'] != 'pes17':
+        _GAME['v'] = 'pes17'
+    if (_GAME['v'] == 'pes17' or CFG.get('pes17_patch_dir')) and pid and pid not in _REGEN:
+        try:
+            import pes17_faces
+            _f17 = pes17_faces.face_img(pid, CFG)
+            if _f17:
+                return _f17
+        except Exception as _ex:
+            print('[pes17 faces]', _ex)
+    if 'dirs' not in _GF:""", 1),
+
+    ('server.py',
+     r"""                if _fb:
+                    return self.send(200, _fb, 'image/png')""",
+     r"""                if _fb:
+                    return self.send(200, _fb, _img_mime(_fb))""", 1),
+
+    ('server.py',
+     r"""            if u.path == '/api/wiki/photo':
+                b = wiki_photo(int(parse_qs(u.query).get('pid', ['0'])[0]))
+                if b is None:
+                    return self.send(404, b'', 'image/jpeg')
+                return self.send(200, b, 'image/jpeg')""",
+     r"""            if u.path == '/api/wiki/photo':
+                _pp = int((parse_qs(u.query).get('pid', ['0'])[0] or '0')
+                          if (parse_qs(u.query).get('pid', ['0'])[0] or '0').lstrip('-').isdigit() else 0)
+                b = wiki_photo(_pp)
+                if b is None and (_GAME['v'] == 'pes17' or CFG.get('pes17_only', True)):
+                    b = game_face(_pp)
+                if b is None:
+                    return self.send(404, b'', 'image/jpeg')
+                return self.send(200, b, _img_mime(b))""", 1),
+
+    ('server.py',
+     r"""            if u.path == '/api/pes17/crests':
+                import pes17_crests
+                return self.send(200, pes17_crests.report(
+                    CFG, bool(parse_qs(u.query).get('rescan'))))""",
+     r"""            if u.path == '/api/pes17/crests':
+                import pes17_crests
+                return self.send(200, pes17_crests.report(
+                    CFG, bool(parse_qs(u.query).get('rescan'))))
+            if u.path == '/api/pes17/faces':
+                import pes17_faces
+                return self.send(200, pes17_faces.report(
+                    CFG, bool(parse_qs(u.query).get('rescan'))))
+            if u.path == '/api/pes17/face':
+                _fp_raw = parse_qs(u.query).get('pid', ['0'])[0] or '0'
+                _fp = int(_fp_raw) if _fp_raw.isdigit() else 0
+                _fb17 = game_face(_fp) if _fp > 0 else None
+                if _fb17 is None:
+                    return self.send(404, b'', 'image/png')
+                return self.send(200, _fb17, _img_mime(_fb17))""", 1),
+
+    ('server.py',
+     r"""                pes17_crests.clear()
+                return self.send(200, pes17_setup.status(CFG, HERE))""",
+     r"""                pes17_crests.clear()
+                _clear_face_caches()
+                return self.send(200, pes17_setup.status(CFG, HERE))""", 1),
+
+    ('server.py',
+     r"""                _cfg_update(pes17_patch_dir=_pd)
+                pes17_crests.clear()
+                return self.send(200, pes17_crests.report(CFG, True))""",
+     r"""                _cfg_update(pes17_patch_dir=_pd)
+                pes17_crests.clear()
+                _clear_face_caches()
+                return self.send(200, pes17_crests.report(CFG, True))""", 1),
+
+    ('server.py',
+     r"""                try:
+                    import pes17_crests
+                    pes17_crests.clear()
+                except Exception:
+                    pass
+                return self.send(200, _hr)""",
+     r"""                try:
+                    import pes17_crests
+                    pes17_crests.clear()
+                except Exception:
+                    pass
+                _clear_face_caches()
+                return self.send(200, _hr)""", 1),
+    ('server.py',
+     """def _reload_cfg():
+    newc = load_cfg()
+    CFG.clear()
+    CFG.update(newc)
+    _GL.clear()
+    _GF.clear()""",
+     """def _reload_cfg():
+    newc = load_cfg()
+    CFG.clear()
+    CFG.update(newc)
+    _GL.clear()
+    _GF.clear()
+    if CFG.get('pes17_only', True) or pes17.looks_like_pes17_path(CFG.get('save_dir')):
+        _GAME['v'] = 'pes17'
+        try:
+            pes17.ensure_teamids(CFG, os.path.join(HERE, 'data', 'pes17'), force=True)
+        except Exception:
+            pass
+    try:
+        import pes17_crests
+        pes17_crests.clear()
+    except Exception:
+        pass
+    _clear_face_caches()""", 1),
+
+    ('server.py',
+     """    found['encrypter'] = list(dict.fromkeys(enc))
+    return found""",
+     """    found['encrypter'] = list(dict.fromkeys(enc))
+    try:
+        import pes17_setup as _p17d
+        _p17_sv = [c['path'] for c in _p17d.candidates() if c.get('path')]
+        found['save_dir'] = list(dict.fromkeys(_p17_sv + (found.get('save_dir') or [])))
+        _p17_ex = [os.path.join(g['path'], g.get('exe') or 'PES2017.exe')
+                   for g in _p17d.game_candidates(CFG.get('save_dir') or '')
+                   if g.get('path') and os.path.isfile(os.path.join(g['path'], g.get('exe') or 'PES2017.exe'))]
+        found['pes_exe'] = list(dict.fromkeys(_p17_ex + (found.get('pes_exe') or [])))
+    except Exception:
+        pass
+    return found""", 1),
 ]
 
 
@@ -1031,12 +1194,13 @@ def apply(target):
         ('lib/pes17_write.py', 'lib/pes17_write.py'),
         ('lib/pes17_pairs.py', 'lib/pes17_pairs.py'),
         ('lib/pes17_crests.py', 'lib/pes17_crests.py'),
+        ('lib/pes17_faces.py', 'lib/pes17_faces.py'),
         ('lib/pes17_assets.py', 'lib/pes17_assets.py'),
         ('lib/pes17_setup.py', 'lib/pes17_setup.py'),
         ('static/pes17.html', 'static/pes17.html'),
-        ('static/pes17-dashboard.html', 'static/pes17-dashboard.html'),
-        ('static/game-skin.css', 'static/game-skin.css'),
-        ('static/game-skin.js', 'static/game-skin.js'),
+        ('static/hud-icons.svg', 'static/hud-icons.svg'),
+        ('static/hud-icons.js', 'static/hud-icons.js'),
+        ('static/hud-ui.css', 'static/hud-ui.css'),
         ('README_PES2017.txt', 'README_PES2017.txt'),
         ('config_pes2017.example.json', 'config_pes2017.example.json'),
     ):
@@ -1044,6 +1208,11 @@ def apply(target):
         dst = os.path.join(target, dest)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copy2(src, dst)
+
+    # Apply the matchday icon system after all asserted pc414 substitutions
+    # and after copying the shared local assets. The classic UI remains /.
+    import pro_ui
+    pro_ui.apply(target)
 
     # Repo-root extras (docs + the standalone offline harvester CLI).
     for rel, dest in (
@@ -1064,7 +1233,7 @@ def apply(target):
     # shipped package, no execution of the app).
     for fn in ('server.py', 'lib/pescrypt.py', 'lib/mlwrite.py',
                'lib/pes17.py', 'lib/pes17_layout.py', 'lib/pes17_write.py',
-               'lib/pes17_pairs.py', 'lib/pes17_crests.py',
+               'lib/pes17_pairs.py', 'lib/pes17_crests.py', 'lib/pes17_faces.py',
                'lib/pes17_assets.py', 'lib/pes17_setup.py',
                'tools/harvest_cpk.py'):
         with open(os.path.join(target, fn), encoding='utf-8') as f:

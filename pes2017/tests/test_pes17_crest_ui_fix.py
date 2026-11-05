@@ -323,39 +323,34 @@ class SetupAndEditTeamIdTests(unittest.TestCase):
 
 
 class UiAndLiveServerIntegrationTests(unittest.TestCase):
-    def test_dashboard_and_tools_ui_have_crest_badges_and_valid_js(self):
-        dash_path = os.path.join(ROOT, 'pes2017', 'overlay', 'static', 'pes17-dashboard.html')
+    def test_classic_and_tools_ui_have_crest_badges_and_valid_js(self):
         tools_path = os.path.join(ROOT, 'pes2017', 'overlay', 'static', 'pes17.html')
-        with open(dash_path, encoding='utf-8') as f:
-            dash = f.read()
         with open(tools_path, encoding='utf-8') as f:
             tools = f.read()
 
-        for needle in ('function crestBadge(', '/api/clubcolors', 'id="dashPatchDir"',
-                       'id="dashSetPatchBtn"', 'id="dashPatchCands"', 'refreshLiveCrests'):
-            self.assertIn(needle, dash)
+        self.assertFalse(os.path.exists(
+            os.path.join(ROOT, 'pes2017', 'overlay', 'static', 'pes17-dashboard.html')))
         for needle in ('function crestBadge(', '/api/clubcolors', 'renderInfoViews'):
             self.assertIn(needle, tools)
-        for name, html in (('pes17-dashboard.html', dash), ('pes17.html', tools)):
-            self.assertNotIn('http://', html, name)
-            self.assertNotIn('https://', html, name)
-            ids = re.findall(r'\bid="([^"]+)"', html)
-            self.assertEqual(len(ids), len(set(ids)), 'duplicate id in ' + name)
+        self.assertNotIn('http://', tools)
+        self.assertNotIn('https://', tools)
+        self.assertNotIn('game-skin', tools)
+        ids = re.findall(r'\bid="([^"]+)"', tools)
+        self.assertEqual(len(ids), len(set(ids)), 'duplicate id in pes17.html')
 
         node = shutil.which('node')
         if node:
-            for name, html in (('pes17-dashboard.html', dash), ('pes17.html', tools)):
-                scripts = re.findall(r'<script>(.*?)</script>', html, re.S)
-                self.assertTrue(scripts, name)
-                with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as tf:
-                    tf.write(scripts[0])
-                    js_file = tf.name
-                try:
-                    proc = subprocess.run([node, '--check', js_file],
-                                          capture_output=True, text=True, timeout=15)
-                    self.assertEqual(proc.returncode, 0, proc.stderr)
-                finally:
-                    os.unlink(js_file)
+            scripts = re.findall(r'<script>(.*?)</script>', tools, re.S)
+            self.assertTrue(scripts, 'pes17.html')
+            with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as tf:
+                tf.write(scripts[0])
+                js_file = tf.name
+            try:
+                proc = subprocess.run([node, '--check', js_file],
+                                      capture_output=True, text=True, timeout=15)
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+            finally:
+                os.unlink(js_file)
 
     def test_live_built_server_serves_patch_crests_on_first_request(self):
         zp = os.path.join(ROOT, 'pes2017', 'dist', 'TheGaffer_pes2017_pc414.zip')
@@ -461,10 +456,15 @@ class UiAndLiveServerIntegrationTests(unittest.TestCase):
                         time.sleep(0.1)
                 self.assertTrue(ready, 'server did not enter pes17 mode on startup')
 
-                # 1) Landing page `/` serves dashboard with crestBadge
+                # 1) Landing page `/` serves the pure Classic UI (`index.html`),
+                #    with no `pes17-dashboard.html` or `game-skin` overlay
                 with urllib.request.urlopen(base + '/', timeout=3) as resp:
                     html = resp.read().decode('utf-8')
-                self.assertIn('function crestBadge(', html)
+                self.assertIn('function crestSvg(', html)
+                self.assertIn('/api/crest?club=', html)
+                self.assertIn('id="pes17ToolsBtn"', html)
+                self.assertNotIn('game-skin.js', html)
+                self.assertNotIn('game-skin.css', html)
 
                 # 2) `/api/crest?club=...` works BEFORE `/api/state` is ever called,
                 #    and `download/t99p17_emblem.cpk` beats `Data/dt36_win.cpk`!
