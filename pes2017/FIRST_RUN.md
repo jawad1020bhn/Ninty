@@ -3,6 +3,9 @@
 **Build `pc414-pes17-clean-r9`.** Unzip this program anywhere (not inside the
 zip), then run `The Gaffer.vbs`. Open `http://localhost:8766/` — the Classic UI
 (`index.html`) is the default landing page, and PES 2017 tools are at `/pes17.html`.
+On larger desktops the Game Shell starts after the first-run tour. Use
+**Look & sound → Game shell** to return to the original scrolling navigation;
+phones and tablets keep their existing layout.
 
 ## The one thing you must do
 
@@ -53,6 +56,27 @@ option; rename it to `config.json` only if you want to set things by hand.
 
 Nothing here needs internet. Wikipedia, Google Fonts and flag CDNs are off by
 default. `pes17_patch_dir` and `pes_exe` are only for artwork/auto-detection.
+
+## Player mini-faces
+
+A save contains player IDs, not their portrait images. In **PES 2017 tools**,
+select your save slot, then in card **3c** enter your game folder — the folder
+containing `PES2017.exe` and `download` — and press **Set folder & scan**. A
+standalone mini-face folder is also accepted. The scan is read-only and checks
+`download`, `Data`, Sider/livecpk and the chosen folder; no game files are
+modified. Go back to Classic after the scan.
+
+The mini-face report separates **indexed IDs**, **squad matches** and **readable
+portraits**. If the first is zero, choose the folder containing a compatible
+mini-face pack. If IDs are found but none match the squad, check that the pack
+and `EDIT00000000` belong to the same patch. If matching files are unreadable,
+use **Copy diagnostic** (it includes local paths) and share it with a small
+example texture or CPK. A 3D face model is not a 2D mini-face. Not every player
+necessarily has a portrait, and regenerated players may retain a silhouette.
+
+The app does not include the actual game or patch artwork. CPK variants without
+readable named entries and unsupported image formats may need further work with
+an actual sample; finding a filename alone does not prove it can be displayed.
 
 ## Safety, unchanged
 

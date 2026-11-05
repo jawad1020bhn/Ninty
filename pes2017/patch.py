@@ -893,7 +893,7 @@ def players_data(slot):
                 except ValueError as _ex:
                     return self.send(400, dict(ok=False, error=str(_ex)))
                 _kw = dict(save_dir=_sd)
-                if pes17_setup.is_fl26_exe(CFG.get('pes_exe')):
+                if pes17_setup.needs_game_discovery(CFG.get('pes_exe')):
                     _exe = pes17_setup.autodetect_exe(_sd)
                     if _exe:
                         _kw['pes_exe'] = _exe
@@ -922,8 +922,10 @@ def players_data(slot):
         import pes17_setup
         cfg['save_dir'] = pes17_setup.autodetect()
     import pes17_setup as _p17s
-    if _p17s.is_fl26_exe(cfg.get('pes_exe')):
-        cfg['pes_exe'] = _p17s.autodetect_exe(cfg.get('save_dir') or '')""", 1),
+    if _p17s.needs_game_discovery(cfg.get('pes_exe')):
+        _detected_exe = _p17s.autodetect_exe(cfg.get('save_dir') or '')
+        if _detected_exe:
+            cfg['pes_exe'] = _detected_exe""", 1),
 
     ('server.py',
      r"""            if self.path == '/api/pes17/crests/dir':
@@ -1031,6 +1033,10 @@ def game_face(pid):
                 return _f17
         except Exception as _ex:
             print('[pes17 faces]', _ex)
+    if _GAME['v'] == 'pes17':
+        # Do not re-read an invalid/stale game file through the legacy FL
+        # scanner after the PES 2017 reader has already rejected it.
+        return None
     if 'dirs' not in _GF:""", 1),
 
     ('server.py',
@@ -1066,12 +1072,16 @@ def game_face(pid):
                     CFG, bool(parse_qs(u.query).get('rescan'))))
             if u.path == '/api/pes17/faces':
                 import pes17_faces
+                _fquery = parse_qs(u.query)
+                if _fquery.get('rescan'):
+                    _clear_face_caches()
                 return self.send(200, pes17_faces.report(
-                    CFG, bool(parse_qs(u.query).get('rescan'))))
+                    CFG, bool(_fquery.get('rescan')), _fquery.get('slot', [''])[0]))
             if u.path == '/api/pes17/face':
+                import pes17_faces
                 _fp_raw = parse_qs(u.query).get('pid', ['0'])[0] or '0'
                 _fp = int(_fp_raw) if _fp_raw.isdigit() else 0
-                _fb17 = game_face(_fp) if _fp > 0 else None
+                _fb17 = pes17_faces.face_img(_fp, CFG) if _fp > 0 and _fp not in _REGEN else None
                 if _fb17 is None:
                     return self.send(404, b'', 'image/png')
                 return self.send(200, _fb17, _img_mime(_fb17))""", 1),
@@ -1132,17 +1142,22 @@ def game_face(pid):
         pass
     _clear_face_caches()""", 1),
 
+    # Portraits can change when a game or patch folder is selected.  Do not
+    # leave successful old images in the browser's one-hour image cache.
+    ('server.py',
+     """        self.send_header('Cache-Control', 'private, max-age=3600' if (code == 200 and ctype.startswith('image/') and not any(k in self.path for k in ('/api/kitimg', '/api/coach/custom', 'spon', '/api/kit?'))) else 'no-store')""",
+     """        self.send_header('Cache-Control', 'private, max-age=3600' if (code == 200 and ctype.startswith('image/') and not any(k in self.path for k in ('/api/kitimg', '/api/coach/custom', '/api/wiki/img', '/api/wiki/photo', '/api/pes17/face', 'spon', '/api/kit?'))) else 'no-store')""", 1),
+
     ('server.py',
      """    found['encrypter'] = list(dict.fromkeys(enc))
     return found""",
      """    found['encrypter'] = list(dict.fromkeys(enc))
     try:
         import pes17_setup as _p17d
-        _p17_sv = [c['path'] for c in _p17d.candidates() if c.get('path')]
+        _p17_sv = _p17d.candidates()  # candidates() returns paths, not dicts
         found['save_dir'] = list(dict.fromkeys(_p17_sv + (found.get('save_dir') or [])))
-        _p17_ex = [os.path.join(g['path'], g.get('exe') or 'PES2017.exe')
-                   for g in _p17d.game_candidates(CFG.get('save_dir') or '')
-                   if g.get('path') and os.path.isfile(os.path.join(g['path'], g.get('exe') or 'PES2017.exe'))]
+        _p17_ex = [_p17d._find_exe_in(g) or g
+                   for g in _p17d.game_candidates(CFG.get('save_dir') or '')]
         found['pes_exe'] = list(dict.fromkeys(_p17_ex + (found.get('pes_exe') or [])))
     except Exception:
         pass
@@ -1201,6 +1216,9 @@ def apply(target):
         ('static/hud-icons.svg', 'static/hud-icons.svg'),
         ('static/hud-icons.js', 'static/hud-icons.js'),
         ('static/hud-ui.css', 'static/hud-ui.css'),
+        ('static/game-shell.css', 'static/game-shell.css'),
+        ('static/game-shell.js', 'static/game-shell.js'),
+        ('static/pes17-face-refresh.js', 'static/pes17-face-refresh.js'),
         ('README_PES2017.txt', 'README_PES2017.txt'),
         ('config_pes2017.example.json', 'config_pes2017.example.json'),
     ):

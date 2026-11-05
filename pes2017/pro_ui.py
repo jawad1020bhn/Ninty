@@ -249,7 +249,10 @@ def apply(root):
         'internal translation scope')
     index = _once(index, '</head>',
         '<link rel="stylesheet" href="/hud-ui.css">\n'
-        '<script defer src="/hud-icons.js"></script>\n</head>', 'classic assets')
+        '<link rel="stylesheet" href="/game-shell.css">\n'
+        '<script defer src="/hud-icons.js"></script>\n'
+        '<script defer src="/game-shell.js"></script>\n'
+        '<script defer src="/pes17-face-refresh.js"></script>\n</head>', 'classic assets')
 
     # After the three CSS cases above, every remaining pictograph must be in
     # page data, never inside a CSS declaration. Avoid silent placeholder leaks.

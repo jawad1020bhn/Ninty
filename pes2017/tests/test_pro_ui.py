@@ -69,7 +69,8 @@ class TransformFixtureTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         for d in ('static', 'lib', 'data/i18n'):
             (self.root / d).mkdir(parents=True, exist_ok=True)
-        for fn in ('hud-icons.svg', 'hud-icons.js', 'hud-ui.css', 'pes17.html'):
+        for fn in ('hud-icons.svg', 'hud-icons.js', 'hud-ui.css',
+                   'game-shell.css', 'game-shell.js', 'pes17.html'):
             shutil.copyfile(OVERLAY / fn, self.root / 'static' / fn)
         css = '''.pc-tr .tr-chip.cm::before{content:"⚡";margin-right:7px;font-size:12px;color:var(--g)}
 html body #p-journal .jn-main h3::before{content:"⚽ ";text-decoration:none;display:inline-block}
@@ -93,6 +94,8 @@ const ball='⚽'.repeat(3), same='🏆'==='🏆'; let text='✍️ Extend contra
         self.assertIn('<body data-hud="classic">', index)
         self.assertIn('/hud-ui.css', index)
         self.assertIn('/hud-icons.js', index)
+        self.assertIn('/game-shell.css', index)
+        self.assertIn('/game-shell.js', index)
         self.assertIn("'__gi_26bd__'.repeat(3)", index)
         self.assertIn("'__gi_1f3c6__'==='__gi_1f3c6__'", index)
         self.assertIn("t=t+(n?' · '+n:'')", index)
@@ -159,7 +162,8 @@ class ShippedHudTests(unittest.TestCase):
                     pass
 
     def test_ships_the_classic_app_and_local_hud_not_the_removed_skin(self):
-        for name in ('hud-icons.svg', 'hud-icons.js', 'hud-ui.css'):
+        for name in ('hud-icons.svg', 'hud-icons.js', 'hud-ui.css',
+                     'game-shell.css', 'game-shell.js'):
             self.assertIn('TheGaffer/static/' + name, self.names)
         for name in ('game-skin.css', 'game-skin.js', 'pes17-dashboard.html'):
             self.assertNotIn('TheGaffer/static/' + name, self.names)
@@ -169,6 +173,8 @@ class ShippedHudTests(unittest.TestCase):
         for source in (self.index, self.tools):
             self.assertIn('href="/hud-ui.css"', source)
             self.assertIn('src="/hud-icons.js"', source)
+            self.assertIn('href="/game-shell.css"', source)
+            self.assertIn('src="/game-shell.js"', source)
         self.assertNotIn('fonts.googleapis', self.css)
         self.assertIn("const SPRITE = '/hud-icons.svg#hud-'", self.js)
 

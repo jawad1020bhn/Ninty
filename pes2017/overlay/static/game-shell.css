@@ -1,0 +1,169 @@
+/* Game Shell V2, first milestone: bounded screens and existing-app navigation.
+   Nothing here changes the Classic layout when body.game-shell is absent. */
+@media (min-width: 1025px) and (min-height: 560px) {
+  html:has(> body.game-shell) { height:100%; overflow:hidden; }
+  body.game-shell {
+    --gs-rail: 204px;
+    --gs-footer: 44px;
+    --gs-ink: #edf3f6;
+    --gs-muted: #a7b8c4;
+    --gs-line: #425c6c;
+    --gs-surface: #142737;
+    --gs-surface-raised: #213a4a;
+    --gs-focus: #f2d28f;
+    --gs-selected-ink: #111d26;
+    --gs-motion: 140ms;
+    height:100vh; height:100dvh; min-height:0; margin:0; overflow:hidden;
+  }
+  body.game-shell:not(.retro) {
+    --gs-focus: #f0c773;
+    --gs-surface: #192731;
+    --gs-surface-raised: #2b3d47;
+    --gs-line: #50626a;
+  }
+  html body.game-shell .app {
+    display:grid!important; grid-template-columns:var(--gs-rail) minmax(0,1fr)!important;
+    grid-template-rows:minmax(0,1fr); width:100%; height:100vh; height:100dvh;
+    min-height:0; overflow:hidden!important;
+  }
+  html body.game-shell .side {
+    position:relative!important; top:auto; height:100%!important; min-height:0;
+    align-self:stretch; overflow:auto!important; padding:14px 10px;
+    gap:10px; scrollbar-width:thin;
+  }
+  body.game-shell #nav { display:none!important; }
+  html body.game-shell .side .club { padding:5px 7px 15px; margin:0; }
+  body.game-shell .sidefoot { flex:1 0 auto; margin:4px 0 0; padding:0 5px; }
+  body.game-shell .sidefoot .sf-end { margin-top:auto; }
+  body.game-shell .sidefoot .sf-l { min-height:36px; }
+  body.game-shell #gameShellBtn { width:100%; text-align:start; }
+
+  html body.game-shell main {
+    display:flex!important; flex-direction:column; align-items:stretch;
+    width:100%; min-width:0; min-height:0; height:calc(100vh - var(--gs-footer));
+    height:calc(100dvh - var(--gs-footer)); padding:0!important; overflow:hidden;
+  }
+  html body.game-shell #tbar {
+    order:0; position:relative; top:auto; flex:0 0 auto; min-height:54px;
+    max-height:58px; margin:0!important; padding:6px 22px!important; gap:8px;
+    flex-wrap:nowrap!important; z-index:2;
+  }
+  body.game-shell #tbar .tb-logo { min-width:42px; }
+  body.game-shell #tbar .tb-i { min-height:38px; }
+  body.game-shell #tbar .tb-find { min-width:0; }
+  body.game-shell #tbar .tb-find span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  body.game-shell #gsHud { order:1; flex:0 0 auto; min-width:0; color:var(--gs-ink); }
+  body.game-shell #gsHud[hidden] { display:none!important; }
+  body.game-shell .gs-primary {
+    display:flex; align-items:stretch; min-width:0; padding:0 20px;
+    background:linear-gradient(110deg,#1d3545,#122433 72%);
+    border-bottom:1px solid var(--gs-line);
+  }
+  body.game-shell .gs-tabs {
+    display:flex; flex-direction:row; align-items:stretch; gap:2px; flex:1;
+    min-width:0; overflow-x:auto; scrollbar-width:thin;
+  }
+  html body.game-shell .gs-tabs button {
+    position:relative; display:flex; flex:1 0 auto; justify-content:center;
+    align-items:center; gap:8px; min-height:48px; padding:0 14px;
+    border:0; border-radius:0; background:transparent; color:var(--gs-muted);
+    font:800 12px/1.15 var(--font-display,system-ui,sans-serif);
+    font-style:normal; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap;
+    box-shadow:none; transition:background var(--gs-motion),color var(--gs-motion);
+  }
+  html body.game-shell .gs-tabs button:hover { background:#ffffff0d; color:#fff; }
+  html body.game-shell .gs-tabs button[aria-current="page"] {
+    background:linear-gradient(180deg,#ffffff08,#ffffff12)!important; color:#fff!important;
+    box-shadow:inset 0 -3px var(--gs-focus)!important;
+    border-left:0!important; transform:none!important; margin-right:0!important;
+  }
+  html body.game-shell .gs-tabs button[aria-current="page"] > * { transform:none!important; }
+  body.game-shell .gs-section-icon { width:17px; height:17px; display:inline-flex; flex:none; color:#9db6c4; }
+  body.game-shell .gs-section-icon svg { width:100%; height:100%; fill:currentColor; }
+  body.game-shell .gs-tabs [aria-current] .gs-section-icon { color:var(--gs-focus); }
+  body.game-shell .gs-subrow {
+    display:flex; align-items:center; min-width:0; min-height:43px; padding:0 20px;
+    background:linear-gradient(90deg,#0d1c29,#142a38); border-bottom:1px solid #344e5e;
+  }
+  body.game-shell .gs-context {
+    display:flex; align-items:center; flex:none; min-height:26px; max-width:160px;
+    margin-inline-end:14px; padding-inline-end:15px; border-inline-end:1px solid #4b6370;
+    color:#9db5c1; font:800 10px/1.2 var(--font-display,system-ui,sans-serif);
+    letter-spacing:.13em; text-transform:uppercase; white-space:nowrap; overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  body.game-shell .gs-pages {
+    display:flex; flex-direction:row; align-items:center; gap:4px;
+    flex:1; min-width:0; padding:4px 0; overflow-x:auto; scrollbar-width:thin;
+  }
+  html body.game-shell .gs-pages button {
+    display:inline-flex; align-items:center; flex:0 0 auto; min-height:32px;
+    padding:6px 11px; border:1px solid transparent; border-radius:2px;
+    background:transparent; color:#afc0ca; font:700 11px/1.2 var(--font-display,system-ui,sans-serif);
+    letter-spacing:.05em; text-transform:uppercase; white-space:nowrap; box-shadow:none;
+  }
+  html body.game-shell .gs-pages button:hover { background:#ffffff10; color:#fff; }
+  html body.game-shell .gs-pages button[aria-current="page"] {
+    color:var(--gs-selected-ink)!important; border:1px solid #eddaac!important;
+    background:linear-gradient(180deg,#efcf8f,#c69b56)!important;
+    box-shadow:inset 0 1px #fff8!important; transform:none!important; margin-right:0!important;
+  }
+  html body.game-shell .gs-pages button[aria-current="page"] > * { transform:none!important; }
+  body.game-shell :is(.gs-tabs,.gs-pages) button:focus-visible {
+    outline:3px solid var(--gs-focus)!important; outline-offset:-3px; z-index:1;
+  }
+
+  body.game-shell main > #banner { order:2; flex:0 0 auto; max-height:82px; overflow:auto; }
+  html body.game-shell main > section.panel.on {
+    order:3; flex:1 1 0; width:100%; max-width:none!important; min-width:0; min-height:0;
+    height:auto; margin:0!important; padding:18px clamp(18px,2.4vw,36px) 28px;
+    overflow:auto!important; overscroll-behavior:contain; scrollbar-width:thin;
+    scrollbar-color:#748d9a #0d1b28;
+  }
+  body.game-shell main > section.panel.on:focus-visible { outline:2px solid var(--gs-focus); outline-offset:-2px; }
+  body.game-shell .panel > .subtabs { display:none!important; }
+  /* The original League button is also the league picker: keep that one
+     contextual control visible instead of discarding the underlying feature. */
+  body.game-shell #p-league::before { left:0; right:0; }
+  html body.game-shell #p-league > .subtabs {
+    display:flex!important; width:max-content; max-width:100%; margin:0 0 12px;
+  }
+  body.game-shell #p-league > .subtabs > :not([data-p-go="league"]) { display:none!important; }
+  body.game-shell #p-league > .subtabs [data-p-go="league"]:not(.lgdd)::after {
+    content:'▾'; margin-inline-start:6px;
+  }
+  html body.game-shell #p-signings .trhero { min-height:150px!important; margin-bottom:12px!important; }
+
+  html body.game-shell .savebar {
+    position:fixed; left:var(--gs-rail)!important; right:0; bottom:0!important;
+    min-height:var(--gs-footer); height:var(--gs-footer); padding:5px 20px!important;
+    gap:8px; flex-wrap:nowrap!important; overflow-x:auto; overflow-y:hidden;
+    transform:none!important; opacity:1!important; pointer-events:auto!important;
+    z-index:5; scrollbar-width:thin;
+  }
+  html[dir="rtl"] body.game-shell .savebar,
+  body.game-shell[dir="rtl"] .savebar { left:0!important; right:var(--gs-rail)!important; }
+  body.game-shell .savebar .msg { min-width:80px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  body.game-shell .savebar button { flex:0 0 auto; white-space:nowrap; }
+  body.game-shell .savebar .dirty { white-space:nowrap; }
+  body.game-shell .panel::-webkit-scrollbar,
+  body.game-shell .gs-pages::-webkit-scrollbar,
+  body.game-shell .gs-tabs::-webkit-scrollbar { width:8px; height:6px; }
+  body.game-shell .panel::-webkit-scrollbar-thumb,
+  body.game-shell .gs-pages::-webkit-scrollbar-thumb,
+  body.game-shell .gs-tabs::-webkit-scrollbar-thumb { background:#728b97; border-radius:4px; }
+}
+
+/* Compact desktop, including a 1366×768 display at 125% zoom. */
+@media (min-width:1025px) and (min-height:560px) and (max-height:760px) {
+  body.game-shell { --gs-footer:40px; }
+  html body.game-shell #tbar { min-height:48px; max-height:50px; padding-block:4px!important; }
+  html body.game-shell .gs-tabs button { min-height:42px; }
+  body.game-shell .gs-subrow { min-height:38px; }
+  html body.game-shell .gs-pages button { min-height:28px; padding-block:4px; }
+  html body.game-shell main > section.panel.on { padding-top:12px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  body.game-shell .gs-tabs button { transition:none; }
+}

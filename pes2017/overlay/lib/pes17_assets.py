@@ -59,7 +59,7 @@ RE_CREST = re.compile(
 RE_EMBLEM = re.compile(r'/render/symbol/emblem[^/]*/emb_(\d+)_([^/]+?)\.(png|dds)$', re.I)
 RE_KIT = re.compile(r'/uniform/texture/.*?u(\d{3,4})p(\d+)\.ftex$', re.I)
 RE_FACE = re.compile(
-    r'(?:^|/)(?:render/symbol/player|minifaces?)/(?:player_|face_|miniface_)?0*(\d+)\.(dds|png|jpg|jpeg|webp)$',
+    r'(?:^|/)(?:render/symbol/player|minifaces?)/(?:player_|face_|miniface_)?0*(\d+)\.(dds|ftex|png|jpg|jpeg|webp|bmp)$',
     re.I)
 RE_COACH = re.compile(r'/render/symbol/coach/coach_(\d+)\.(png|dds)$', re.I)
 RE_PESDB = re.compile(r'^common/etc/pesdb/[^/]+\.bin$', re.I)
@@ -207,8 +207,8 @@ def scan(source, force=False):
         loose_files=len(loose), files=len(rows), counts=counts,
         usable=usable_counts, errors=errors,
         classes=list(CLASSES), default_extract=list(DEFAULT_EXTRACT),
-        note=('No real CPK archive was available in this workspace; run this '
-              'against the actual patch folder to get the true inventory.'))
+        note=('Inventory is read-only. Classification alone does not prove that '
+              'a texture can be decoded or that its player ID matches the save.'))
     _STATE.update(key=key, time=time.time(), rows=rows, summary=summary)
     return rows, summary
 

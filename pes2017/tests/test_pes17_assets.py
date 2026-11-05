@@ -88,6 +88,7 @@ class AssetHarvestTests(unittest.TestCase):
             ('common/render/symbol/emblemLc/emb_0017_lc.png', 'emblem', 17, 'MAP'),
             ('Asset/model/character/uniform/texture/#windx11/u0103p1.ftex', 'kit', 103, 'MAP'),
             ('common/render/symbol/player/55246.dds', 'face', 55246, 'MAP'),
+            ('common/render/symbol/player/55246.ftex', 'face', 55246, 'MAP'),
             ('common/render/symbol/coach/coach_12.png', 'coach', 12, 'MAP'),
             ('common/etc/pesdb/Competition.bin', 'pesdb', None, 'NO'),
             ('data/art/banner.jpg', 'art', None, 'YES'),

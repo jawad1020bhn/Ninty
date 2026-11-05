@@ -1,9 +1,13 @@
 """r9: first-run PES 2017 save-folder detection and friendly error handling."""
+import ast
 import os
+import re
 import sys
 import tempfile
+import types
 import unittest
 import zipfile
+from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, 'pes2017', 'overlay', 'lib'))
@@ -62,6 +66,16 @@ class DetectionTests(unittest.TestCase):
         for bad in ('', '   ', 'C:\\definitely\\missing\\save'):
             with self.assertRaisesRegex(ValueError, 'Enter the full path|Folder not found'):
                 setup.validate_save_dir(bad)
+
+    def test_game_discovery_retries_stale_non_fl_path(self):
+        game = self.folder('game')
+        exe = os.path.join(game, 'PES2017.exe')
+        with open(exe, 'wb') as f:
+            f.write(b'MZ')
+        self.assertTrue(setup.needs_game_discovery(''))
+        self.assertTrue(setup.needs_game_discovery(os.path.join(self.root, 'old', 'PES2017.exe')))
+        self.assertFalse(setup.needs_game_discovery(exe))
+        self.assertFalse(setup.needs_game_discovery(game))
 
     def test_home_roots_includes_onedrive_and_localised_documents(self):
         # profile + any OneDrive-like folders + localised Documents names
@@ -172,6 +186,27 @@ class WiringTests(unittest.TestCase):
         self.assertIn('GAFFER_ORIGINAL_ZIP', self.build)
         self.assertIn('GAFFER_BUILD_DIR', self.build)
         self.assertIn('--source', self.build)
+
+    def test_built_setup_detect_accepts_path_candidates(self):
+        if not self.server:
+            self.skipTest('dist zip not built yet')
+        # Execute just the generated function with controlled filesystem probes;
+        # real candidates() and game_candidates() return strings, not dicts.
+        module = ast.parse(self.server)
+        function = next(n for n in module.body if isinstance(n, ast.FunctionDef)
+                        and n.name == 'setup_detect')
+        code = compile(ast.Module(body=[function], type_ignores=[]), 'setup_detect', 'exec')
+        fake = types.SimpleNamespace(candidates=lambda: ['/save'],
+                                     game_candidates=lambda unused: ['/game'],
+                                     _find_exe_in=lambda p: p + '/PES2017.exe')
+        env = dict(os=os, re=re, HERE='/app', CFG={'save_dir': '/save'},
+                   _home_dirs=lambda: [], _drives=lambda: [],
+                   _bfs=lambda *args, **kwargs: [])
+        with mock.patch.dict(sys.modules, {'pes17_setup': fake}):
+            exec(code, env)
+            result = env['setup_detect']()
+        self.assertEqual(result['save_dir'], ['/save'])
+        self.assertEqual(result['pes_exe'], ['/game/PES2017.exe'])
 
     def test_shipped_zip_has_the_r9_files_and_no_fl26_default(self):
         if not self.names:
