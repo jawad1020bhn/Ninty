@@ -1,6 +1,6 @@
 """Tests for PES 2017 player mini-faces (backend scanner/decoder, live server, and UI)."""
-import base64
 import json
+from concurrent.futures import ThreadPoolExecutor
 import os
 import re
 import shutil
@@ -27,14 +27,21 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import pes17_faces as faces  # noqa: E402
 
-PNG_VANILLA = base64.b64decode(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==')
-PNG_PATCH_BASE = base64.b64decode(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==')
-PNG_PATCH_TOP = base64.b64decode(
-    'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR42mNk+M9QzwAEjDAGACCcAv8c8L6AAAAAAElFTkSuQmCC')
-PNG_LOOSE = base64.b64decode(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
+def make_png(rgba, width=2, height=2):
+    """A valid synthetic image; colors are fixtures, not real player faces."""
+    def chunk(kind, data):
+        return (struct.pack('>I', len(data)) + kind + data +
+                struct.pack('>I', zlib.crc32(kind + data) & 0xffffffff))
+    ihdr = struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0)
+    pixels = b''.join(b'\x00' + bytes(rgba) * width for _ in range(height))
+    return (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr) +
+            chunk(b'IDAT', zlib.compress(pixels)) + chunk(b'IEND', b''))
+
+
+PNG_VANILLA = make_png((15, 40, 90, 255))
+PNG_PATCH_BASE = make_png((200, 25, 30, 255))
+PNG_PATCH_TOP = make_png((30, 220, 40, 255))
+PNG_LOOSE = make_png((40, 60, 225, 255))
 
 
 def make_rgba_dds(w=2, h=2, rgba=(30, 140, 240, 255)):
@@ -60,6 +67,18 @@ def make_rgb24_dds(w=2, h=2, rgb=(20, 180, 90)):
     struct.pack_into('<IIII', hdr, 92, 0xff0000, 0x00ff00, 0x0000ff, 0)
     px = bytes((rgb[2], rgb[1], rgb[0])) * (w * h)
     return bytes(hdr) + px
+
+
+def make_ftex(w=2, h=2):
+    # A minimal uncompressed, one-mip Fox texture (BGRA pixels).
+    pixels = bytes((200, 80, 20, 255)) * (w * h)
+    out = bytearray(0x68)
+    out[:4] = b'FTEX'
+    struct.pack_into('<HHH', out, 8, 0, w, h)
+    out[0x10] = 1
+    struct.pack_into('<IIIBBH', out, 0x40, 0x60, len(pixels), len(pixels), 0, 0, 1)
+    struct.pack_into('<HHI', out, 0x60, len(pixels), len(pixels), 8)
+    return bytes(out) + pixels
 
 
 def wrap_wesys(payload):
@@ -281,16 +300,192 @@ class Pes17FacesUnitTests(unittest.TestCase):
         # 3) `.png` file actually containing 24-bit RGB DDS bytes
         with open(os.path.join(pdir, '169457.png'), 'wb') as f:
             f.write(make_rgb24_dds(2, 2))
-        # 4) Corrupt DDS fails gracefully
+        # 4) WESYS-wrapped FTEX is decoded by the shipped Fox reader.
+        with open(os.path.join(pdir, '147337.ftex'), 'wb') as f:
+            f.write(wrap_wesys(make_ftex()))
+        # 5) Corrupt DDS fails gracefully
         with open(os.path.join(pdir, '99999.dds'), 'wb') as f:
             f.write(b'DDS broken')
 
         cfg = {'pes17_patch_dir': patch_dir}
-        for pid in (55246, 55255, 169457):
+        for pid in (55246, 55255, 169457, 147337):
             got = faces.face_img(pid, cfg)
             self.assertIsNotNone(got, 'failed to decode pid %d' % pid)
             self.assertEqual(got[:8], b'\x89PNG\r\n\x1a\n')
         self.assertIsNone(faces.face_img(99999, cfg))
+
+    def test_download_selection_includes_sibling_data_and_sider_roots(self):
+        game = os.path.join(self.root, 'game')
+        dl = os.path.join(game, 'download')
+        data = os.path.join(game, 'Data')
+        os.makedirs(dl)
+        os.makedirs(data)
+        exe = os.path.join(game, 'PES2017.exe')
+        with open(exe, 'wb') as f:
+            f.write(b'MZ')
+        self._make_fake_cpk(os.path.join(data, 'vanilla.cpk'), {
+            'common/render/symbol/player/55246.png': PNG_VANILLA,
+        })
+        self._make_fake_cpk(os.path.join(dl, 'patch.cpk'), {
+            'common/render/symbol/player/970.png': PNG_PATCH_BASE,
+        })
+        loose = os.path.join(game, 'SiderAddons', 'livecpk', 'mini',
+                             'common', 'render', 'symbol', 'player')
+        os.makedirs(loose)
+        with open(os.path.join(loose, '147337.png'), 'wb') as f:
+            f.write(PNG_LOOSE)
+        for cfg in ({'pes17_patch_dir': dl}, {'pes17_patch_dir': dl, 'pes_exe': exe}):
+            with self.subTest(cfg=cfg):
+                faces.clear()
+                roots, auto = faces.roots_for(cfg)
+                self.assertFalse(auto)
+                self.assertIn(data, roots)
+                self.assertIn(os.path.join(game, 'SiderAddons'), roots)
+                self.assertEqual(faces.face_img(55246, cfg), PNG_VANILLA)
+                self.assertEqual(faces.face_img(970, cfg), PNG_PATCH_BASE)
+                self.assertEqual(faces.face_img(147337, cfg), PNG_LOOSE)
+
+    def test_separate_explicit_patch_precedes_game_fallback(self):
+        patch = os.path.join(self.root, 'custom-pack')
+        game = os.path.join(self.root, 'game')
+        dl = os.path.join(game, 'download')
+        os.makedirs(dl)
+        exe = os.path.join(game, 'PES2017.exe')
+        with open(exe, 'wb') as f:
+            f.write(b'MZ')
+        self._make_fake_cpk(os.path.join(patch, 'pack.cpk'), {
+            'common/render/symbol/player/55246.png': PNG_PATCH_TOP,
+        })
+        self._make_fake_cpk(os.path.join(dl, 'mounted.cpk'), {
+            'common/render/symbol/player/55246.png': PNG_VANILLA,
+            'common/render/symbol/player/970.png': PNG_PATCH_BASE,
+        })
+        with open(os.path.join(dl, 'DpFileList.bin'), 'wb') as f:
+            f.write(make_dpfilelist(['mounted.cpk']))
+        cfg = {'pes17_patch_dir': patch, 'pes_exe': exe}
+        self.assertEqual(faces.face_img(55246, cfg), PNG_PATCH_TOP)
+        self.assertEqual(faces.face_img(970, cfg), PNG_PATCH_BASE)
+        # A missing explicit folder must not suppress a valid configured game.
+        cfg['pes17_patch_dir'] = os.path.join(self.root, 'missing')
+        self.assertEqual(faces.face_img(970, cfg), PNG_PATCH_BASE)
+        self.assertFalse(faces.report(cfg)['explicit_valid'])
+
+    def test_unreadable_top_asset_falls_back_and_report_tests_decode(self):
+        game = os.path.join(self.root, 'game')
+        dl = os.path.join(game, 'download')
+        data = os.path.join(game, 'Data')
+        os.makedirs(dl)
+        os.makedirs(data)
+        self._make_fake_cpk(os.path.join(dl, 'patch.cpk'), {
+            'common/render/symbol/player/55246.png': PNG_PATCH_TOP[:-7],
+            'common/render/symbol/player/970.png': b'DDS broken',
+        })
+        self._make_fake_cpk(os.path.join(data, 'vanilla.cpk'), {
+            'common/render/symbol/player/55246.png': PNG_VANILLA,
+        })
+        cfg = {'pes17_patch_dir': game}
+        self.assertEqual(faces.face_img(55246, cfg), PNG_VANILLA)
+        self.assertIsNone(faces.face_img(970, cfg))
+        high_bit = (1 << 20) | 55246
+        with mock.patch.object(faces, '_player_names', return_value={}), \
+             mock.patch.object(faces, '_squad_file', return_value='/save/ML00000012'), \
+             mock.patch.object(faces, '_active_squad', return_value=[
+                 (high_bit, 4, 'Example A'), (970, 10, 'Example B'), (999, 1, 'Example C')]) as squad:
+            rep = faces.report(cfg, slot='ML00000012')
+        squad.assert_called_once_with(cfg, {}, 'ML00000012')
+        self.assertEqual(rep['squad_slot'], 'ML00000012')
+        self.assertEqual((rep['squad_total'], rep['squad_matched'], rep['squad_decoded']), (3, 2, 1))
+        self.assertEqual((rep['faces_found'], rep['sample_tested'], rep['sample_decoded']), (2, 2, 1))
+        self.assertTrue(rep['available'])
+        self.assertTrue(next(r for r in rep['sample'] if r['id'] == high_bit)['fallback_used'])
+        self.assertFalse(next(r for r in rep['sample'] if r['id'] == 970)['decoded'])
+        self.assertGreaterEqual(len(rep['decode_errors']), 2)
+        self.assertFalse(faces.report(cfg, slot='../ML00000012')['ok'])
+
+    def test_rejects_impossible_texture_dimensions_before_decoding(self):
+        dds = bytearray(make_rgba_dds())
+        struct.pack_into('<II', dds, 12, 100000, 100000)
+        fox = bytearray(make_ftex())
+        struct.pack_into('<HH', fox, 10, 65000, 65000)
+        with mock.patch.dict(sys.modules, {
+            'dds': types.SimpleNamespace(dds_to_png=mock.Mock(side_effect=AssertionError('unsafe DDS'))),
+            'ftex': types.SimpleNamespace(decode=mock.Mock(side_effect=AssertionError('unsafe FTEX'))),
+        }):
+            self.assertIsNone(faces._to_png(bytes(dds), 'dds'))
+            self.assertIsNone(faces._to_png(bytes(fox), 'ftex'))
+
+    def test_indexed_but_corrupt_png_is_not_advertised_as_available(self):
+        patch = os.path.join(self.root, 'minifaces')
+        os.makedirs(patch)
+        with open(os.path.join(patch, '55246.png'), 'wb') as f:
+            f.write(PNG_PATCH_TOP[:-3])
+        r = faces.report({'pes17_patch_dir': patch})
+        self.assertEqual(r['faces_found'], 1)
+        self.assertEqual((r['sample_tested'], r['sample_decoded']), (1, 0))
+        self.assertFalse(r['available'])
+        self.assertIn('Corrupt', r['decode_errors'][0]['error'])
+
+    def test_parallel_requests_build_one_index_and_reuse_cpk_toc(self):
+        patch = os.path.join(self.root, 'pack')
+        archive = self._make_fake_cpk(os.path.join(patch, 'faces.cpk'), {
+            'common/render/symbol/player/%d.png' % (50000 + i): PNG_VANILLA
+            for i in range(20)
+        })
+        calls = []
+        class CountingCpk(FakeCpk):
+            def __init__(self, path):
+                calls.append(path)
+                time.sleep(0.025)
+                super().__init__(path)
+        cfg = {'pes17_patch_dir': patch}
+        with mock.patch.dict(sys.modules, {'cpkread': types.SimpleNamespace(Cpk=CountingCpk)}), \
+             mock.patch.object(faces, '_scan_cpk', wraps=faces._scan_cpk) as scan_cpk, \
+             mock.patch.object(faces, '_signature', wraps=faces._signature) as signature:
+            with ThreadPoolExecutor(max_workers=20) as pool:
+                got = list(pool.map(lambda i: faces.face_img(50000 + i, cfg), range(20)))
+            self.assertEqual(got, [PNG_VANILLA] * 20)
+            self.assertEqual(calls, [archive])
+            self.assertEqual(scan_cpk.call_count, 1)
+            self.assertEqual(signature.call_count, 1)
+            # Same archive signature and ID, changed contents: only a forced
+            # scan should evict both TOC and previously decoded portrait.
+            FakeCpk.DATA[archive]['common/render/symbol/player/50000.png'] = PNG_PATCH_TOP
+            self.assertEqual(faces.face_img(50000, cfg), PNG_VANILLA)
+            faces.report(cfg, force=True)
+            self.assertEqual(faces.face_img(50000, cfg), PNG_PATCH_TOP)
+            self.assertEqual(calls, [archive, archive])
+        self.assertLessEqual(len(faces._CPK), faces.MAX_CACHED_CPKS)
+
+    def test_archive_errors_and_bounded_toc_cache_are_reported(self):
+        patch = os.path.join(self.root, 'pack')
+        for i in range(faces.MAX_CACHED_CPKS + 3):
+            self._make_fake_cpk(os.path.join(patch, '%02d.cpk' % i), {})
+        bad = self._make_fake_cpk(os.path.join(patch, 'broken.cpk'), {})
+        class SomeBroken(FakeCpk):
+            def __init__(self, path):
+                if path == bad:
+                    raise ValueError('unsupported CPK index')
+                super().__init__(path)
+        with mock.patch.dict(sys.modules, {'cpkread': types.SimpleNamespace(Cpk=SomeBroken)}):
+            rep = faces.report({'pes17_patch_dir': patch})
+        self.assertTrue(any('unsupported CPK index' in e for e in rep['errors']))
+        self.assertLessEqual(len(faces._CPK), faces.MAX_CACHED_CPKS)
+
+    def test_configured_edit_names_take_priority_over_stale_app_database(self):
+        app = os.path.join(self.root, 'app')
+        db = os.path.join(app, 'data', 'pes17')
+        os.makedirs(db)
+        with open(os.path.join(db, 'players.json'), 'w', encoding='utf-8') as f:
+            json.dump([[55246, 'Old unrelated player']], f)
+        sd = os.path.join(self.root, 'save')
+        os.makedirs(sd)
+        edit = os.path.join(sd, 'EDIT00000000')
+        with open(edit, 'wb') as f:
+            f.write(b'edit fixture')
+        fake = types.SimpleNamespace(_edit_data=lambda path: b'parsed',
+                                     parse_edit=lambda data: [{'id': 55246, 'name': 'Current EDIT player'}])
+        with mock.patch.object(faces, 'HERE', app), mock.patch.dict(sys.modules, {'pes17': fake}):
+            self.assertEqual(faces._player_names({'save_dir': sd})[55246], 'Current EDIT player')
 
 
 class UiAndLiveServerMinifaceTests(unittest.TestCase):
@@ -304,7 +499,7 @@ class UiAndLiveServerMinifaceTests(unittest.TestCase):
                 os.path.join(ROOT, 'pes2017', 'overlay', 'static', removed)), removed)
 
         self.assertIn('function faceBadge(', tools)
-        self.assertIn('/api/wiki/img?pid=', tools)
+        self.assertIn('/api/pes17/face?pid=', tools)
         self.assertIn('/api/pes17/faces', tools)
         self.assertIn('pf-wrap', tools)
         self.assertNotIn('https://', tools)
@@ -337,6 +532,12 @@ class UiAndLiveServerMinifaceTests(unittest.TestCase):
             with zipfile.ZipFile(zp) as z:
                 z.extractall(tmp)
             app_dir = os.path.join(tmp, 'TheGaffer')
+            # A broken old on-disk cache must not be re-served by the legacy
+            # game-face path after the PES 2017 reader rejects it.
+            stale = os.path.join(app_dir, 'data', 'gface')
+            os.makedirs(stale, exist_ok=True)
+            with open(os.path.join(stale, '999991.png'), 'wb') as f:
+                f.write(PNG_PATCH_TOP[:-5])
 
             save_dir = os.path.join(tmp, 'save')
             os.makedirs(save_dir, exist_ok=True)
@@ -347,6 +548,10 @@ class UiAndLiveServerMinifaceTests(unittest.TestCase):
             if has_real:
                 shutil.copy2(os.path.join(real_saves, 'ML00000011'),
                              os.path.join(save_dir, 'ML00000011'))
+                # A newer slot must not override the one selected in the report.
+                other = os.path.join(save_dir, 'ML00000012')
+                shutil.copy2(os.path.join(real_saves, 'ML00000011'), other)
+                os.utime(other, (time.time() + 5, time.time() + 5))
                 shutil.copy2(os.path.join(real_saves, 'EDIT00000000'),
                              os.path.join(save_dir, 'EDIT00000000'))
             else:
@@ -383,6 +588,7 @@ class UiAndLiveServerMinifaceTests(unittest.TestCase):
                 json.dump({
                     'save_dir': save_dir,
                     'pes_exe': exe_path,
+                    'pes17_patch_dir': os.path.join(game_dir, 'download'),
                     'pes17_only': True,
                     'wiki_web': False,
                     'port': port,
@@ -411,6 +617,7 @@ class UiAndLiveServerMinifaceTests(unittest.TestCase):
                     classic_html = resp.read().decode('utf-8')
                 self.assertIn('function av(pid,sz)', classic_html)
                 self.assertIn('/api/wiki/img?pid=', classic_html)
+                self.assertIn('/pes17-face-refresh.js', classic_html)
                 self.assertIn('id="pes17ToolsBtn"', classic_html)
                 self.assertNotIn('game-skin', classic_html)
                 for removed_url in ('/pes17-dashboard.html', '/game-skin.css', '/game-skin.js'):
@@ -424,6 +631,7 @@ class UiAndLiveServerMinifaceTests(unittest.TestCase):
                 with urllib.request.urlopen(base + '/api/wiki/img?pid=55246', timeout=5) as resp:
                     self.assertEqual(resp.status, 200)
                     self.assertEqual(resp.headers.get_content_type(), 'image/png')
+                    self.assertEqual(resp.headers.get('Cache-Control'), 'no-store')
                     self.assertEqual(resp.read(), PNG_PATCH_TOP)
 
                 # 2) `/api/wiki/img?pid=970` decodes WESYS-wrapped DDS from Data/dt14_win.cpk into valid PNG
@@ -432,20 +640,34 @@ class UiAndLiveServerMinifaceTests(unittest.TestCase):
                     self.assertEqual(resp.headers.get_content_type(), 'image/png')
                     self.assertEqual(resp.read()[:8], b'\x89PNG\r\n\x1a\n')
 
-                # 3) `/api/pes17/face?pid=147337` serves Jobe Bellingham's portrait
+                # 3) `/api/pes17/face?pid=147337` serves a synthetic image for that real save ID.
                 with urllib.request.urlopen(base + '/api/pes17/face?pid=147337', timeout=5) as resp:
                     self.assertEqual(resp.status, 200)
+                    self.assertEqual(resp.headers.get('Cache-Control'), 'no-store')
                     self.assertEqual(resp.read(), PNG_PATCH_BASE)
 
-                # 4) `/api/pes17/faces` returns diagnostic report with squad match counts
-                with urllib.request.urlopen(base + '/api/pes17/faces', timeout=5) as resp:
+                # A corrupt legacy cache is never sent as if it were a portrait.
+                with self.assertRaises(urllib.error.HTTPError) as bad_image:
+                    urllib.request.urlopen(base + '/api/wiki/img?pid=999991', timeout=5)
+                self.assertEqual(bad_image.exception.code, 404)
+
+                # 4) Diagnose the explicitly selected slot, not the newest one.
+                with urllib.request.urlopen(base + '/api/pes17/faces?slot=ML00000011', timeout=5) as resp:
                     rep = json.loads(resp.read().decode('utf-8'))
                 self.assertTrue(rep['available'])
-                self.assertEqual(rep['faces_found'], 3)
+                self.assertEqual(rep['faces_found'], 4)
+                self.assertEqual((rep['sample_tested'], rep['sample_decoded']), (4, 3))
+                self.assertTrue(any(x['id'] == 999991 for x in rep['decode_errors']))
+                self.assertEqual(rep['squad_slot'], 'ML00000011')
+                self.assertTrue(any(r.endswith(os.path.join(game_dir, 'Data')) for r in rep['roots']))
                 if has_real:
                     self.assertEqual(rep['squad_total'], 26)
                     self.assertEqual(rep['squad_matched'], 3)
+                    self.assertEqual(rep['squad_decoded'], 3)
                     self.assertEqual(rep['players_matched'], 3)
+                    with urllib.request.urlopen(base + '/api/pes17/faces', timeout=5) as resp:
+                        newest = json.loads(resp.read().decode('utf-8'))
+                    self.assertEqual(newest['squad_slot'], 'ML00000012')
 
                 # 5) `/api/pes17/info` includes EDIT positions on squad players
                 if has_real:

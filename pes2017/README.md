@@ -45,8 +45,23 @@ with the tools page. Its locally bundled, layered SVG emblems replace the
 original emoji, including directional morale indicators. The icon renderer
 also handles older saved messages and preserves translation lookups, text-only
 controls and existing navigation. No online icon library or font is required.
-The r9 first-run save-folder flow, measured-only writes, dry-run/backups,
-layout guard, offline defaults, club crests and player mini-faces remain active.
+
+The first Game Shell milestone adds six-section navigation and independently
+scrolling screens to the Classic app on eligible desktop displays. It activates
+after the original first-run tour; **Look & sound → Game shell** restores the
+original scrolling interface when off. Mobile and tablets keep their existing
+layout. `/pes17.html` remains the existing tools page. See
+[`GAME_SHELL_AUDIT.md`](GAME_SHELL_AUDIT.md) for the full page map and current
+scope. The r9 first-run save-folder flow, measured-only writes,
+dry-run/backups, layout guard, offline defaults, club crests and player
+mini-faces remain active.
+
+For player mini-faces, select the game folder in PES 2017 tools → card 3c and
+rescan. The report distinguishes indexed IDs, the selected squad's matches,
+readable portraits and errors. Saves do not contain portrait images; the actual
+game or a compatible mini-face pack must supply them. See
+[`FIRST_RUN.md`](FIRST_RUN.md#player-mini-faces) for troubleshooting. CPK and
+image support has been tested with synthetic assets, not the user's patch.
 
 ## Files
 
@@ -75,6 +90,9 @@ pes2017/
   overlay/static/hud-icons.svg       local layered matchday icon sprite
   overlay/static/hud-icons.js        safe DOM renderer for icon tokens
   overlay/static/hud-ui.css          classic and tools matchday presentation
+  overlay/static/game-shell.css      opt-in fixed-screen layout and bounded scrolling
+  overlay/static/game-shell.js       original-route navigation and desktop switch
+  GAME_SHELL_AUDIT.md                screen inventory, guardrails and browser-test notes
   pro_ui.py                          asserted build-time icon/i18n transformation
   overlay/README_PES2017.txt         user docs, shipped in the zip
   overlay/config_pes2017.example.json

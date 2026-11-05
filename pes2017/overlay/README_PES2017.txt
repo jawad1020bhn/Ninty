@@ -128,11 +128,13 @@ validation.
 
 MATCHDAY PRESENTATION
 ---------------------
-The Classic application opens directly at /.  Its sidebar and navigation,
-matchday controls, panels and the PES 2017 tools page use the same dark,
-football-management presentation.  There is no separate dashboard or skin
-switch.  The PES 2017 tools remain at /pes17.html, also reachable from the
-sidebar.
+The Classic application opens directly at /.  Its matchday controls, panels
+and PES 2017 tools use the same dark football-management presentation.  On
+larger desktop displays, the six-section Game Shell activates after the
+first-run tour; screens scroll inside the window.  To return to the original
+scrolling Classic navigation, open Look & sound and switch Game shell off.
+Phones and tablets retain their existing layout.  There is no separate
+dashboard.  PES 2017 tools remain at /pes17.html and in the sidebar.
 
   * Layered local SVG emblems replace emoji in the shipped UI and in older
     saved messages.  Morale has directional indicators; unknown pictographs
@@ -226,11 +228,11 @@ CLUB CRESTS FROM THE PATCH FOLDER (r6)
 Set "pes17_patch_dir" in config.json to the folder that holds your patch's
 logos, e.g.
 
-    "pes17_patch_dir": "D:\jawedfolder\Games\Pro Evolution Soccer 2017\download"
+    "pes17_patch_dir": "D:\\Games\\Pro Evolution Soccer 2017"
 
 or leave it blank ("") and the app auto-detects download/, Data/, patch/,
 content/ and livecpk/ next to "pes_exe".  On the PES 2017 tools page, card
-"3c. Club logos from your PES 2017 patch folder" can also set/clear the folder
+"3c. Club logos and player mini-faces" can also set/clear the folder
 without editing JSON by hand; press "Set folder & scan".
 
 Recognised crest files (case-insensitive, read-only):
@@ -265,6 +267,28 @@ files, DDS/WESYS decoding, ID/name mapping and the HTTP endpoints were tested
 against a synthetic patch folder and the REAL save; CPK reading was tested
 with the shipped cpkread.Cpk API via a mocked archive.  Try it on your patch
 and read the diagnostic card -- that is the confirmation step for your layout.
+
+PLAYER MINI-FACES
+-----------------
+ML and EDIT saves supply IDs and names, not portrait images. Open PES 2017
+Tools, choose your save slot, and in card 3c enter the game folder containing
+PES2017.exe and download. Press "Set folder & scan" or "Rescan mini-faces".
+A standalone mini-face folder can also be selected. The app reads PNG, JPG,
+DDS and FTEX portraits in supported loose and named CPK locations, and checks
+the game's sibling Data and Sider folders when download is selected. It does
+not write to the game, patch or save folder.
+
+The report shows indexed IDs, matching squad IDs, tested/decoded portraits,
+folders searched and archive/read/decode errors. Indexed does not mean every
+file can be displayed. If none match, check that the mini-face pack and EDIT
+belong to the same patch. If matching files cannot be read, use "Copy diagnostic"
+(the report contains local paths) and provide a small sample.
+3D face models are not 2D mini-faces; missing and regenerated players can use
+silhouettes. Supported CPK layouts are not guaranteed for every patch: real
+user archives were not available for this build's validation.
+
+GET /api/pes17/faces?slot=ML00000011&rescan=1  read-only diagnostic
+GET /api/pes17/face?pid=<id>                  decoded local mini-face
 
 CPK ASSET INVENTORY / HARVEST (r7)
 ----------------------------------

@@ -64,6 +64,7 @@ KEEP = (
     'The Gaffer.vbs', 'The Gaffer.bat', 'TheGaffer.ico',
     'static/index.html', 'static/pes17.html', 'static/favicon.png',
     'static/hud-icons.svg', 'static/hud-icons.js', 'static/hud-ui.css',
+    'static/game-shell.css', 'static/game-shell.js', 'static/pes17-face-refresh.js',
     'static/art/gaffer-mark-180.png', 'static/leagues/premier-league.png',
     'data/teamids.json', 'data/venue_metadata.json', 'data/club_identity.json',
     'data/owners.json', 'data/fl26_installed_league_counts.json',

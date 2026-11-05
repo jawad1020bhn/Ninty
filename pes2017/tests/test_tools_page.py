@@ -111,7 +111,7 @@ class ToolsPageR6Tests(unittest.TestCase):
         cls.config = read(os.path.join(OVERLAY, 'config_pes2017.example.json'))
 
     def test_crest_card_and_controls_are_present(self):
-        for needle in ('3c. Club logos from your PES 2017 patch folder',
+        for needle in ('3c. Club logos and player mini-faces',
                        'id="patchDir"', 'id="setCrestsDir"', 'id="rescanCrests"',
                        'id="clearCrestsDir"', 'id="crestReport"', 'id="crestGrid"',
                        'function renderCrests(', '/api/pes17/crests',

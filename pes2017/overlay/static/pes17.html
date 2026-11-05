@@ -55,7 +55,9 @@ pre{background:#0b111b;border:1px solid #26364c;border-radius:8px;padding:12px;o
 .bar:hover{border-color:#3d82c7;color:#dce6f2}
 </style>
 <link rel="stylesheet" href="/hud-ui.css">
+<link rel="stylesheet" href="/game-shell.css">
 <script defer src="/hud-icons.js"></script>
+<script defer src="/game-shell.js"></script>
 </head>
 <body data-hud="tools">
 <header>
@@ -192,19 +194,25 @@ pre{background:#0b111b;border:1px solid #26364c;border-radius:8px;padding:12px;o
 </div>
 
 <div class="card">
-  <h2 data-hud-icon="shield" data-ar="3c. شعارات الأندية من مجلد الباتش">3c. Club logos from your PES 2017 patch folder</h2>
-  <div class="muted" data-ar="قراءة شعارات الأندية من ملفات الباتش محليا دون إنترنت: صور PNG/JPG/DDS مفكوكة أو ملفات flag/e_&lt;id&gt;_r.dds داخل أرشيف CPK. لا يكتب التطبيق أي شيء داخل مجلد اللعبة.">Reads club crests offline from the patch folder: loose PNG/JPG/DDS files or flag/e_&lt;id&gt;_r.dds entries inside CPK archives. Nothing is ever written into the game folder.</div>
+  <h2 data-hud-icon="shield" data-ar="3c. شعارات الأندية وصور اللاعبين من مجلد اللعبة">3c. Club logos and player mini-faces</h2>
+  <div class="muted" data-ar="اختر مجلد PES 2017 الذي يحتوي على PES2017.exe و download. يمكن أيضا اختيار مجلد باتش أو صور مستقل. تُقرأ الملفات محليا فقط ولا يكتب التطبيق في مجلد اللعبة.">Choose your PES 2017 game folder (the one containing PES2017.exe and download), or a separate patch/mini-face folder. The files are read locally; nothing is written to the game folder.</div>
   <div class="row">
-    <label style="flex:1;min-width:280px"><span data-ar="مجلد الباتش">Patch folder</span>
-      <input id="patchDir" style="width:100%" placeholder="D:\...\Pro Evolution Soccer 2017\download   (blank = auto-detect from pes_exe)"></label>
+    <label style="flex:1;min-width:280px"><span data-ar="مجلد اللعبة أو الباتش">Game or patch folder</span>
+      <input id="patchDir" style="width:100%" placeholder="D:\...\Pro Evolution Soccer 2017   (blank = auto-detect)"></label>
     <button id="setCrestsDir" data-ar="حفظ المجلد ومسح الشعارات">Set folder &amp; scan</button>
     <button id="rescanCrests" class="ghost" data-ar="إعادة المسح">Rescan</button>
     <button id="clearCrestsDir" class="ghost" data-ar="إلغاء المجلد">Clear</button>
   </div>
   <div id="crestReport" class="muted">Not scanned yet.</div>
   <div id="crestGrid" class="crest-grid"></div>
-  <h2 style="margin-top:14px" data-hud-icon="player" data-ar="صور اللاعبين المصغرة من مجلد الباتش">Player mini-faces from your patch folder</h2>
-  <div id="faceReport" class="muted">Not scanned yet.</div>
+  <h2 style="margin-top:14px" data-hud-icon="player" data-ar="صور اللاعبين المصغرة من مجلد الباتش">Player mini-faces from your game or patch</h2>
+  <div class="muted" data-ar="ملفات الحفظ تحتوي على معرفات اللاعبين، وليس الصور. تحتاج إلى صور مصغرة متوافقة مع الباتش؛ وجوه اللاعبين ثلاثية الأبعاد ليست صورا مصغرة.">Save files contain player IDs, not portrait images. You need mini-faces for the same patch; 3D face models are not mini-faces.</div>
+  <div class="row">
+    <button id="rescanFaces" class="ghost" type="button" data-ar="إعادة فحص الصور المصغرة">Rescan mini-faces</button>
+    <button id="copyFaceReport" class="ghost" type="button" data-ar="نسخ تقرير التشخيص">Copy diagnostic</button>
+    <a href="/" style="color:#8fc7ff" data-ar="العودة للتطبيق الكلاسيكي">Back to Classic</a>
+  </div>
+  <div id="faceReport" class="muted" aria-live="polite">Not scanned yet.</div>
   <div id="faceGrid" class="crest-grid"></div>
 </div>
 
@@ -247,7 +255,7 @@ function faceBadge(pid,name,sz,card){
   const s=Number(sz)||26;
   const nm=String(name||(p?('Player #'+p):'Player')).trim();
   const ini=playerInitials(nm);
-  const url=p?('/api/wiki/img?pid='+encodeURIComponent(p)+'&v='+FACE_REV):'';
+  const url=p?('/api/pes17/face?pid='+encodeURIComponent(p)+'&v='+FACE_REV):'';
   return '<span class="pf-wrap'+(card?' card':'')+'" style="width:'+s+'px;height:'+s+'px" title="'+esc(nm+(p?' (#'+p+')':''))+'">'+
     '<svg class="pf-svg" viewBox="0 0 64 64" width="'+s+'" height="'+s+'" aria-hidden="true">'+
       '<circle cx="32" cy="22" r="11" fill="rgba(143,199,255,.22)" stroke="rgba(143,199,255,.45)" stroke-width="1.5"/>'+
@@ -349,6 +357,7 @@ async function loadSetup(forceShow){
     const ver=(s.version||'').match(/r\d+/);
     if(ver&&$('buildVer'))$('buildVer').textContent=ver[0];
     if(s.save_dir&&!$('saveDir').value)$('saveDir').value=s.save_dir;
+    if(s.patch_dir&&!$('patchDir').value)$('patchDir').value=s.patch_dir;
     const need=!s.ready||!!forceShow;
     $('setupCard').style.display=need?'block':'none';
     if(s.message)$('setupMsg').textContent=s.message;
@@ -400,7 +409,8 @@ async function loadInfo(){
     fillTeams(r.teams);out({ok:true,league_name:r.league_name,info:r.info,budget:r.budget});
   }catch(e){out({error:friendly(e)});show('summary','<span class="err">'+esc(friendly(e))+'</span>')}
 }
-$('load').onclick=loadInfo;
+$('load').onclick=async()=>{await loadInfo();await loadFaces(false)};
+$('slot').onchange=async()=>{SLOT=$('slot').value;await loadInfo();await loadFaces(false)};
 $('scale').onchange=renderScale;
 $('addOffer').onclick=()=>{QUEUE.push({op:'offer_add',buyer:Number($('buyer').value),slot:Number($('oslot').value),pid:Number($('pid').value),source:'auto',claim:$('claim').checked});qsync()};
 $('clearOffer').onclick=()=>{QUEUE.push({op:'offer_clear',buyer:Number($('buyer2').value),slot:Number($('cslot').value)});qsync()};
@@ -457,28 +467,68 @@ $('harvestFacesAssets').onclick=async()=>{
 };
 loadAssets(false);
 
+let LAST_FACE_REPORT=null, FACE_REQUEST=0;
+const faceText=(en,ar)=>document.documentElement.lang==='ar'?ar:en;
+function announceFaceChange(){
+  try{localStorage.setItem('gaffer_pes17_face_revision',Date.now()+'-'+Math.random().toString(36).slice(2,8))}catch(e){}
+}
 function renderFaces(r,bump){
+  LAST_FACE_REPORT=r;
   if(!r||!r.ok){show('faceReport','<span class="err">'+esc(r&&r.error||'face scan failed')+'</span>');$('faceGrid').innerHTML='';return}
   if(bump){FACE_REV++;if(LAST_INFO_DATA)renderInfoViews(LAST_INFO_DATA)}
   const bits=[
-    'Mini-faces indexed: '+esc(fmt(r.faces_found||0))+
-    (r.players_matched?(' · matched in EDIT: '+esc(fmt(r.players_matched))):'')+
-    (r.squad_total?(' · squad matched: '+esc(r.squad_matched||0)+'/'+esc(r.squad_total)):'')+'.'
+    faceText('Indexed player IDs: ','معرفات اللاعبين المفهرسة: ')+esc(fmt(r.faces_found||0))+
+    faceText(' · matched in EDIT: ',' · المطابقة مع EDIT: ')+esc(fmt(r.players_matched||0))+'.',
+    r.squad_total?faceText('Selected squad ','التشكيلة المحددة ')+esc(r.squad_slot||'')+': '+
+      esc(r.squad_matched||0)+'/'+esc(r.squad_total)+faceText(' IDs matched; ',' معرفات مطابقة؛ ')+
+      esc(r.squad_decoded||0)+'/'+esc(r.squad_matched||0)+faceText(' readable portraits.',' صور قابلة للقراءة.'):
+      faceText('No squad was read for the selected save slot.','لم تُقرأ تشكيلة لخانة الحفظ المحددة.'),
+    faceText('Preview decoded: ','الصور المختبرة: ')+esc(r.sample_decoded||0)+'/'+esc(r.sample_tested||0)+
+      faceText('. Other indexed files have not been tested.','. لم تُختبر بقية الملفات المفهرسة.'),
+    faceText('Folders searched: ','المجلدات المفحوصة: ')+esc((r.roots||[]).length?(r.roots||[]).join(' | '):faceText('none','لا يوجد')),
+    faceText('CPK archives checked: ','ملفات CPK المفحوصة: ')+esc(r.cpk_archives||0)+'/'+esc(r.cpk_archives_seen||r.cpk_archives||0)+'.'
   ];
-  if(!r.available)bits.push('<span class="muted">'+esc(r.hint||'No player mini-faces found yet (silhouette fallback active).')+'</span>');
-  else bits.push('<span class="ok">Player mini-faces are served offline via /api/wiki/img.</span>');
+  if(r.explicit&&!r.explicit_valid)bits.push('<span class="err">'+faceText('The chosen patch folder does not exist. Choose the game folder again.','مجلد الباتش المحدد غير موجود. اختر مجلد اللعبة مجددا.')+'</span>');
+  if(!(r.roots||[]).length)bits.push('<span class="err">'+faceText('No game or patch folder found. Above, enter the folder containing PES2017.exe and download, then choose Set folder & scan.','لم يُعثر على مجلد اللعبة أو الباتش. أدخل المجلد الذي يحتوي على PES2017.exe و download ثم اضغط حفظ وفحص.')+'</span>');
+  else if(!r.faces_found)bits.push('<span class="err">'+faceText('No supported mini-face files were found in the searched folders. Install a mini-face pack for this patch or choose its folder.','لم يُعثر على صور مصغرة مدعومة في المجلدات. ثبّت حزمة صور متوافقة مع الباتش أو اختر مجلدها.')+'</span>');
+  else if(r.squad_total&&!r.squad_matched)bits.push('<span class="err">'+faceText('Images were indexed, but no IDs match this squad. Check that the mini-face pack and EDIT file belong to the same patch.','فُهرست صور لكن لم تتطابق أي معرفات مع التشكيلة. تأكد من أن حزمة الصور وملف EDIT من الباتش نفسه.')+'</span>');
+  else if(r.squad_matched&&!r.squad_decoded)bits.push('<span class="err">'+faceText('Matching squad portraits were found but could not be read. Copy the diagnostic and share a small sample.','عُثر على صور مطابقة للتشكيلة لكن تعذرت قراءتها. انسخ التشخيص وشارك عينة صغيرة.')+'</span>');
+  else if(!r.available)bits.push('<span class="err">'+faceText('Indexed files were found, but none of the checked portraits could be read. Copy the diagnostic and share a small sample.','عُثر على ملفات لكن تعذرت قراءة الصور المختبرة. انسخ التشخيص وشارك عينة صغيرة.')+'</span>');
+  else bits.push('<span class="ok">'+faceText('Readable mini-faces are served locally. Regenerated players may intentionally use a silhouette.','الصور المقروءة تُعرض محليا. قد تظهر أيقونة بديلة للاعبين المعاد توليدهم عمدا.')+'</span>');
+  if(r.squad_decoded&&r.squad_decoded<r.squad_matched)bits.push('<span class="err">'+faceText('Some matched squad portraits could not be read.','تعذرت قراءة بعض صور التشكيلة المطابقة.')+'</span>');
+  if(r.scan_truncated)bits.push('<span class="err">'+faceText('Scan limit reached; narrow the folder to the relevant mini-face pack.','تم بلوغ حد الفحص؛ اختر مجلد حزمة الصور المطلوبة تحديدا.')+'</span>');
+  if(r.errors&&r.errors.length)bits.push('<span class="err">'+faceText('Folder/archive errors: ','أخطاء المجلد أو الأرشيف: ')+esc(r.errors.slice(0,3).join(' | '))+'</span>');
+  if(r.decode_errors&&r.decode_errors.length){
+    const failures=r.decode_errors.slice(0,3).map(x=>'#'+x.id+' '+x.error+' ('+x.source+(x.entry?'!'+x.entry:'')+')');
+    bits.push('<span class="err">'+faceText('Unreadable candidates (a fallback may still work): ','ملفات غير قابلة للقراءة (قد يعمل مصدر بديل): ')+esc(failures.join(' | '))+'</span>');
+  }
   show('faceReport',bits.join('<br>'));
   const sm=r.sample||[];
   $('faceGrid').innerHTML=sm.length?sm.map(x=>{
     const lbl=x.name||('#'+x.id);
+    const status=x.decoded?(x.fallback_used?faceText('fallback','بديل'):faceText('readable','مقروء')):faceText('unreadable','غير مقروء');
     return '<div class="crest-cell">'+faceBadge(x.id,lbl,56,true)+
-      '<span title="'+esc(lbl)+'" style="margin-top:5px">'+esc(lbl)+'</span><span class="muted">#'+esc(x.id)+' '+esc(x.source)+'</span></div>';
-  }).join(''):'<span class="muted">no sample player mini-faces</span>';
+      '<span title="'+esc(lbl)+'" style="margin-top:5px">'+esc(lbl)+'</span><span class="muted">#'+esc(x.id)+' '+esc(status)+'</span></div>';
+  }).join(''):'<span class="muted">'+faceText('No sample mini-faces.','لا توجد صور مصغرة للمعاينة.')+'</span>';
 }
 async function loadFaces(rescan){
-  try{renderFaces(await get('/api/pes17/faces'+(rescan?'?rescan=1':'')),!!rescan)}
-  catch(e){show('faceReport','<span class="err">'+esc(e)+'</span>')}
+  const request=++FACE_REQUEST, q=new URLSearchParams(), slot=$('slot').value||SLOT;
+  if(slot)q.set('slot',slot);
+  if(rescan){q.set('rescan','1');show('faceReport',faceText('Scanning mini-faces; large CPK archives may take a moment…','جار فحص الصور المصغرة؛ قد يستغرق فحص ملفات CPK الكبيرة بعض الوقت…'))}
+  try{
+    const r=await get('/api/pes17/faces'+(q.toString()?'?'+q.toString():''));
+    if(rescan&&r&&r.ok)announceFaceChange();
+    if(request===FACE_REQUEST)renderFaces(r,!!rescan);
+    return r;
+  }catch(e){if(request===FACE_REQUEST)show('faceReport','<span class="err">'+esc(e)+'</span>');return null}
 }
+$('rescanFaces').onclick=()=>loadFaces(true);
+$('copyFaceReport').onclick=async()=>{
+  if(!LAST_FACE_REPORT)return;
+  const text=JSON.stringify(LAST_FACE_REPORT,null,2);
+  try{await navigator.clipboard.writeText(text);$('copyFaceReport').textContent=faceText('Copied','تم النسخ')}
+  catch(e){window.prompt(faceText('Copy this diagnostic (it contains local folder paths):','انسخ التشخيص (يحتوي على مسارات المجلدات المحلية):'),text)}
+};
 
 /* ------------------------------------------------------------------ *
  * PES 2017 patch-folder crests (r6).  Diagnostic + offline crest previews.
@@ -535,11 +585,12 @@ function setLang(ar){
     else el.textContent=value;
   });
   $('langBtn').textContent=ar?'English':'العربية';
+  if(LAST_FACE_REPORT)renderFaces(LAST_FACE_REPORT,false);
   try{localStorage.setItem(LANG_KEY,ar?'ar':'en')}catch(e){}
 }
 $('langBtn').onclick=()=>setLang(document.documentElement.lang!=='ar');
 try{setLang(localStorage.getItem(LANG_KEY)==='ar')}catch(e){setLang(false)}
-loadSetup(false).then(()=>loadClubColors()).then(()=>{loadCrests(false);loadFaces(false);loadSlots().then(loadInfo)});
+loadSetup(false).then(()=>loadClubColors()).then(async()=>{loadCrests(false);await loadSlots();await loadInfo();await loadFaces(false)});
 </script>
 </body>
 </html>

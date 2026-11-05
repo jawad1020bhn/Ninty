@@ -116,6 +116,12 @@ def is_fl26_exe(path):
     return False
 
 
+def needs_game_discovery(path):
+    """Retry discovery for an empty, inherited, or no-longer-existing path."""
+    p = os.path.expandvars((path or '').strip().strip('"'))
+    return not p or not os.path.exists(p) or is_fl26_exe(p)
+
+
 _GAME_NAMES = (
     'Pro Evolution Soccer 2017',
     'PRO EVOLUTION SOCCER 2017',
