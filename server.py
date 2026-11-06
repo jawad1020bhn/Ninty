@@ -495,12 +495,6 @@ def encrypter_status():
     """pc316 (Michele & Alex): postoji li encrypter21.exe i moze li se pokrenuti (antivirus ga zna obrisati: WinError 225).
     pc361: enkripcija je ugradjena (pescrypt), exe vise ne treba."""
     return dict(ok=True, builtin=True)
-    p = CFG.get('encrypter') or ''
-    if not p:
-        return dict(ok=False, why='No encrypter configured in Setup.')
-    if not os.path.isfile(p):
-        return dict(ok=False, why=ENC_BLOCKED % os.path.dirname(p), path=p)
-    return dict(ok=True, path=p, size=os.path.getsize(p))
 
 
 def encrypt(new_dec, newfile):
@@ -8063,8 +8057,6 @@ def _write_slot(slot, label, fn, pid=None):
             decrypt(src, src_dec)
             new_dec = os.path.join(work, 'apply_new')
         s = mlwrite.Save(src_dec)
-        s._free60_ok = bool(CFG.get('free60_beta', True))   # pc235: 60 MB slobodni igraci (beta, config.json)
-        s._opt60_ok = bool(CFG.get('loan_opt60_beta', True))   # pc247: 60 MB posudba s opcijom otkupa (beta, tester 60 MB Report 04; odvojeno od free60)
         if label in XFER_LABELS and win_state(s.game_date_code())[2] != 'in':
             c = s.game_date_code()
             raise ValueError('The transfer window is closed (in game it is %d.%d.%d.). Transfers, sales and loans only work when the window opens ' '(summer 1.7.-31.8., winter 1.1.-31.1.).' % (c >> 24, (c >> 16) & 0xff, c & 0xffff))
@@ -11482,43 +11474,6 @@ def _kit_tex_dirs():
                 out.append(d)
     _GL['kitdirs'] = out
     return out
-
-
-def _kit_samples():
-    """Kopira nekoliko tekstura dresova u data/_kitsamples (za izradu prikaza pravih dresova; mapa igre je preduboko za izravan pristup). Dnevnik u data/_kitsamples.log."""
-    log = []
-    out = os.path.join(HERE, 'data', '_kitsamples')
-    try:
-        log.append('sider=%s' % _sider_root())
-        log.append('roots=%s' % _cpk_roots())
-        if os.path.isdir(out) and len(os.listdir(out)) > 3:
-            log.append('vec postoji')
-        else:
-            d = _kit_tex_dir(log)
-            log.append('tex=%s' % d)
-            if d:
-                os.makedirs(out, exist_ok=True)
-                for f in ('u0194p1.ftex', 'u0194p2.ftex', 'u0196p1.ftex', 'u0196p2.ftex', 'u0101p1.ftex'):
-                    if os.path.isfile(os.path.join(d, f)):
-                        shutil.copyfile(os.path.join(d, f), os.path.join(out, f))
-                        log.append('kopirano %s' % f)
-                for rt in _cpk_roots():
-                    td = os.path.join(rt, 'common', 'character0', 'model', 'character', 'uniform', 'team')
-                    if os.path.isdir(td):
-                        for f in ('UniformParameter.bin', 'UniColor.bin'):
-                            if os.path.isfile(os.path.join(td, f)):
-                                shutil.copyfile(os.path.join(td, f), os.path.join(out, f))
-                        if os.path.isdir(os.path.join(td, '194')):
-                            for f in os.listdir(os.path.join(td, '194')):
-                                shutil.copyfile(os.path.join(td, '194', f), os.path.join(out, f))
-                        log.append('team bin iz %s' % td)
-                        break
-    except Exception as e:
-        log.append('GRESKA %r' % e)
-    try:
-        open(os.path.join(HERE, 'data', '_kitsamples.log'), 'w', encoding='utf-8').write('\n'.join(log))
-    except Exception:
-        pass
 
 
 def _ks_dir():

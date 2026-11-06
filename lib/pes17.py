@@ -277,10 +277,6 @@ def _looks_pes17(head, size=0):
     return ok >= 2
 
 
-def game_label(folder):
-    return 'PES 2017 (read-only)' if is_pes17(folder) else ''
-
-
 def configured_date_order():
     """Read pes17_date_order from the app's config.json (default 'dmy')."""
     try:
@@ -505,20 +501,6 @@ def read_save(folder, names=None, date_order='dmy', edit_data=None):
 # --------------------------------------------------------------------------
 # EDIT00000000 -> the app's player database
 # --------------------------------------------------------------------------
-def decrypt_edit(src, outdir):
-    """Decrypt an EDIT00000000 file with the PES 2017 key; return the parts."""
-    import pescrypt
-    raw = open(src, 'rb').read()
-    parts = pescrypt.decrypt_bytes(raw, KEY_PES17)
-    os.makedirs(outdir, exist_ok=True)
-    for k, v in parts.items():
-        with open(os.path.join(outdir, k), 'wb') as f:
-            f.write(v)
-    with open(os.path.join(outdir, KEY_MARK), 'w') as f:
-        f.write(PES17_GAME)
-    return parts
-
-
 def _edit_data(src):
     """Accept an encrypted EDIT00000000, a decrypted folder, or data.dat."""
     if os.path.isdir(src):
@@ -1205,12 +1187,6 @@ def open_save(folder, ro=False, date_order=None):
 # --------------------------------------------------------------------------
 # Helpers used by server.py
 # --------------------------------------------------------------------------
-def default_config(save_dir):
-    """Setup defaults when the selected save folder belongs to PES 2017."""
-    return dict(pes_process='PES2017', auto_menu=False,
-                pes17_date_order='dmy', save_dir=save_dir)
-
-
 def looks_like_pes17_path(path):
     p = os.path.normcase(os.path.normpath(path or ''))
     return 'pro evolution soccer 2017' in p or 'pes2017' in p

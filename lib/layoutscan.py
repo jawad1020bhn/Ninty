@@ -44,18 +44,6 @@ def _chains(hs, st, max_rows=45):
     return res
 
 
-def _clusters(hs, gap=8000):
-    res, cur = [], []
-    for h in hs:
-        if cur and h - cur[-1] > gap:
-            res.append(cur)
-            cur = []
-        cur.append(h)
-    if cur:
-        res.append(cur)
-    return res
-
-
 def scan(d, squad_tags, dx=0, window=1500000):
     """d: bytes savea; squad_tags: {pid: tag}; dx: pomak srednjeg dijela iz sidara (0 ako nije poznat).
     -> dict(tables=[...], summary)"""

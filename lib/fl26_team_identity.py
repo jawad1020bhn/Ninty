@@ -56,7 +56,3 @@ def read_teams(data):
     return candidates[0]
 
 
-def name_index(teamids):
-    counts = Counter(teamids.values())
-    return ({name: int(tid) for tid, name in teamids.items()
-             if counts[name] == 1}, {name for name, n in counts.items() if n > 1})

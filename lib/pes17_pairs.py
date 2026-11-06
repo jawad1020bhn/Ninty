@@ -237,14 +237,6 @@ def verify_layout(d, strict=True, require_real=False):
     return rep
 
 
-def pair_offsets(name):
-    """Absolute offsets of the bytes the game changed for this one action."""
-    if name not in PAIRS:
-        raise ValueError('unknown measured pair %r (choose from %s)' %
-                         (name, ', '.join(sorted(PAIRS))))
-    return [o for o, _, _ in PAIRS[name]]
-
-
 def all_offsets():
     """Every allow-listed byte offset (union of all four measured pairs)."""
     return sorted({o for rows in PAIRS.values() for o, _, _ in rows})

@@ -15,7 +15,7 @@ validated by the MLTE project) are writable here:
 
 Contracts, wages (other than the measured u32), loans, youth players, AI
 transfers and forced transfers are still refused by the read-only Pes17Save
-adapter used by the FL26 write endpoints.  See README_PES2017.txt.
+adapter used by the legacy write endpoints.  See README.txt.
 
 Every write is done on a decrypted copy, re-encrypted with the PES 2017 key,
 decrypted again in memory and compared byte-for-byte before the original

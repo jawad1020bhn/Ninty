@@ -34,11 +34,6 @@ def goal_for(exp, n):
     return 'survive', n - 3
 
 
-def target_pos(goal, n):
-    return {'title': 1, 'challenge': 3, 'europe': max(2, int(math.ceil(0.22 * n))), 'upper': int(math.ceil(0.5 * n)),
-            'mid': int(math.ceil(0.75 * n)), 'survive': n - 3}.get(goal, n - 3)
-
-
 def week_delta(p):
     """Promjena povjerenja za jedan tjedan iz pritiska (coaches.pressure, 0 = sve po planu)."""
     if p > 0.3:

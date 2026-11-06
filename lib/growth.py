@@ -65,21 +65,6 @@ def read_live(dump_path, pids):
     return out
 
 
-def read_attrs(dump_path, pids):
-    """{pid: {attr: val}} iz zivog dumpa (blokovi 0x17C)."""
-    if not dump_path or not os.path.exists(dump_path):
-        return {}
-    want = set(pids)
-    d = open(dump_path, 'rb').read()
-    out = {}
-    for i in range(len(d) // BLOCK):
-        b = d[i * BLOCK:(i + 1) * BLOCK]
-        pid = struct.unpack_from('<I', b, 0x30)[0]
-        if pid in want:
-            out[pid] = attrs_from_block(b)
-    return out
-
-
 # ---------------------------------------------------------------- FM -> PES
 # Tablica pretvorbe: FM atribut -> {PES atribut: udio}. Popisi atributa po treningu preuzeti iz FM26 (training.fmf).
 FM2PES = {
@@ -466,10 +451,6 @@ def coach_attr_weights(coach):
         for a, x in ROLES[r][2].items():
             w[a] = w.get(a, 0) + x * SECONDARY_W
     return w
-
-
-def staff_points_used(coaches):
-    return sum(GRADE[c['grade']][5] for c in coaches)
 
 
 AWARD_ROLES = {0: ('goalkeeping',), 1: ('defensive', 'physical'), 2: ('defensive', 'physical'), 3: ('defensive', 'physical'),
