@@ -1,0 +1,133 @@
+THE GAFFER - PES 2017 BUILD: SAFE CLEANUP MANIFEST
+==================================================
+
+Only files listed below were removed from this build. They are
+FL26 / FL27 / Sider-only, or FL26 databases that the PES 2017
+build replaces with data/pes17/*.json generated from your real
+EDIT00000000. No file was changed in the game, patch or save folder.
+
+Removed: 111 files, 10013776 bytes (10.01 MB)
+
+  FL_key.bin                                                                      64  FL27 save key; PES 2017 uses KEY_PES17 and _fl_key() tolerates a missing file
+  FL_key_README.txt                                                              198  FL27 key note; only relevant to the removed FL_key.bin
+  addons/michele/EXPLANATION_game_fixes.txt                                     1053  FL26 Sider Master League Realism Lua modules (Michele & Claude); no Sider in PES 2017
+  addons/michele/EXPLANATION_transfers.txt                                      7657  FL26 Sider Master League Realism Lua modules (Michele & Claude); no Sider in PES 2017
+  addons/michele/README.txt                                                      636  FL26 Sider Master League Realism Lua modules (Michele & Claude); no Sider in PES 2017
+  addons/michele/TECHNICAL_MAP.txt                                              7065  FL26 Sider Master League Realism Lua modules (Michele & Claude); no Sider in PES 2017
+  addons/michele/modules/Economia Lunga - motore.lua                           57081  FL26 Sider Master League Realism Lua modules (Michele & Claude); no Sider in PES 2017
+  addons/michele/modules/FL26 - Guardia rosa vuota.lua                          5758  FL26 Sider Master League Realism Lua modules (Michele & Claude); no Sider in PES 2017
+  addons/michele/modules/Regole di tesseramento.lua                            22184  FL26 Sider Master League Realism Lua modules (Michele & Claude); no Sider in PES 2017
+  addons/michele/modules/injuries_for_all.lua                                  24082  FL26 Sider Master League Realism Lua modules (Michele & Claude); no Sider in PES 2017
+  addons/regenfix/README.txt                                                     419  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/0.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/1.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/10.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/11.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/12.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/13.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/14.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/15.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/16.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/17.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/18.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/19.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/2.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/20.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/21.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/22.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/23.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/24.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/25.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/26.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/27.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/28.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/29.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/3.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/30.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/31.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/32.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/33.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/34.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/35.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/36.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/37.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/38.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/39.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/4.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/40.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/41.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/42.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/43.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/44.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/45.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/46.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/47.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/48.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/49.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/5.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/50.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/51.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/52.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/53.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/54.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/55.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/56.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/57.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/58.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/59.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/6.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/60.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/61.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/62.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/63.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/64.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/65.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/66.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/67.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/68.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/69.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/7.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/70.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/71.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/72.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/73.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/74.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/75.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/76.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/77.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/78.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/79.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/8.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/80.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/81.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/82.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/83.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/84.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/85.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/86.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/87.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/88.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/89.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/livecpk/FL26 Regen Faces/common/render/symbol/player/regen/9.dds     32528  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/modules/fl26regen.dll                                        93184  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/modules/fl26regen.lua                                        10606  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  addons/regenfix/modules/fl26regen_faces.bin                                   5924  FL26 Sider regen fix (fl26regen.dll/.lua/.bin + 90 regen DDS faces); no Sider in PES 2017
+  data/players.json                                                           992305  FL26 player names; PES 2017 builds data/pes17/players.json from EDIT00000000
+  data/playpos.json                                                           628603  FL26 preferred positions; shadowed by data/pes17/playpos.json
+  data/positions.json                                                         281472  FL26 positions; shadowed by data/pes17/positions.json
+  data/ratings.json                                                          3051978  FL26 ratings; shadowed by data/pes17/ratings.json
+  data/realmoves.json                                                        1855019  FL26 Wikipedia-derived real-transfer cache; not used by PES 2017
+  lua/GrowthBridge.lua                                                         20064  Sider F7 PlayerDump / GrowthBridge Lua modules; PES 2017 has no F7 dump
+  lua/PlayerDump.lua                                                           20904  Sider F7 PlayerDump / GrowthBridge Lua modules; PES 2017 has no F7 dump
+
+KEPT ON PURPOSE
+----------------
+The classic UI is the default landing page at / (index.html), so its
+HTML, art, scenes, stadium photos, i18n strings, fm_text.json,
+teamids.json and small metadata JSONs stay. All lib/*.py stay because
+server.py imports them at startup or lazily. The bundled portable
+python/* stays because this is a Windows build. The PES 2017
+tools (/pes17.html), crest/face readers, CPK harvester,
+measured writes, layout guard and backups are untouched.
+
+Nothing here is an in-game save-load test. Keep a backup.

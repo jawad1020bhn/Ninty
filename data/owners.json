@@ -1,0 +1,18 @@
+{
+ "_note": "Multi-club ownership groups used by AI transfers. Edit freely: club names are matched without FC/AFC/accents. Ownership as known mid-2025; change it to fit your world.",
+ "groups": [
+  {"name": "City Football Group", "clubs": ["Manchester City", "Girona", "Palermo", "ESTAC Troyes", "Troyes", "Lommel SK", "New York City", "Melbourne City", "Montevideo City Torque", "EC Bahia", "Yokohama F. Marinos"]},
+  {"name": "Red Bull", "clubs": ["RB Leipzig", "Red Bull Salzburg", "FC Salzburg", "New York Red Bulls", "Red Bull Bragantino", "RB Bragantino", "FC Liefering"]},
+  {"name": "BlueCo", "clubs": ["Chelsea", "RC Strasbourg Alsace", "Strasbourg"]},
+  {"name": "Pozzo family", "clubs": ["Udinese", "Watford"]},
+  {"name": "Eagle Football", "clubs": ["Olympique Lyonnais", "Botafogo", "RWD Molenbeek"]},
+  {"name": "INEOS", "clubs": ["Manchester United", "OGC Nice", "Nice", "Lausanne-Sport"]},
+  {"name": "The Friedkin Group", "clubs": ["AS Roma", "Roma", "Everton", "AS Cannes"]},
+  {"name": "PIF", "clubs": ["Newcastle United", "Al Hilal", "Al Nassr", "Al Ittihad", "Al Ahli"]},
+  {"name": "Black Knight", "clubs": ["AFC Bournemouth", "Bournemouth", "FC Lorient", "Lorient"]},
+  {"name": "Bloom", "clubs": ["Brighton & Hove Albion", "Royale Union Saint-Gilloise", "Union Saint-Gilloise"]},
+  {"name": "Marinakis", "clubs": ["Nottingham Forest", "Olympiacos", "Rio Ave"]},
+  {"name": "Grupo Pachuca", "clubs": ["CF Pachuca", "Pachuca", "Club León", "Real Oviedo"]},
+  {"name": "Atlético network", "clubs": ["Atlético de Madrid", "Atlético Ottawa", "Atlético San Luis"]}
+ ]
+}
