@@ -32,21 +32,11 @@ pre{background:#0b111b;border:1px solid #26364c;border-radius:8px;padding:12px;o
 .warnbox{background:#2a1c16;border:1px solid #8a5a24;color:#ffd9a0;border-radius:8px;padding:10px 12px;font-size:12px;margin:10px 0}
 .goodbox{background:#142a1e;border:1px solid #2f7a52;color:#b6f2cd;border-radius:8px;padding:10px 12px;font-size:12px;margin:10px 0}
 .langbtn{font-size:12px;background:#20304a}
-.crest-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px;margin-top:10px}
-.crest-cell{background:#0e1622;border:1px solid #2c3e55;border-radius:8px;padding:9px 6px;text-align:center;font-size:11px;color:#b9c9dc}
-.crest-cell img{width:64px;height:64px;object-fit:contain;display:block;margin:0 auto 6px}
-.crest-cell span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cb-wrap{position:relative;display:inline-grid;place-items:center;vertical-align:middle;flex:none}
 .cb-wrap .cb-svg{display:block;width:100%;height:100%;transition:opacity .14s}
-.cb-wrap .cb-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .14s}
-.cb-wrap.has-img .cb-svg{opacity:0}
-.cb-wrap.has-img .cb-img{opacity:1}
 .pf-wrap{position:relative;display:inline-grid;place-items:center;vertical-align:middle;flex:none;overflow:hidden;border-radius:50%;background:#132032;border:1px solid #2c3e55}
 .pf-wrap.card{border-radius:8px}
 .pf-wrap .pf-svg{display:block;width:100%;height:100%;transition:opacity .14s}
-.pf-wrap .pf-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;opacity:0;transition:opacity .14s}
-.pf-wrap.has-img .pf-svg{opacity:0}
-.pf-wrap.has-img .pf-img{opacity:1}
 .club-cell{display:inline-flex;align-items:center;gap:7px}
 .chip{display:inline-flex;align-items:center;gap:5px;border:1px solid #3a4f68;background:#101a28;border-radius:99px;padding:4px 10px;font-size:11px;color:#9fb3c9}
 .chip b{color:#ffc352}
@@ -70,7 +60,7 @@ pre{background:#0b111b;border:1px solid #26364c;border-radius:8px;padding:12px;o
     </div>
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-    <span class="chip">Build <b id="buildVer">r9</b></span>
+    <span class="chip">Build <b id="buildVer">r11</b></span>
     <button id="setupBtn" class="ghost" type="button" data-ar="مجلد الحفظ">Save folder</button>
     <button id="langBtn" class="langbtn" type="button">العربية</button>
   </div>
@@ -194,42 +184,6 @@ pre{background:#0b111b;border:1px solid #26364c;border-radius:8px;padding:12px;o
 </div>
 
 <div class="card">
-  <h2 data-hud-icon="shield" data-ar="3c. شعارات الأندية وصور اللاعبين من مجلد اللعبة">3c. Club logos and player mini-faces</h2>
-  <div class="muted" data-ar="اختر مجلد PES 2017 الذي يحتوي على PES2017.exe و download. يمكن أيضا اختيار مجلد باتش أو صور مستقل. تُقرأ الملفات محليا فقط ولا يكتب التطبيق في مجلد اللعبة.">Choose your PES 2017 game folder (the one containing PES2017.exe and download), or a separate patch/mini-face folder. The files are read locally; nothing is written to the game folder.</div>
-  <div class="row">
-    <label style="flex:1;min-width:280px"><span data-ar="مجلد اللعبة أو الباتش">Game or patch folder</span>
-      <input id="patchDir" style="width:100%" placeholder="D:\...\Pro Evolution Soccer 2017   (blank = auto-detect)"></label>
-    <button id="setCrestsDir" data-ar="حفظ المجلد ومسح الشعارات">Set folder &amp; scan</button>
-    <button id="rescanCrests" class="ghost" data-ar="إعادة المسح">Rescan</button>
-    <button id="clearCrestsDir" class="ghost" data-ar="إلغاء المجلد">Clear</button>
-  </div>
-  <div id="crestReport" class="muted">Not scanned yet.</div>
-  <div id="crestGrid" class="crest-grid"></div>
-  <h2 style="margin-top:14px" data-hud-icon="player" data-ar="صور اللاعبين المصغرة من مجلد الباتش">Player mini-faces from your game or patch</h2>
-  <div class="muted" data-ar="ملفات الحفظ تحتوي على معرفات اللاعبين، وليس الصور. تحتاج إلى صور مصغرة متوافقة مع الباتش؛ وجوه اللاعبين ثلاثية الأبعاد ليست صورا مصغرة.">Save files contain player IDs, not portrait images. You need mini-faces for the same patch; 3D face models are not mini-faces.</div>
-  <div class="row">
-    <button id="rescanFaces" class="ghost" type="button" data-ar="إعادة فحص الصور المصغرة">Rescan mini-faces</button>
-    <button id="copyFaceReport" class="ghost" type="button" data-ar="نسخ تقرير التشخيص">Copy diagnostic</button>
-    <a href="/" style="color:#8fc7ff" data-ar="العودة للتطبيق الكلاسيكي">Back to Classic</a>
-  </div>
-  <div id="faceReport" class="muted" aria-live="polite">Not scanned yet.</div>
-  <div id="faceGrid" class="crest-grid"></div>
-</div>
-
-<div class="card">
-  <h2 data-hud-icon="folder" data-ar="3d. محتويات أرشيف CPK في مجلد الباتش">3d. CPK assets in the patch folder</h2>
-  <div class="muted" data-ar="جرد لكل ما يستطيع قارئ CPK المرفق مع البرنامج رؤيته محليا: شعارات الأندية وشعارات البطولات وأقمصة الفرق وصور اللاعبين والمدربين وجداول pesdb والصور العامة. لا شيء يكتب داخل مجلد اللعبة، ولا اتصال بالإنترنت.">Offline inventory of everything the shipped CPK readers can see locally: club crests, competition emblems, kit textures, player/coach portraits, pesdb tables and generic art. Nothing is written into the game folder and no network request is made.</div>
-  <div class="row">
-    <button id="scanAssets" data-ar="فحص المحتويات">Scan assets</button>
-    <button id="harvestAssets" class="ghost" data-ar="نسخ الشعارات والصور القابلة للاستخدام">Harvest crests / logos / art</button>
-    <button id="harvestFacesAssets" class="ghost" type="button" data-ar="نسخ صور اللاعبين المصغرة">Harvest mini-faces</button>
-    <span id="assetSummary" class="muted">Not scanned yet.</span>
-  </div>
-  <div id="assetBars" class="crest-grid"></div>
-  <div id="assetReport" class="muted"></div>
-</div>
-
-<div class="card">
   <h2 data-hud-icon="document" data-ar="4. النتيجة / المعلومات الخام">4. Result / raw info</h2>
   <pre id="out">-</pre>
 </div>
@@ -243,26 +197,24 @@ async function get(u){const r=await fetch(u);const j=await r.json();if(!r.ok)thr
 async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
 function show(el,html){$(el).innerHTML=html}
 function out(o){show('out',esc(JSON.stringify(o,null,1)))}
-let CLUB_COLORS={},CREST_REV=1,FACE_REV=1,LAST_INFO_DATA=null;
+let CLUB_COLORS={},LAST_INFO_DATA=null;
 function playerInitials(name){
   const parts=String(name||'').trim().split(/\s+/).filter(Boolean);
   if(!parts.length)return 'PL';
   if(parts.length>=2)return ((parts[0][0]||'')+(parts[parts.length-1][0]||'')).toUpperCase();
   return parts[0].slice(0,2).toUpperCase();
 }
-function faceBadge(pid,name,sz,card){
+function playerBadge(pid,name,sz,card){
   const p=Number(pid)||0;
   const s=Number(sz)||26;
   const nm=String(name||(p?('Player #'+p):'Player')).trim();
   const ini=playerInitials(nm);
-  const url=p?('/api/pes17/face?pid='+encodeURIComponent(p)+'&v='+FACE_REV):'';
   return '<span class="pf-wrap'+(card?' card':'')+'" style="width:'+s+'px;height:'+s+'px" title="'+esc(nm+(p?' (#'+p+')':''))+'">'+
     '<svg class="pf-svg" viewBox="0 0 64 64" width="'+s+'" height="'+s+'" aria-hidden="true">'+
       '<circle cx="32" cy="22" r="11" fill="rgba(143,199,255,.22)" stroke="rgba(143,199,255,.45)" stroke-width="1.5"/>'+
       '<path d="M12 58c2.2-13.2 10.2-19.5 20-19.5S49.8 44.8 52 58" fill="rgba(143,199,255,.16)" stroke="rgba(143,199,255,.35)" stroke-width="1.5"/>'+
       '<text x="32" y="54" text-anchor="middle" fill="#dce6f2" font-family="Segoe UI,sans-serif" font-weight="800" font-size="11" opacity=".82">'+esc(ini)+'</text>'+
     '</svg>'+
-    (url?'<img class="pf-img" alt="" loading="lazy" src="'+url+'" onload="this.parentNode.classList.add(\'has-img\')" onerror="this.remove()">':'')+
   '</span>';
 }
 function clubKey(s){
@@ -304,7 +256,6 @@ function crestBadge(club,sz){
   if(!n)return '';
   const [c1,c2]=clubColors(n);
   const ini=clubInitials(n);
-  const url='/api/crest?club='+encodeURIComponent(n)+'&v='+CREST_REV;
   return '<span class="cb-wrap" style="width:'+s+'px;height:'+s+'px" title="'+esc(n)+'">'+
     '<svg class="cb-svg" viewBox="0 0 36 40" width="'+s+'" height="'+s+'" aria-hidden="true">'+
       '<path d="M3 3h30v17c0 10.5-15 17-15 17S3 30.5 3 20Z" fill="'+esc(c1)+'"/>'+
@@ -312,10 +263,9 @@ function crestBadge(club,sz){
       '<path d="M3 3h30v17c0 10.5-15 17-15 17S3 30.5 3 20Z" fill="none" stroke="rgba(255,255,255,.34)" stroke-width="1.6"/>'+
       '<text x="18" y="23" text-anchor="middle" fill="#ffffff" stroke="rgba(0,0,0,.55)" stroke-width="2.2" paint-order="stroke" font-family="Segoe UI,sans-serif" font-weight="800" font-size="10.5">'+esc(ini)+'</text>'+
     '</svg>'+
-    '<img class="cb-img" alt="" loading="lazy" src="'+url+'" onload="this.parentNode.classList.add(\'has-img\')" onerror="this.remove()">'+
   '</span>';
 }
-function tbl(rows,cols){if(!rows||!rows.length)return '<span class="muted">none</span>';return '<table><tr>'+cols.map(c=>'<th>'+esc(c[1])+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+cols.map(c=>{const v=r[c[0]];if(c[2]==='club'&&v)return '<td><span class="club-cell">'+crestBadge(v,22)+'<span>'+esc(v)+'</span></span></td>';if(c[2]==='player'){const pid=r[c[3]||'id'],lbl=v||(pid?('#'+pid):'');return '<td><span class="club-cell">'+faceBadge(pid,lbl,26,false)+'<span>'+esc(lbl)+'</span></span></td>';}return '<td>'+esc(v)+'</td>'}).join('')+'</tr>').join('')+'</table>'}
+function tbl(rows,cols){if(!rows||!rows.length)return '<span class="muted">none</span>';return '<table><tr>'+cols.map(c=>'<th>'+esc(c[1])+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+cols.map(c=>{const v=r[c[0]];if(c[2]==='club'&&v)return '<td><span class="club-cell">'+crestBadge(v,22)+'<span>'+esc(v)+'</span></span></td>';if(c[2]==='player'){const pid=r[c[3]||'id'],lbl=v||(pid?('#'+pid):'');return '<td><span class="club-cell">'+playerBadge(pid,lbl,26,false)+'<span>'+esc(lbl)+'</span></span></td>';}return '<td>'+esc(v)+'</td>'}).join('')+'</tr>').join('')+'</table>'}
 function fillTeams(list){
   TEAMS=list||[];
   const opts=TEAMS.map(t=>'<option value="'+esc(t.tid)+'">'+esc(t.name)+' (tid '+esc(t.tid)+')</option>').join('');
@@ -357,7 +307,6 @@ async function loadSetup(forceShow){
     const ver=(s.version||'').match(/r\d+/);
     if(ver&&$('buildVer'))$('buildVer').textContent=ver[0];
     if(s.save_dir&&!$('saveDir').value)$('saveDir').value=s.save_dir;
-    if(s.patch_dir&&!$('patchDir').value)$('patchDir').value=s.patch_dir;
     const need=!s.ready||!!forceShow;
     $('setupCard').style.display=need?'block':'none';
     if(s.message)$('setupMsg').textContent=s.message;
@@ -378,7 +327,7 @@ $('saveDirBtn').onclick=async()=>{
   try{
     const s=await post('/api/pes17/setup/savefolder',{save_dir:$('saveDir').value.trim()});
     show('setupOut','<span class="ok">'+esc(s.message||'Save folder updated.')+'</span>');
-    await loadSlots();await loadInfo();loadCrests(true);loadFaces(true);loadAssets(true);
+    await loadSlots();await loadInfo();
   }catch(e){show('setupOut','<span class="err">'+esc(friendly(e))+'</span>')}
 };
 async function loadSlots(){
@@ -409,8 +358,8 @@ async function loadInfo(){
     fillTeams(r.teams);out({ok:true,league_name:r.league_name,info:r.info,budget:r.budget});
   }catch(e){out({error:friendly(e)});show('summary','<span class="err">'+esc(friendly(e))+'</span>')}
 }
-$('load').onclick=async()=>{await loadInfo();await loadFaces(false)};
-$('slot').onchange=async()=>{SLOT=$('slot').value;await loadInfo();await loadFaces(false)};
+$('load').onclick=async()=>{await loadInfo()};
+$('slot').onchange=async()=>{SLOT=$('slot').value;await loadInfo()};
 $('scale').onchange=renderScale;
 $('addOffer').onclick=()=>{QUEUE.push({op:'offer_add',buyer:Number($('buyer').value),slot:Number($('oslot').value),pid:Number($('pid').value),source:'auto',claim:$('claim').checked});qsync()};
 $('clearOffer').onclick=()=>{QUEUE.push({op:'offer_clear',buyer:Number($('buyer2').value),slot:Number($('cslot').value)});qsync()};
@@ -428,148 +377,6 @@ $('apply').onclick=async()=>{try{
 }catch(e){out({error:String(e)})}};
 
 /* ------------------------------------------------------------------ *
- * r7: CPK asset inventory + harvest (offline, read-only source).
- * ------------------------------------------------------------------ */
-function renderAssets(r){
-  if(!r||!r.ok){show('assetReport','<span class="err">'+esc(r&&r.error||'asset scan failed')+'</span>');return}
-  const c=r.counts||{},u=r.usable||{};
-  show('assetSummary','Archives: '+esc(r.archives)+' · CPK entries: '+esc(r.cpk_entries)+' · loose: '+esc(r.loose_files)+' · total: '+esc(r.files));
-  $('assetBars').innerHTML=Object.keys(c).filter(k=>c[k]).map(k=>
-    '<div class="crest-cell"><span style="font-size:15px;color:#8fc7ff;font-weight:700">'+esc(c[k])+'</span><span>'+esc(k)+'</span></div>').join('')
-    +'<div class="crest-cell"><span style="font-size:15px;color:#8ce6a8;font-weight:700">'+esc(u.YES||0)+'</span><span>PES17-ready</span></div>'
-    +'<div class="crest-cell"><span style="font-size:15px;color:#ffc352;font-weight:700">'+esc(u.MAP||0)+'</span><span>needs ID map</span></div>';
-  const bits=[r.files?'<span class="ok">Catalogued read-only.</span>':'<span class="err">Nothing found — set a patch folder in card 3c.</span>',
-    'YES = ID-independent art (keep). MAP = needs a PES 2017 team/player ID map. NO = version-specific pesdb.',
-    esc(r.hint||'')];
-  if(r.errors&&r.errors.length)bits.push('<span class="err">Errors: '+esc(r.errors.slice(0,3).join(' | '))+'</span>');
-  show('assetReport',bits.join('<br>'));
-}
-async function loadAssets(rescan){
-  try{renderAssets(await get('/api/pes17/assets'+(rescan?'?rescan=1':'')))}
-  catch(e){show('assetReport','<span class="err">'+esc(e)+'</span>')}
-}
-$('scanAssets').onclick=()=>loadAssets(true);
-$('harvestAssets').onclick=async()=>{
-  $('harvestAssets').disabled=true;
-  try{const r=await post('/api/pes17/assets/extract',{classes:['crest','emblem','art'],limit:200});
-    show('assetReport','<span class="ok">Harvested '+esc(r.written)+' files ('+esc(r.bytes)+' B) into '+esc(r.out)+'. Source untouched.</span>');
-    await loadCrests(true);
-  }catch(e){show('assetReport','<span class="err">'+esc(e)+'</span>')}
-  finally{$('harvestAssets').disabled=false}
-};
-$('harvestFacesAssets').onclick=async()=>{
-  $('harvestFacesAssets').disabled=true;
-  try{const r=await post('/api/pes17/assets/extract',{classes:['face'],limit:500});
-    show('assetReport','<span class="ok">Harvested '+esc(r.written)+' mini-faces ('+esc(r.bytes)+' B) into '+esc(r.out)+'. Source untouched.</span>');
-    await loadFaces(true);
-  }catch(e){show('assetReport','<span class="err">'+esc(e)+'</span>')}
-  finally{$('harvestFacesAssets').disabled=false}
-};
-loadAssets(false);
-
-let LAST_FACE_REPORT=null, FACE_REQUEST=0;
-const faceText=(en,ar)=>document.documentElement.lang==='ar'?ar:en;
-function announceFaceChange(){
-  try{localStorage.setItem('gaffer_pes17_face_revision',Date.now()+'-'+Math.random().toString(36).slice(2,8))}catch(e){}
-}
-function renderFaces(r,bump){
-  LAST_FACE_REPORT=r;
-  if(!r||!r.ok){show('faceReport','<span class="err">'+esc(r&&r.error||'face scan failed')+'</span>');$('faceGrid').innerHTML='';return}
-  if(bump){FACE_REV++;if(LAST_INFO_DATA)renderInfoViews(LAST_INFO_DATA)}
-  const bits=[
-    faceText('Indexed player IDs: ','معرفات اللاعبين المفهرسة: ')+esc(fmt(r.faces_found||0))+
-    faceText(' · matched in EDIT: ',' · المطابقة مع EDIT: ')+esc(fmt(r.players_matched||0))+'.',
-    r.squad_total?faceText('Selected squad ','التشكيلة المحددة ')+esc(r.squad_slot||'')+': '+
-      esc(r.squad_matched||0)+'/'+esc(r.squad_total)+faceText(' IDs matched; ',' معرفات مطابقة؛ ')+
-      esc(r.squad_decoded||0)+'/'+esc(r.squad_matched||0)+faceText(' readable portraits.',' صور قابلة للقراءة.'):
-      faceText('No squad was read for the selected save slot.','لم تُقرأ تشكيلة لخانة الحفظ المحددة.'),
-    faceText('Preview decoded: ','الصور المختبرة: ')+esc(r.sample_decoded||0)+'/'+esc(r.sample_tested||0)+
-      faceText('. Other indexed files have not been tested.','. لم تُختبر بقية الملفات المفهرسة.'),
-    faceText('Folders searched: ','المجلدات المفحوصة: ')+esc((r.roots||[]).length?(r.roots||[]).join(' | '):faceText('none','لا يوجد')),
-    faceText('CPK archives checked: ','ملفات CPK المفحوصة: ')+esc(r.cpk_archives||0)+'/'+esc(r.cpk_archives_seen||r.cpk_archives||0)+'.'
-  ];
-  if(r.explicit&&!r.explicit_valid)bits.push('<span class="err">'+faceText('The chosen patch folder does not exist. Choose the game folder again.','مجلد الباتش المحدد غير موجود. اختر مجلد اللعبة مجددا.')+'</span>');
-  if(!(r.roots||[]).length)bits.push('<span class="err">'+faceText('No game or patch folder found. Above, enter the folder containing PES2017.exe and download, then choose Set folder & scan.','لم يُعثر على مجلد اللعبة أو الباتش. أدخل المجلد الذي يحتوي على PES2017.exe و download ثم اضغط حفظ وفحص.')+'</span>');
-  else if(!r.faces_found)bits.push('<span class="err">'+faceText('No supported mini-face files were found in the searched folders. Install a mini-face pack for this patch or choose its folder.','لم يُعثر على صور مصغرة مدعومة في المجلدات. ثبّت حزمة صور متوافقة مع الباتش أو اختر مجلدها.')+'</span>');
-  else if(r.squad_total&&!r.squad_matched)bits.push('<span class="err">'+faceText('Images were indexed, but no IDs match this squad. Check that the mini-face pack and EDIT file belong to the same patch.','فُهرست صور لكن لم تتطابق أي معرفات مع التشكيلة. تأكد من أن حزمة الصور وملف EDIT من الباتش نفسه.')+'</span>');
-  else if(r.squad_matched&&!r.squad_decoded)bits.push('<span class="err">'+faceText('Matching squad portraits were found but could not be read. Copy the diagnostic and share a small sample.','عُثر على صور مطابقة للتشكيلة لكن تعذرت قراءتها. انسخ التشخيص وشارك عينة صغيرة.')+'</span>');
-  else if(!r.available)bits.push('<span class="err">'+faceText('Indexed files were found, but none of the checked portraits could be read. Copy the diagnostic and share a small sample.','عُثر على ملفات لكن تعذرت قراءة الصور المختبرة. انسخ التشخيص وشارك عينة صغيرة.')+'</span>');
-  else bits.push('<span class="ok">'+faceText('Readable mini-faces are served locally. Regenerated players may intentionally use a silhouette.','الصور المقروءة تُعرض محليا. قد تظهر أيقونة بديلة للاعبين المعاد توليدهم عمدا.')+'</span>');
-  if(r.squad_decoded&&r.squad_decoded<r.squad_matched)bits.push('<span class="err">'+faceText('Some matched squad portraits could not be read.','تعذرت قراءة بعض صور التشكيلة المطابقة.')+'</span>');
-  if(r.scan_truncated)bits.push('<span class="err">'+faceText('Scan limit reached; narrow the folder to the relevant mini-face pack.','تم بلوغ حد الفحص؛ اختر مجلد حزمة الصور المطلوبة تحديدا.')+'</span>');
-  if(r.errors&&r.errors.length)bits.push('<span class="err">'+faceText('Folder/archive errors: ','أخطاء المجلد أو الأرشيف: ')+esc(r.errors.slice(0,3).join(' | '))+'</span>');
-  if(r.decode_errors&&r.decode_errors.length){
-    const failures=r.decode_errors.slice(0,3).map(x=>'#'+x.id+' '+x.error+' ('+x.source+(x.entry?'!'+x.entry:'')+')');
-    bits.push('<span class="err">'+faceText('Unreadable candidates (a fallback may still work): ','ملفات غير قابلة للقراءة (قد يعمل مصدر بديل): ')+esc(failures.join(' | '))+'</span>');
-  }
-  show('faceReport',bits.join('<br>'));
-  const sm=r.sample||[];
-  $('faceGrid').innerHTML=sm.length?sm.map(x=>{
-    const lbl=x.name||('#'+x.id);
-    const status=x.decoded?(x.fallback_used?faceText('fallback','بديل'):faceText('readable','مقروء')):faceText('unreadable','غير مقروء');
-    return '<div class="crest-cell">'+faceBadge(x.id,lbl,56,true)+
-      '<span title="'+esc(lbl)+'" style="margin-top:5px">'+esc(lbl)+'</span><span class="muted">#'+esc(x.id)+' '+esc(status)+'</span></div>';
-  }).join(''):'<span class="muted">'+faceText('No sample mini-faces.','لا توجد صور مصغرة للمعاينة.')+'</span>';
-}
-async function loadFaces(rescan){
-  const request=++FACE_REQUEST, q=new URLSearchParams(), slot=$('slot').value||SLOT;
-  if(slot)q.set('slot',slot);
-  if(rescan){q.set('rescan','1');show('faceReport',faceText('Scanning mini-faces; large CPK archives may take a moment…','جار فحص الصور المصغرة؛ قد يستغرق فحص ملفات CPK الكبيرة بعض الوقت…'))}
-  try{
-    const r=await get('/api/pes17/faces'+(q.toString()?'?'+q.toString():''));
-    if(rescan&&r&&r.ok)announceFaceChange();
-    if(request===FACE_REQUEST)renderFaces(r,!!rescan);
-    return r;
-  }catch(e){if(request===FACE_REQUEST)show('faceReport','<span class="err">'+esc(e)+'</span>');return null}
-}
-$('rescanFaces').onclick=()=>loadFaces(true);
-$('copyFaceReport').onclick=async()=>{
-  if(!LAST_FACE_REPORT)return;
-  const text=JSON.stringify(LAST_FACE_REPORT,null,2);
-  try{await navigator.clipboard.writeText(text);$('copyFaceReport').textContent=faceText('Copied','تم النسخ')}
-  catch(e){window.prompt(faceText('Copy this diagnostic (it contains local folder paths):','انسخ التشخيص (يحتوي على مسارات المجلدات المحلية):'),text)}
-};
-
-/* ------------------------------------------------------------------ *
- * PES 2017 patch-folder crests (r6).  Diagnostic + offline crest previews.
- * ------------------------------------------------------------------ */
-function renderCrests(r,bump){
-  if(!r||!r.ok){show('crestReport','<span class="err">'+esc(r&&r.error||'crest scan failed')+'</span>');$('crestGrid').innerHTML='';return}
-  if(bump){CREST_REV++;if(LAST_INFO_DATA)renderInfoViews(LAST_INFO_DATA)}
-  const bits=[
-    'Source: '+(r.auto?'auto-detected from pes_exe':'explicit patch folder')+'.',
-    'Folders: '+((r.roots||[]).length?esc((r.roots||[]).join(' | ')):'none'),
-    'Files scanned: '+esc(r.files_scanned)+', CPK archives: '+esc(r.cpk_archives)+', CPK crest entries: '+esc(r.cpk_entries)+'.',
-    'Logos found: '+esc(r.logos_found)+', clubs matched: '+esc(r.clubs_matched)+', skipped: '+esc(r.skipped)+'.'
-  ];
-  if(r.errors&&r.errors.length)bits.push('<span class="err">Errors: '+esc(r.errors.slice(0,3).join(' | '))+'</span>');
-  if(!r.available)bits.push('<span class="err">'+esc(r.hint||'No crests found.')+'</span>');
-  else bits.push('<span class="ok">Crests are now served by /api/crest from this folder, with no network request.</span>');
-  show('crestReport',bits.join('<br>'));
-  const sm=r.sample||[];
-  $('crestGrid').innerHTML=sm.length?sm.map(x=>{
-    const nm=x.name||String(x.id||'');
-    const lbl=x.name||('#'+x.id);
-    return '<div class="crest-cell">'+crestBadge(nm,56)+
-      '<span title="'+esc(lbl)+'" style="margin-top:5px">'+esc(lbl)+'</span><span class="muted">#'+esc(x.id)+' '+esc(x.source)+'</span></div>';
-  }).join(''):'<span class="muted">no sample crests</span>';
-}
-async function loadCrests(rescan){
-  try{renderCrests(await get('/api/pes17/crests'+(rescan?'?rescan=1':'')),!!rescan)}
-  catch(e){show('crestReport','<span class="err">'+esc(e)+'</span>')}
-}
-$('setCrestsDir').onclick=async()=>{
-  try{renderCrests(await post('/api/pes17/crests/dir',{dir:$('patchDir').value.trim()}),true);loadFaces(true);loadAssets(true)}
-  catch(e){show('crestReport','<span class="err">'+esc(e)+'</span>')}
-};
-$('clearCrestsDir').onclick=async()=>{
-  $('patchDir').value='';
-  try{renderCrests(await post('/api/pes17/crests/dir',{dir:''}),true);loadFaces(true);loadAssets(true)}
-  catch(e){show('crestReport','<span class="err">'+esc(e)+'</span>')}
-};
-$('rescanCrests').onclick=()=>{loadCrests(true);loadFaces(true)};
-
-/* ------------------------------------------------------------------ *
  * Bilingual tools page (r5).  Only direct text nodes are translated, so
  * inputs, selects and the dynamically rendered tables are untouched.
  * ------------------------------------------------------------------ */
@@ -585,12 +392,11 @@ function setLang(ar){
     else el.textContent=value;
   });
   $('langBtn').textContent=ar?'English':'العربية';
-  if(LAST_FACE_REPORT)renderFaces(LAST_FACE_REPORT,false);
   try{localStorage.setItem(LANG_KEY,ar?'ar':'en')}catch(e){}
 }
 $('langBtn').onclick=()=>setLang(document.documentElement.lang!=='ar');
 try{setLang(localStorage.getItem(LANG_KEY)==='ar')}catch(e){setLang(false)}
-loadSetup(false).then(()=>loadClubColors()).then(async()=>{loadCrests(false);await loadSlots();await loadInfo();await loadFaces(false)});
+loadSetup(false).then(()=>loadClubColors()).then(async()=>{await loadSlots();await loadInfo()});
 </script>
 </body>
 </html>

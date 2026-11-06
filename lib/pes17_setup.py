@@ -92,18 +92,6 @@ def validate_save_dir(value):
     return v
 
 
-def validate_patch_dir(value):
-    """Normalise a user-supplied PES 2017 game or patch folder (empty clears it)."""
-    v = os.path.expandvars((value or '').strip().strip('"').strip("'").strip())
-    if not v:
-        return ''
-    if os.path.isfile(v) and v.lower().endswith(('.exe', '.cpk', '.bin')):
-        v = os.path.dirname(v)
-    if not os.path.isdir(v):
-        raise ValueError('Folder not found: %s' % v)
-    return v
-
-
 def is_fl26_exe(path):
     """True when `pes_exe` is empty or the inherited pc414 Football Life path."""
     p = (path or '').strip()
@@ -337,7 +325,6 @@ def status(cfg, here=''):
     exists = bool(sd) and os.path.isdir(sd)
     slots = slots_in(sd) if exists else []
     edit = cfg.get('edit_dat') or (os.path.join(sd, 'EDIT00000000') if sd else '')
-    patch = cfg.get('pes17_patch_dir') or ''
     pes_exe = cfg.get('pes_exe') or ''
     pes_exe_exists = bool(pes_exe) and os.path.exists(pes_exe) and not is_fl26_exe(pes_exe)
     if not sd:
@@ -360,8 +347,6 @@ def status(cfg, here=''):
         slot_count=len(slots),
         edit_dat=edit,
         edit_exists=bool(edit) and os.path.isfile(edit),
-        patch_dir=patch,
-        patch_exists=bool(patch) and os.path.isdir(patch),
         pes_exe=pes_exe if pes_exe_exists else '',
         pes_exe_exists=pes_exe_exists,
         game_candidates=game_candidates(save_dir=sd)[:6],

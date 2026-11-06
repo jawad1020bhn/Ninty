@@ -1,9 +1,85 @@
-THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (PES 2017 CLEAN BUILD r9)
-===================================================================
+THE GAFFER pc414 - FC 27 DATABASE BUILD r12
+===========================================
 
-This folder is The Gaffer pc414, PES 2017 edition.  It is a private,
-modified build for personal use; please respect the original FREE TO USE
-terms of The Gaffer (do not reupload or publish this as your own work).
+This folder is The Gaffer pc414.  It is a private, modified build for personal
+use; please respect the original FREE TO USE terms of The Gaffer (do not
+reupload or publish this as your own work).
+
+r12 begins the move from a PES save-file companion to a standalone game:
+EA SPORTS FC 27 is now the only game and supplies the player database.
+See FC 27 DATABASE below for what is wired and what is NOT yet done.
+
+FC 27 DATABASE (r12)
+--------------------
+The game runs on 21,623 players, 717 real clubs and 41 competitions extracted
+from the FC 27 tables bundled in eafc-db-kit (MIT, (c) 2026 ViniMacacari):
+
+    https://github.com/ViniMacacari/eafc-db-kit
+
+WHERE THE DATA LIVES
+    data/fc27/*.json      the database (committed, ~7 MB)
+    lib/fc27.py           pure-stdlib runtime reader
+    tools/import_fc27.mjs BUILD-TIME ONLY generator (the only Node in the repo)
+
+Playing needs no Node, no npm install and no network: the runtime is still
+pure-stdlib Python.  To regenerate the data:
+
+    npm pack eafc-db-kit
+    mkdir -p /tmp/kit && tar xzf eafc-db-kit-*.tgz -C /tmp/kit
+    node tools/import_fc27.mjs --kit /tmp/kit/package
+
+The six files players/ratings/positions/playpos/teamids/comps.json keep the
+schema the existing algorithms already read, so market.py, growth.py,
+aitransfers.py, ailineup.py, aimanager.py, negotiate.py, revalue.py, board.py,
+formengine.py and the ovr_weights tables are all KEPT and run on FC 27 data
+unchanged.  Nothing was rebranded in the UI; the new source is wired underneath.
+
+Read API (no save required):
+    /api/fc27/status            counts + provenance
+    /api/fc27/leagues?women=0   competition list
+    /api/fc27/league?id=13      one league + its clubs
+    /api/fc27/club?id=9         club + full squad, best first
+    /api/fc27/player?id=203376  one player
+    /api/fc27/search?q=mbappe   accent-insensitive search
+
+TWO ID COLLISIONS THAT HAD TO BE FIXED (not cosmetic)
+    FC 27 reuses small competition ids for DIFFERENT leagues: 17 is Ligue 2
+    here but Premier League in FL26, 19 is 1. Bundesliga.  Twelve FL26 ids do
+    not exist in FC 27 at all, so merging the tables left stale names behind.
+    COMP_LEAGUES/COMP_GROUPS are now REPLACED from data/fc27/comps.json.
+    Nationality ids differ too (PES uses 194-238 for Europe, FC 27 uses
+    4 Austria / 18 France / 21 Germany), so regrules.EU would have mis-checked
+    every non-EU signing.  RULES_FC27 / DOMESTIC_FC27 / EU_FC27 were added,
+    derived from the extracted leagues and nations, never guessed.
+
+ALSO REMOVED IN r12
+    The PES F7-dump database importer (/api/dbimport/preview, /apply, /faces).
+    A PES dump has different player ids and a different attribute scale, so
+    importing one would corrupt the FC 27 database.  Rebuild with the importer
+    instead.  _dbf() no longer falls back to data/ root, which would silently
+    serve FL26 players against FC 27 squads.
+
+WHAT IS *NOT* DONE YET - READ THIS BEFORE EXPECTING A FULL GAME
+    This is step 1 (the database), not a finished standalone game.
+    * Career state still comes from a PES save.  Without one, /api/state and
+      the squad/table/transfer screens still fail exactly as they did before;
+      a native career file has not been written yet.
+    * There is NO match engine.  Nothing in this repo simulates a match, so
+      there is no source of results, scorers or ratings.  formengine.py only
+      derives form from matches that were already played.
+    * The 25 PES attributes are MAPPED from EA's separate attribute set, so
+      they are approximations.  Overall rating is EA's own value, used
+      directly (dbimport.USE_GAME_OVR), not recomputed from the mapped 25.
+    Next milestone: a native career state + a results source, so the kept
+    algorithms have something to run on without PES.
+
+LICENSING - IMPORTANT
+    eafc-db-kit's MIT licence covers the KIT'S CODE, not EA's football data.
+    The player/club/rating content is EA's copyrighted material and is
+    redistributed here without an explicit licence from the rights holder,
+    at the repository owner's direction.  Read data/fc27/NOTICE.txt before
+    publishing or selling this.  The importer and runtime depend only on the
+    JSON schema, so the data can be swapped for a set you have rights to.
 
 BUILD HISTORY
 -------------
@@ -31,14 +107,14 @@ BUILD HISTORY
    from the local PES 2017 patch folder, offline, instead of downloading
    crests from Wikipedia.  Loose PNG/JPG/DDS/FTEX logos and
    common/render/symbol/flag/e_<id>_r.dds entries inside *.cpk archives are
-   decoded with the readers already shipped with the program.  See the
-   CLUB CRESTS FROM THE PATCH FOLDER section below.
+   decoded with the readers already shipped with the program.
+   REMOVED in r11 - see LOGO IMPORTERS REMOVED below.
 8. r7: CPK HARVEST + PES 2017-ONLY MODE.  An offline inventory of everything
    the shipped CPK readers can reach (competition emblems, kit textures,
-   player/coach portraits, pesdb tables, generic art), a harvester that can
+   coach portraits, pesdb tables, generic art), a harvester that can
    copy them before you delete the PES 2021 files, and no external CDNs by
-   default.  The Classic application remains at /.  See the CPK ASSET
-   INVENTORY / HARVEST and PES 2017-ONLY MODE sections below.
+   default.  The Classic application remains at /.  The inventory and
+   harvester were REMOVED in r11; PES 2017-only mode is unchanged.
 9. r8: SAFE CLEANUP (not a rewrite).  111 FL26/FL27/Sider-only files
    (10.01 MB) are removed from this shipped build only: addons/regenfix,
    addons/michele, lua, FL_key.bin + its readme, and the five FL26 player
@@ -57,6 +133,21 @@ BUILD HISTORY
    POST /api/pes17/setup/savefolder.  Paste the path once; it is written to
    config.json and works immediately.
 
+11. r10: PLAYER MINI-FACE IMPORT REMOVED.  It did not work reliably, so the
+   whole PES 2017 mini-face importer is gone: lib/pes17_faces.py,
+   static/pes17-face-refresh.js, GET /api/pes17/faces, GET /api/pes17/face,
+   the "Player mini-faces" half of tools card 3c,
+   "Harvest mini-faces", and the "face" class in the CPK harvester.  The app
+   no longer scans the game/patch folder for portraits.  Players show the
+   initials/silhouette badge; the tools page uses a local SVG badge with no
+   image request.  Portraits already cached in data/gface are still served,
+   and the legacy FM-cutout / Wikipedia photo paths are untouched.
+
+12. r11: LOGO IMPORTERS + CPK ARCHIVE READING REMOVED.  Club crests,
+   competition logos/emblems, national flags and the whole CPK asset
+   harvester are gone, ready for a new logo system to be built.  See
+   LOGO IMPORTERS REMOVED below for exactly what was deleted and what
+   was deliberately kept.
 WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------
   club                Birmingham City FC
@@ -221,102 +312,52 @@ The "claim an unused block for my club" checkbox is a structural inference,
 NOT in-game validated, and is flagged experimental.  Prefer an AI club
 (e.g. Arsenal, tid 101) for a fully published write.
 
-CLUB CRESTS FROM THE PATCH FOLDER (r6)
---------------------------------------
-Set "pes17_patch_dir" in config.json to the folder that holds your patch's
-logos, e.g.
+LOGO IMPORTERS REMOVED (r11)
+----------------------------
+All logo importing was deleted so a new system can be built in its place.
+Nothing is downloaded, scanned or decoded for logos any more, and the UI
+makes ZERO image requests for crests, competition logos or flags.
 
-    "pes17_patch_dir": "D:\\Games\\Pro Evolution Soccer 2017"
+Deleted files:
+    lib/pes17_crests.py      offline patch/livecpk/CPK club-crest reader
+    lib/pes17_assets.py      CPK asset inventory + harvester
+    lib/cpkread.py           CPK archive (TOC/WESYS) reader
+    tools/harvest_cpk.py     harvester CLI
+    static/leagues/*.png     the two bundled Premier League logos
 
-or leave it blank ("") and the app auto-detects download/, Data/, patch/,
-content/ and livecpk/ next to "pes_exe".  On the PES 2017 tools page, card
-"3c. Club logos and player mini-faces" can also set/clear the folder
-without editing JSON by hand; press "Set folder & scan".
+Deleted endpoints (they now return 404):
+    GET  /api/crest                  GET  /api/crest/prefetch (POST)
+    GET  /api/flag                   GET  /api/compemb
+    GET  /api/complogo               GET  /api/comp/logo
+    GET  /api/pes17/crests           POST /api/pes17/crests/dir
+    GET  /api/pes17/assets           POST /api/pes17/assets/extract
 
-Recognised crest files (case-insensitive, read-only):
+Also gone: server-side crest/emblem/flag/game-logo indexers and the
+Wikipedia crest prefetch worker, the crest thumbnail download in
+lib/wiki.py, tools cards "3c. Club logos" and "3d. CPK assets", the
+"pes17_patch_dir" config key, and the db-import "with an in-game crest"
+counter.
 
-    common/render/symbol/flag/e_201_r.png       game emblem, team id 201
-    common/render/symbol/flag/e_201_r_l.dds     DDS emblem (converted to PNG)
-    logos/201.png  logos/logo_201.png  logos/flag_201.png
-    logos/Birmingham City FC.png                named after the club
-    map.txt / teams.txt with lines like "201=Birmingham City FC"
-    <patch>/download/T99_v20.cpk                CPK archive containing
-       common/render/symbol/flag/e_201_r.dds    (CPK TOC read only)
+What you see instead: the generated initials shield for clubs (coloured
+from lib/clubcolors.py), the generated SVG league badge, and a trophy
+glyph for competitions.  These are drawn locally from the club/league
+name - no file and no network is involved.
 
-Preferred emblem variants are r, r_l, r_w, r_b, ... (same order the game
-uses).  Club names are matched against data/pes17/teamids.json, which the app
-builds from YOUR real ML/EDIT files; the stable team id wins over the raw
-bit-packed id.  When patch crests are found they are served FIRST by the
-existing /api/crest?club=... endpoint and the Wikipedia crest prefetch is
-skipped, so no network request is made for club logos.
+DELIBERATELY KEPT (they are not logo importers):
+  * lib/dds.py, lib/ftex.py, lib/bc7.py - texture codecs.  The kit-sponsor
+    feature imports them, so they stay.
+  * lib/kitsponsor.py and /api/kitsp/* - shirt/kit sponsor editing.
+  * Loose-folder readers (_cpk_find / _cpk_roots / _game_db_file) for
+    kit textures, coach portraits and pesdb competition DATA read from
+    livecpk folders.  Only CPK ARCHIVE reading was removed.
+  * Competition names/entries, club IDs and the Wikipedia article-title
+    lookup used by kit/ground/founded-year data.
+  * /api/clubcolors, /api/kit, /api/kitimg, /api/coach/img, /api/stadium.
 
-GET  /api/pes17/crests           diagnostic: folders scanned, files, CPK
-                                archives, logos found, clubs matched, sample
-POST /api/pes17/crests/dir       set/clear the folder (PC only, saves
-                                config.json). {"dir": ""} clears it.
+KNOWN EFFECT: kits that existed ONLY inside FL27 CPK archives can no
+longer be copied for sponsor editing (_ks_fl27_make now returns None).
+Loose kit-server files and FL26 livecpk kits still work.
 
-Nothing is ever written into the game or patch folder.  No CDN, font, API or
-external library is added.  If the report says "Logos found: 0", point the
-folder at the place where your patch keeps emblems (often download/*.cpk) and
-press Rescan.  Kit textures, player faces and stadium images are ignored.
-
-LIMIT: the user's real patch folder was not available in this sandbox.  Loose
-files, DDS/WESYS decoding, ID/name mapping and the HTTP endpoints were tested
-against a synthetic patch folder and the REAL save; CPK reading was tested
-with the shipped cpkread.Cpk API via a mocked archive.  Try it on your patch
-and read the diagnostic card -- that is the confirmation step for your layout.
-
-PLAYER MINI-FACES
------------------
-ML and EDIT saves supply IDs and names, not portrait images. Open PES 2017
-Tools, choose your save slot, and in card 3c enter the game folder containing
-PES2017.exe and download. Press "Set folder & scan" or "Rescan mini-faces".
-A standalone mini-face folder can also be selected. The app reads PNG, JPG,
-DDS and FTEX portraits in supported loose and named CPK locations, and checks
-the game's sibling Data and Sider folders when download is selected. It does
-not write to the game, patch or save folder.
-
-The report shows indexed IDs, matching squad IDs, tested/decoded portraits,
-folders searched and archive/read/decode errors. Indexed does not mean every
-file can be displayed. If none match, check that the mini-face pack and EDIT
-belong to the same patch. If matching files cannot be read, use "Copy diagnostic"
-(the report contains local paths) and provide a small sample.
-3D face models are not 2D mini-faces; missing and regenerated players can use
-silhouettes. Supported CPK layouts are not guaranteed for every patch: real
-user archives were not available for this build's validation.
-
-GET /api/pes17/faces?slot=ML00000011&rescan=1  read-only diagnostic
-GET /api/pes17/face?pid=<id>                  decoded local mini-face
-
-CPK ASSET INVENTORY / HARVEST (r7)
-----------------------------------
-There is NO .cpk archive in this repository -- only the CPK readers shipped
-with pc414 and the FL26 databases extracted from those games.  The harvester
-must be pointed at YOUR patch folder on Windows.  It reads the CPK table of
-contents only, never modifies the source, and has no network access.
-
-  python tools\harvest_cpk.py "D:\...\Pro Evolution Soccer 2017\download" ^
-      -o manifest.json --extract "data\pes17\harvest" ^
-      --classes crest,emblem,art
-
-Or use /pes17.html card "3d. CPK assets in the patch folder" (Scan assets /
-Harvest crests / logos / art).  Manifest fields:
-CLASS, id, size, PES 2017 usability (YES / MAP / NO) and the reason.
-
-  crest   common/render/symbol/flag/e_<id>_r.png|dds        MAP (team ids)
-  emblem  common/render/symbol/emblem*/emb_<id>_*.png|dds   MAP (comp ids)
-  kit     .../uniform/texture/.../u<tid>p1.ftex             MAP (team ids)
-  face    common/render/symbol/player/<pid>.dds             MAP (player ids)
-  coach   common/render/symbol/coach/coach_<id>.png         MAP (staff ids)
-  pesdb   common/etc/pesdb/Competition.bin                  NO (version-specific)
-  art     any other PNG/JPG/DDS                            YES (ID-independent)
-
-DDS/FTEX/WESYS are converted to PNG with the shipped dds/ftex/bc7 readers.
-Harvested files go into the APP folder (data\pes17\harvest), never into the
-game folder.
-
-GET  /api/pes17/assets             diagnostic inventory
-POST /api/pes17/assets/extract     harvest selected classes (PC only)
 GET  /api/pes17/mode               reports PES 2017 and offline mode
 
 PES 2017-ONLY MODE
@@ -325,9 +366,9 @@ The Classic application is served at / (and /index.html) regardless of the
 PES 2017-only setting.  The PES 2017 read/write tools are at /pes17.html.
 "pes17_only": true in config.json keeps PES 2017 defaults active.  Build-time
 cleanup removes the Google Fonts links and flag CDN references from the
-Classic app, flag_img() no longer downloads flags, and wiki_web defaults to
-false.  Local patch assets can be used without a CDN or Wikipedia request.
-Set "wiki_web": true only if you want those lookups back.
+Classic app, the flag endpoint was removed in r11, and wiki_web defaults to
+false.  Set "wiki_web": true only if you want Wikipedia text lookups back
+(player descriptions, club kit/ground data).  No logo is fetched either way.
 
 LIMIT: the FL26 UI and its app-side endpoints still exist; the PES 2017
 edition is not a complete rewrite.  A real PES 2021 -> t99p17v20
@@ -358,15 +399,13 @@ EDIT00000000, e.g.
     C:\Users\<you>\Documents\KONAMI\Pro Evolution Soccer 2017\save
     C:\Users\<you>\OneDrive\Dokumenti\KONAMI\Pro Evolution Soccer 2017\save
 and press "Use this folder".  It is saved to config.json and takes effect at
-once.  Crests and CPK cards show
-0 on a fresh install - both are OPTIONAL and the save reads work without
-them.
+once.  Save reads work on a fresh install with no other setup.
 
 HOW TO USE ON WINDOWS
 ---------------------
 1. Unzip this build anywhere (not inside the zip) on Windows.
    Check VERSION.txt in that folder: it must say
-   "pc414-pes17-clean-r9 (2026-11-04)".  If it says
+   "pc414-pes17-clean-r11 (2026-11-06)".  If it says
    "pc414 (2026-11-01)" you unzipped the ORIGINAL program, which cannot
    decrypt a PES 2017 save at all.
    Both builds use port 8766, so close the old one first (or run
@@ -427,13 +466,9 @@ ML00000011 / EDIT00000000 files (on copies only), tests that prove the four
 measured pair patches against game-generated after files, budget read-side
 regressions, matchday icon / translation checks, and layout guard tests
 (refusal on a different-size or broken-table save, all four custom ops,
-report/opt-out modes, real shirt numbers / XI, RAW budget labels), and r6
-tests for the offline crest reader (loose files, CPK/WESYS, DDS -> PNG,
-stable-id mapping, auto-detection, read-only, no network API).  A live HTTP
-smoke on the real save with a synthetic patch folder passed 32/32 checks
-(r6), plus r7 tests for the CPK asset inventory / harvester (8 classes,
-DDS/WESYS -> PNG, source read-only, CLI, no network) and the offline /
-PES 2017 tools wiring.  A live r7 HTTP smoke passed 42/42 checks.  r8 adds 13
+report/opt-out modes, real shirt numbers / XI, RAW budget labels).  The
+r6 crest-reader and r7 CPK-harvester tests were removed with those modules
+in r11.  r8 adds 13
 cleanup / shipped-zip / offline-guard tests; a live HTTP smoke of the PRUNED
 build passed 76/76 checks, including all 132 GET endpoints returning exactly
 the same status as the unpruned r7 build (zero new 5xx, no timeouts).  r9

@@ -145,7 +145,7 @@ def fetch(pid, name, folder, age=None, year=2025):
 
 
 def norm_club(name):
-    """Rezervne/mladje momcadi (Sporting CP B, Bayern Munich II, X U21) koriste grb matičnog kluba."""
+    """Rezervne/mladje momcadi (Sporting CP B, Bayern Munich II, X U21) koriste clanak matičnog kluba."""
     n = (name or '').strip()
     n2 = re.sub(r'\s+(B|II|III|U-?\d\d|Reserves?|Youth|Juniors?|Castilla|Atletic)$', '', n, flags=re.I).strip()
     return n2 or n
@@ -154,10 +154,6 @@ def norm_club(name):
 def _slug(name):
     import hashlib
     return hashlib.md5(norm_club(name).lower().encode('utf-8')).hexdigest()[:16]
-
-
-def crest_path(folder, name):
-    return os.path.join(folder, '%s.png' % _slug(name))
 
 
 CLUB_KEYS = {
@@ -175,7 +171,8 @@ CLUB_KEYS = {
 
 
 def fetch_club(name, folder):
-    """Grb kluba: glavna slika Wikipedia clanka. Sprema data/crests/<md5>.png + <md5>.json. Greske (429/mreza) se ne pamte kao 'nema'."""
+    """r11: samo METADATA kluba - naslov Wikipedia clanka (treba ga fetch_kit za dresove, stadion i godinu osnutka).
+    Sprema data/crests/<md5>.json. Grbovi/slike se vise ne dohvacaju. Greske (429/mreza) se ne pamte kao 'nema'."""
     os.makedirs(folder, exist_ok=True)
     fp = os.path.join(folder, '%s.json' % _slug(name))
     try:
@@ -199,9 +196,7 @@ def fetch_club(name, folder):
                 break
         if key:
             s = _get('%s/api/rest_v1/page/summary/%s' % (API, urllib.parse.quote(key, safe='')))
-            th = (s.get('thumbnail') or {}).get('source')
-            if th:
-                open(crest_path(folder, name), 'wb').write(_get(th, binary=True))
+            if s.get('title'):
                 res.update(ok=True, title=s.get('title'))
     except Exception as e:
         res['error'] = str(e)[:120]

@@ -6,8 +6,6 @@
   "edit_dat": "%USERPROFILE%\\Documents\\KONAMI\\Pro Evolution Soccer 2017\\save\\EDIT00000000",
   "pes_exe": "D:\\jawedfolder\\Games\\Pro Evolution Soccer 2017\\PES2017.exe",
   "pes_process": "PES2017",
-  "_pes17_patch_dir_note": "OPTIONAL, offline only. Folder that holds your patch logos: loose PNG/JPG/DDS files named by club name or team id, or CPK archives containing common/render/symbol/flag/e_<teamid>_r.dds. Leave blank to auto-detect download/, Data/, livecpk/, content/ next to pes_exe. The app only READS here; it never modifies the game or patch folder.",
-  "pes17_patch_dir": "",
   "_pes17_only_note": "PES 2017-only mode. The Classic UI (index.html) is the default landing page at /, and the write/asset tools live at /pes17.html. Wikipedia/flag CDN lookups stay off by default and Google Fonts are removed at build time.",
   "pes17_only": true,
   "wiki_web": false,

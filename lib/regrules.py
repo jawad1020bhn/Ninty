@@ -38,8 +38,36 @@ RULES_FL27 = {
 }
 DOMESTIC_FL27 = {18: 'IT', 82: 'IT', 19: 'ES', 80: 'ES', 20: 'FR', 81: 'FR', 17: 'EN', 79: 'EN'}
 
+# --- EA SPORTS FC 27 -------------------------------------------------------
+# FC 27 reuses small league ids that mean DIFFERENT competitions in PES:
+# 17 is Ligue 2 here but Premier League in FL26, 19 is 1. Bundesliga, etc.
+# These ids were read out of data/fc27/leagues.json, never guessed.
+# The real-world rules are the ones documented at the top of this file.
+RULES_FC27 = {
+    31: dict(name='Serie A', lista=25, new_extra=2),
+    32: dict(name='Serie B', lista=25, new_extra=1),
+    53: dict(name='LaLiga', lista=25, extra=3),
+    54: dict(name='LaLiga 2', lista=25, extra=3),
+    16: dict(name='Ligue 1', extra=4),
+    17: dict(name='Ligue 2', extra=4),
+    13: dict(name='Premier League', lista=25),
+}
+DOMESTIC_FC27 = {31: 'IT', 32: 'IT', 53: 'ES', 54: 'ES', 16: 'FR', 17: 'FR',
+                 13: 'EN', 14: 'EN', 60: 'EN', 61: 'EN', 19: 'DE', 20: 'DE', 2076: 'DE'}
+
+# FC 27 nationality ids are EA's, not PES's (PES uses 194-238 for Europe;
+# FC 27 uses 4 Austria / 18 France / 21 Germany / 27 Italy / 45 Spain).
+# Same membership as EU above: EU + Switzerland, Norway, Iceland and
+# Liechtenstein; England, Scotland and Wales are outside it.
+# Derived from data/fc27/nations.json by ISO code, not hand-copied.
+EU_FC27 = {4, 7, 9, 10, 11, 12, 13, 17, 18, 21, 22, 23, 24, 25, 27, 28, 29,
+           30, 31, 32, 34, 36, 37, 38, 39, 43, 44, 45, 46, 47, 208}
+EU_PES = set(EU)   # kept so a game switch can restore the PES set
+
 
 def non_eu(nat):
+    # FC 27 ids are all < 512, so the mask is identity there; PES packs flag
+    # bits above bit 8, which is why the mask exists at all.
     return nat is not None and (nat & 0x1ff) not in EU
 
 

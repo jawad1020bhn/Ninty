@@ -20,7 +20,7 @@ from urllib.parse import urlparse, parse_qs
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP_VERSION = 'pc414'
-APP_BUILT = '2026-11-01'
+APP_BUILT = '2026-11-07'
 sys.path.insert(0, os.path.join(HERE, 'lib'))
 import dds  # noqa: E402
 import dbimport  # noqa: E402
@@ -42,6 +42,7 @@ import loanscan  # noqa: E402
 import realmoves  # noqa: E402  pc307 stvarni transferi (Wikipedia)
 import regrules  # noqa: E402  pc195 pravila registracije (Michele & Claude)
 import revalue  # noqa: E402  pc197 revalorizacija (Michele & Claude)
+import fc27 as fc27db  # noqa: E402  EA SPORTS FC 27 database (data/fc27)
 
 DEFAULT_CFG = {
     'save_dir': '',   # r9: never inherit pc414's machine-specific FL26 path; load_cfg() finds a real PES 2017 folder
@@ -156,7 +157,7 @@ def game_running():
         v = False
         try:
             want = (CFG['pes_process'] + '.exe').lower()
-            want17 = 'pes2017.exe' if _GAME['v'] == 'pes17' else ''
+            want17 = 'pes2017.exe' if _GAME['save'] == 'pes17' else ''
             for p_ in os.listdir('/proc'):
                 if not p_.isdigit() or int(p_) == os.getpid():
                     continue
@@ -174,7 +175,7 @@ def game_running():
     try:   # pc413: popis procesa bez pokretanja tasklist.exe (novi proces svake 3 s dok igra radi mogao je trgati igru)
         import gamemem
         _pnames = [CFG['pes_process'] + '.exe']
-        if _GAME['v'] == 'pes17' and 'PES2017.exe' not in _pnames:
+        if _GAME['save'] == 'pes17' and 'PES2017.exe' not in _pnames:
             _pnames.append('PES2017.exe')
         v = any(gamemem._win_pid(n) for n in _pnames)
         _GR.update(t=time.time(), v=v)
@@ -221,7 +222,7 @@ def _memwatch():
     pr = None
     while True:
         try:
-            if (CFG.get('auto_menu', True) and not DEV and _GAME['v'] != 'pes17'
+            if (CFG.get('auto_menu', True) and not DEV and _GAME['save'] != 'pes17'
                     and game_running()):
                 if pr is None:
                     pr = gamemem.Probe(CFG.get('pes_process') or '')
@@ -709,7 +710,7 @@ def apply_regens():
 
 def pes17_readonly(slot=None):
     """Early, friendly refusal for every endpoint that writes into the save."""
-    if _GAME['v'] == 'pes17':
+    if _GAME['save'] == 'pes17':
         raise ValueError(pes17.READ_ONLY_MSG)
 
 
@@ -720,7 +721,7 @@ def pes17_auto_db(folder):
     squad would show FL26 names (or just numbers).  Sider/F7 dumps do not
     exist for PES 2017 in this build, so the EDIT file is the source.
     """
-    if _GAME['v'] != 'pes17':
+    if _GAME['save'] != 'pes17':
         return
     out = os.path.join(HERE, 'data', 'pes17')
     if os.path.exists(os.path.join(out, 'players.json')):
@@ -752,8 +753,8 @@ def pes17_auto_db(folder):
 def pes17_tools_info(slot):
     # Real-save PES 2017 info (read side), independent of the FL26 views.
     import pes17_write
-    if _GAME['v'] != 'pes17':
-        _GAME['v'] = 'pes17'
+    if _GAME['save'] != 'pes17':
+        _GAME['save'] = 'pes17'
     try:
         pes17.ensure_teamids(CFG, os.path.join(HERE, 'data', 'pes17'))
     except Exception as _ex:
@@ -3135,9 +3136,11 @@ def honours_view(slot):
 
 
 def _real_cutoff(seasons=()):
-    """pc358: prva sezona svijeta igre. Stvarni trofeji broje se samo prije nje (FL26 2025/26, FL27 2026/27; stariji
-    save, npr. vanilla PES 2021, krece ranije pa se uzima najranija sezona koju app zna za tu karijeru)."""
-    base = 2026 if _GAME.get('v') == 'fl27' else 2025
+    """First season of the game world: real trophies only count before it.
+    The FC 27 database is the 2026/27 season (importer --as-of 2026-08-01), so
+    the cutoff is 2026. An older career save can start earlier, so the earliest
+    season the app knows for that career still wins."""
+    base = 2026
     try:
         return min([base] + [int(x) for x in seasons if x])
     except Exception:
@@ -3157,23 +3160,18 @@ def _real_honours(club, seasons=()):
 
 def _hn_comp_embs(club):
     """pc217: logotipi natjecanja iz igre za Vitrinu: domaci kupovi u koje je klub prijavljen (CompetitionEntry.bin,
-    sve sto nije liga ni UEFA) i europska natjecanja. Samo id-evi za koje postoji emb_<id> slika."""
+    sve sto nije liga ni UEFA) i europska natjecanja. r11: samo ID-evi (podaci), bez slika natjecanja."""
     out = dict(cups=[], eu={}, keys={})
     try:
         comps, entry = _comp_db()
-        emb = _emblem_index()
-        if not comps or not emb:
+        if not comps:
             return out
-        try:
-            _game_logo_index()
-        except Exception:
-            pass
         tid = _team_id(club)
         eu_kw = ('UEFA', 'CHAMPIONS', 'EUROPA', 'CONFERENCE', 'FIFA', 'CLUB_WORLD')
         for cid in sorted(entry.get(tid, ()) if tid else ()):
             key = comps.get(cid, '')
             out['keys'][cid] = key
-            if not key or cid not in emb:
+            if not key:
                 continue
             ku = key.upper()
             if ku.endswith('_LEAGUE') or any(k in ku for k in eu_kw):
@@ -3181,8 +3179,6 @@ def _hn_comp_embs(club):
             out['cups'].append(dict(id=cid, key=key))
         for cid, key in comps.items():
             ku = (key or '').upper()
-            if cid not in emb:
-                continue
             if 'CHAMPIONS_LEAGUE' in ku and 'ucl' not in out['eu'] and ('UEFA' in ku or 'EUROPE' in ku or ku.startswith('CHAMPIONS')):
                 out['eu']['ucl'] = cid
             elif 'EUROPA' in ku and 'uel' not in out['eu']:
@@ -3190,7 +3186,7 @@ def _hn_comp_embs(club):
             elif 'CONFERENCE' in ku and 'uecl' not in out['eu']:
                 out['eu']['uecl'] = cid
         for k, fb in (('ucl', 3), ('uel', 5)):
-            if k not in out['eu'] and fb in emb:
+            if k not in out['eu']:
                 out['eu'][k] = fb
     except Exception as e:
         out['error'] = str(e)[:120]
@@ -4380,7 +4376,6 @@ def _scout_pids(slot):
         for p in r.get('players', []):
             out[int(p['pid'])] = r.get('scout_name', '')
     return out
-
 
 
 
@@ -6380,36 +6375,11 @@ def _ks_fl27_root():
 
 
 def _ks_fl27_make(tid, club):
-    """pc384: FL27 drzi dresove samo u cpk arhivama igre. Za moj klub napravi kit-server zapis s ISTIM dresovima iz arhive:
-    content\\kits\\TheGaffer_<klub>\\p<k>\\u<tid>p<k>.ftex + config.txt (samo KitFile; boje, brojevi i ostalo ostaju igrini,
-    kit-server mijenja samo ono sto config navodi) + order.ini + red u map.txt. Na te kopije app onda crta sponzora kao na FL26.
-    -> relativna mapa ili None."""
-    kd = _ks_fl27_root()
-    if not kd:
-        return None
-    name = 'TheGaffer_' + (re.sub(r'[^A-Za-z0-9]+', '_', club or '').strip('_') or str(tid))
-    td = os.path.join(kd, name)
-    kits = []
-    for k in range(1, 10):
-        fn = 'u%04dp%d.ftex' % (tid, k)
-        src = _cpk_kit_file(fn)
-        if not src or not os.path.isfile(src):
-            continue
-        os.makedirs(os.path.join(td, 'p%d' % k), exist_ok=True)
-        dst = os.path.join(td, 'p%d' % k, fn)
-        if not os.path.isfile(dst):
-            shutil.copyfile(src, dst)
-        with open(os.path.join(td, 'p%d' % k, 'config.txt'), 'w', encoding='utf-8', newline='\r\n') as f_:
-            f_.write('; The Gaffer: same kit as in the game (copied from the game files), so sponsors can be added\n')
-            f_.write('KitFile=u%04dp%d\n' % (tid, k))
-        kits.append('p%d' % k)
-    if not kits:
-        return None
-    with open(os.path.join(td, 'order.ini'), 'w', encoding='utf-8', newline='\r\n') as f_:
-        f_.write('\n'.join(kits) + '\n')
-    _ks_fl27_unmap(tid, name)
-    print('[kit sponsor] FL27: kit copies for %s (%d): %s' % (club, tid, ', '.join(kits)))
-    return name
+    """r11: FL27 kept its kits only inside the game's CPK archives.  Archive reading
+    was removed with the logo/CPK importers, so there is no longer a source to copy
+    a working kit from.  Loose kit-server files (content\\kits) still work normally.
+    -> always None."""
+    return None
 
 
 def _ks_fl27_unmap(tid, name):
@@ -6450,9 +6420,6 @@ def _ks_fl27_live(p, remove=False):
             relp = json.load(open(os.path.join(td, 'live.json'), encoding='utf-8')).get(fn.lower())
         except Exception:
             pass
-        if not relp:
-            hit = _cpk_kit_index().get(fn.lower())
-            relp = hit[1] if hit else None
         if not relp:
             return None
         if _is_fl27_setup():
@@ -6537,10 +6504,6 @@ def _ks_fl26_make(tid, club, td):
                     break
             if src:
                 break
-        if not src:
-            hit = _cpk_kit_index().get(fn.lower())
-            if hit:
-                src, relp = _cpk_kit_file(fn), hit[1]
         if not src or not os.path.isfile(src):
             continue
         os.makedirs(os.path.join(td, 'p%d' % k), exist_ok=True)
@@ -10745,91 +10708,6 @@ def _comp_db():
     return _GL['compdb']
 
 
-def _emblem_index():
-    """{comp_id: putanja} iz livecpk/*/common/render/symbol/emblemLc/emb_<id 4 znamenke>_<varijanta>.png (svijetla varijanta za tamnu podlogu prva)."""
-    if 'emb' in _GL:
-        return _GL['emb']
-    pref = ['w_l', 'l', 's1_l', 'e_l', 'b_l', 's2_l', 'w_ll', 'll', 'b_ll']
-    idx = {}
-    for ri, rt in enumerate(_cpk_roots()):
-        fd = os.path.join(rt, 'common', 'render', 'symbol', 'emblemLc')
-        if not os.path.isdir(fd):
-            continue
-        for f in os.listdir(fd):
-            m = re.match(r'emb_(\d+)_(.+)\.png$', f, re.I)
-            if not m or m.group(2).lower() not in pref:
-                continue
-            cid, rk = int(m.group(1)), (ri, pref.index(m.group(2).lower()))
-            if cid not in idx or rk < idx[cid][0]:
-                idx[cid] = (rk, os.path.join(fd, f))
-    # pc286: FL27 (SP) nema logotipe u livecpk - uzmi ih iz arhiva igre (Data/*.cpk, download/*.cpk), png ili dds
-    try:
-        for k_ in _cpk_kit_index():
-            if not k_.startswith('emb/'):
-                continue
-            m = re.match(r'emb/emb_(\d+)_(.+)\.(png|dds)$', k_)
-            if not m:
-                continue
-            v_ = m.group(2)
-            cid, rk = int(m.group(1)), (99, pref.index(v_) if v_ in pref else 50, m.group(3) != 'png')
-            if cid not in idx or rk < idx[cid][0]:
-                idx[cid] = (rk, 'cpk:' + k_[4:])
-    except Exception as ex:
-        print('[emblems] cpk:', ex)
-    _GL['emb'] = {k: v[1] for k, v in idx.items()}
-    return _GL['emb']
-
-
-def _comp_emblem(c):
-    """ID loga za natjecanje iz appa: LP/EL po imenu, lige glasanjem klubova (team id -> natjecanja u koja je prijavljen)."""
-    comps, entry = _comp_db()
-    emb = _emblem_index()
-    nm = (c.get('name') or '').lower()
-    if c.get('kind') != 'league' and emb:
-        for k, key in (comps or {}).items():
-            if ('prvaka' in nm or 'champions league' in nm) and key == 'UEFA_CHAMPIONS_LEAGUE' and k in emb:
-                return k
-            if ('europsk' in nm or 'europa' in nm) and key == 'UEFA_EUROPA_LEAGUE' and k in emb:
-                return k
-        # FL26: kljuc u Competition.bin je drugaciji, ali id natjecanja = tid utakmica (3 = LP, 5 = EL) i emb_0003/emb_0005 postoje
-        fb = 3 if ('prvaka' in nm or 'champions league' in nm) else 5 if ('europsk' in nm or 'europa' in nm) else None
-        if fb is None and isinstance(c.get('tid'), int):
-            fb = c['tid']
-        # pc286: FL27 - broj iz rasporeda (tid) je kljuc pravila natjecanja; logo nosi broj natjecanja (CompetitionRegulation)
-        cands, own = [], []
-        try:
-            _reg_comp_name(0)
-            rc = _GL.get('regcomp') or {}
-            for t_ in (c.get('tid'), fb):
-                if isinstance(t_, int) and rc.get(t_) is not None:
-                    _rv = rc[t_]
-                    (own if t_ == c.get('tid') else cands).append(_rv if (_rv > 0xff and _rv in emb) else _rv & 0xff)
-        except Exception:
-            pass
-        # pc411: prosirene baze (npr. Libertadores na broju 5) - broj iz pravila stvarnog natjecanja ide prije fiksnog 3/5
-        for x in own + [fb] + cands:
-            if x in emb:
-                return x
-    if not comps or not emb:
-        return None
-    try:
-        _game_logo_index()
-        n2t = _GL.get('n2t') or {}
-    except Exception:
-        n2t = {}
-    from collections import Counter
-    votes = Counter()
-    for r in c.get('rows') or []:
-        t = n2t.get(r.get('club'))
-        for ci in entry.get(t, ()):
-            key = comps.get(ci, '')
-            if key.endswith('_LEAGUE') and not key.startswith(('UEFA', 'FIFA', 'AFC', 'COPA', 'CHAMPIONS')):
-                votes[ci] += 1
-    for ci, n in votes.most_common():
-        if ci in emb and n >= max(2, len(c.get('rows') or []) * 0.4):
-            return ci
-    return None
-
 
 def _career_catalog(s):
     from fl26_career_catalog import catalog
@@ -10941,88 +10819,10 @@ def _comps_view1(slot):
         r['comps'] = (r.get('comps') or []) + _preseason_comps(slot, r)
     except Exception as ex:
         print('[competitions] pre-season:', ex)
-    m = _GL.setdefault('embmap', {})
-    for c in r.get('comps') or []:
-        if c.get('preseason'):   # pc347: bez glasanja po klubovima (ICC bi dobio logo Premier lige); logo s Wikipedije po imenu
-            c['emb'] = None
-            continue
-        try:
-            c['emb'] = c.get('emb') or _comp_emblem(c)
-        except Exception:
-            c['emb'] = None
-        if c['emb']:
-            m[('n', c.get('name'))] = c['emb']
-            if c.get('mine') and c.get('kind') == 'league':
-                try:
-                    m[('n', mlsave.read_description(slot_folder(slot)).get('league'))] = c['emb']
-                except Exception:
-                    pass
-            if c.get('tid') is not None:
-                m[('t', c['tid'])] = c['emb']
+    for c in r.get('comps') or []:   # r11: logotipi natjecanja su uklonjeni
+        c['emb'] = None
     return r
 
-
-def flag_img(cc):
-    """pc304: zastava reprezentacije (flagcdn.com, PNG 160 px), skida server jednom i cuva u data/flags. Preglednik u appu ne treba internet."""
-    cc = (cc or '').lower()
-    if not re.match(r'^[a-z]{2}(-[a-z]{3})?$', cc):
-        return None
-    d = os.path.join(HERE, 'data', 'flags')
-    fp = os.path.join(d, cc + '.png')
-    if os.path.isfile(fp):
-        with open(fp, 'rb') as _f:
-            return _f.read()
-    if CFG.get('pes17_only', True):   # r7: PES 2017 edition is offline by default
-        return None
-    try:
-        import urllib.request
-        req = urllib.request.Request('https://flagcdn.com/w160/%s.png' % cc, headers={'User-Agent': 'TheGaffer/1.0'})
-        with urllib.request.urlopen(req, timeout=10) as r:
-            b = r.read()
-        if not b.startswith(b'\x89PNG'):
-            return None
-        os.makedirs(d, exist_ok=True)
-        open(fp, 'wb').write(b)
-        return b
-    except Exception as ex:
-        print('[flags]', cc, ex)
-        return None
-
-
-def comp_emblem_img(cid):
-    p = _emblem_index().get(int(cid))
-    if p and p.startswith('cpk:'):
-        p = _cpk_kit_file(p[4:], 'emb/')   # pc286: FL27 - iz arhive igre
-    if not p:
-        return None
-    raw = open(p, 'rb').read()
-    if p.lower().endswith('.dds'):
-        try:
-            import dds
-            raw = dds.dds_to_png(raw) or None
-        except Exception:
-            return None
-    return raw
-
-
-def _emb_for(name=None, tid=None):
-    """ID loga iz igre za natjecanje (po imenu ili tid-u); mapa se puni u comps_view, LP/EL po imenu."""
-    m = _GL.get('embmap') or {}
-    if not m and _CUR_SLOT.get('slot') and not _GL.get('embwarm'):
-        _GL['embwarm'] = True
-        try:
-            comps_view(_CUR_SLOT['slot'])
-        except Exception:
-            pass
-        m = _GL.get('embmap') or {}
-    if tid is not None and ('t', tid) in m:
-        return m[('t', tid)]
-    if name:
-        for k in (name, 'UEFA ' + name, name.replace('UEFA ', '')):
-            if ('n', k) in m:
-                return m[('n', k)]
-        return _comp_emblem(dict(name=name, kind='groups'))
-    return None
 
 
 def _coach_names():
@@ -11092,13 +10892,6 @@ def _coach_photos():
             m = re.match(r'coach_(\d+)\.png$', f, re.I)
             if m and int(m.group(1)) not in idx:
                 idx[int(m.group(1))] = os.path.join(fd, f)
-    try:   # pc284: portreti trenera iz arhiva igre (FL27); izvlace se tek kad zatrebaju (vidi coach_img)
-        for k_ in _cpk_kit_index():
-            m = re.match(r'coach/coach_(\d+)\.png$', k_)
-            if m and int(m.group(1)) not in idx:
-                idx[int(m.group(1))] = 'cpk:' + k_[6:]
-    except Exception:
-        pass
     _GL['coachp'] = idx
     return idx
 
@@ -11438,8 +11231,6 @@ def coach_set(body):
 
 def coach_img(cid):
     p = _coach_photos().get(int(cid))
-    if p and p.startswith('cpk:'):
-        p = _cpk_kit_file(p[4:], 'coach/')
     return open(p, 'rb').read() if p else None
 
 
@@ -11587,56 +11378,6 @@ def _kitserver_tex(tid, k):
     return None
 
 
-def _cpk_kit_index():
-    """pc283: FL27 (SP) drzi teksture dresova u cpk arhivama igre (Data/dt*.cpk, download/*.cpk), ne u livecpk.
-    Indeks {ime datoteke: (arhiva, puni put)} samo za teksture dresova; cita se samo TOC svake arhive (seek), a sprema se u
-    work/gamedb/kitindex.json dok se arhive ne promijene. Kasnija arhiva ima prednost (kao igra)."""
-    if 'kitidx' in _GL:
-        return _GL['kitidx']
-    idx = {}
-    try:
-        exe = CFG.get('pes_exe') or ''
-        gdir = exe if os.path.isdir(exe) else os.path.dirname(exe)
-        arcs = []
-        for sub in ('Data', 'download'):
-            dd = os.path.join(gdir, sub) if gdir else ''
-            if dd and os.path.isdir(dd):
-                arcs += [os.path.join(dd, f) for f in sorted(os.listdir(dd)) if f.lower().endswith('.cpk')]
-        key = [(a, os.path.getsize(a), int(os.path.getmtime(a))) for a in arcs]
-        cache = os.path.join(CFG['work'], 'gamedb', 'assetindex.json')
-        try:
-            c = json.load(open(cache, encoding='utf-8'))
-            if c.get('key') == [list(x) for x in key] and c.get('v') == 3:   # pc286: v2 = i logotipi natjecanja; pc305: v3 = i grbovi/zastave momcadi
-                idx = {k_: tuple(v) for k_, v in c['idx'].items()}
-                _GL['kitidx'] = idx
-                return idx
-        except Exception:
-            pass
-        import cpkread
-        for a in arcs:
-            try:
-                cp = cpkread.Cpk(a)
-            except Exception:
-                continue
-            for n in cp.files:
-                nl = n.lower()
-                emb_ = '/render/symbol/emblem' in nl and re.search(r'/emb_\d+_[^/]*\.(png|dds)$', nl)
-                flg_ = '/render/symbol/flag/' in nl and re.search(r'/e_\d+_[^/]*\.(png|dds)$', nl)   # pc305: grbovi klubova i reprezentacija iz igre
-                if flg_:
-                    idx['flag/' + n.rsplit('/', 1)[-1].lower()] = (a, n)
-                    continue
-                if ('/uniform/texture/' in nl and nl.endswith('.ftex')) or '/render/symbol/player/' in nl or '/render/symbol/coach/' in nl or emb_:
-                    # pc284: i portreti igraca i trenera iz arhiva igre (FL27 ih nema u livecpk); kljuc = podmapa + ime
-                    # pc286: i logotipi natjecanja (render/symbol/emblem*/emb_<id>_<varijanta>)
-                    sub = 'player/' if '/render/symbol/player/' in nl else 'coach/' if '/render/symbol/coach/' in nl else 'emb/' if emb_ else ''
-                    idx[sub + n.rsplit('/', 1)[-1].lower()] = (a, n)
-        os.makedirs(os.path.dirname(cache), exist_ok=True)
-        json.dump(dict(key=key, idx=idx, v=3), open(cache, 'w', encoding='utf-8'))
-    except Exception as ex:
-        print('[kits] cpk index:', ex)
-    _GL['kitidx'] = idx
-    return idx
-
 
 def _unwesys(raw):
     """pc381: datoteke u cpk arhivama FL27 (npr. lica igraca u Data/dt14_all.cpk, common/render/symbol/player/<id>.dds) imaju
@@ -11656,28 +11397,6 @@ def _unwesys(raw):
     except Exception:
         return raw
 
-
-def _cpk_kit_file(fn, sub=''):
-    """Izvuci datoteku (tekstura dresa, portret igraca 'player/', trenera 'coach/') iz cpk arhive igre u work/gamedb (jednom)."""
-    hit = _cpk_kit_index().get(sub + fn.lower())
-    if not hit:
-        return None
-    a, n = hit
-    dst = os.path.join(CFG['work'], 'gamedb', (sub or 'kits/').rstrip('/'), fn)
-    try:
-        stale = False
-        if os.path.exists(dst):
-            with open(dst, 'rb') as f_:
-                _hd = f_.read(8)
-                stale = b'WESYS' in (_hd[:5], _hd[3:8])   # pc381: stara izvucena kopija jos sa zaglavljem (pc414: i s 3 B ispred)
-        if stale or not (os.path.exists(dst) and os.path.getmtime(dst) >= os.path.getmtime(a)):
-            import cpkread
-            os.makedirs(os.path.dirname(dst), exist_ok=True)
-            open(dst, 'wb').write(_unwesys(cpkread.Cpk(a).read(n)))
-        return dst
-    except Exception as ex:
-        print('[kits] extract', fn, ex)
-        return None
 
 
 def kit_img(club, k=1):
@@ -11703,8 +11422,6 @@ def kit_img(club, k=1):
         if os.path.isfile(os.path.join(d, fn)):
             src = os.path.join(d, fn)
             break
-    if not src:
-        src = _cpk_kit_file(fn)   # pc283: FL27 - dresovi iz cpk arhiva igre
     if not src:
         return miss('no %s' % fn)
     cd = os.path.join(HERE, 'data', 'kits')
@@ -13074,12 +12791,14 @@ COMP_GROUPS = {3: ('Champions League', 'Champions League'), 5: ('Europa League',
 COMP_LEAGUES_FL27 = {17: 'Premier League', 18: 'Serie A', 19: 'La Liga', 20: 'Ligue 1', 21: 'Eredivisie', 22: 'Liga Portugal', 50: 'Bundesliga',
                      79: 'EFL Championship', 80: 'La Liga 2', 81: 'Ligue 2', 82: 'Serie B', 115: 'Belgian Pro League', 116: 'Russian Premier League',
                      117: 'Super League Greece', 118: 'Süper Lig', 134: 'Scottish Premiership', 147: 'Danish Superliga'}
-_GAME = dict(v='fl26', fl26=None, regs=None)
+_GAME = dict(v='fc27', save=None, fl26=None, regs=None)
 _GAME_HDR = {}
 
 
 def _game_of(folder):
-    """'fl27' / 'pes17' / 'fl26'. PES 2017 is detected by its decrypted save."""
+    """Format of the career SAVE being read: 'fl27' / 'pes17' / 'fl26'.
+    This no longer selects the game or the database - FC 27 is the only game -
+    but the save readers and the read-only guard still need to know the format."""
     try:
         if pes17.is_pes17(folder):
             return 'pes17'
@@ -13099,18 +12818,21 @@ DB_FILES = ('players.json', 'ratings.json', 'positions.json', 'playpos.json', 't
 
 
 def _db_dir():
-    """pc267: mapa baze igraca za trenutnu igru: FL26 = data, Football Life 2027 = data/fl27."""
-    return os.path.join(HERE, 'data') if _GAME['v'] == 'fl26' else os.path.join(HERE, 'data', _GAME['v'])
+    """FC 27 is the only game: the player database is always data/fc27."""
+    return os.path.join(HERE, 'data', 'fc27')
 
 
 def _dbf(name):
-    """Datoteka baze za trenutnu igru; dok FL27 nema svoju (prije prvog uvoza), cita se FL26."""
-    p_ = os.path.join(_db_dir(), name)
-    return p_ if os.path.exists(p_) else os.path.join(HERE, 'data', name)
+    """Database file for the current game.
+
+    No FL26 fallback: falling back would silently serve another game's player
+    ids, so the wrong names and ratings would show against FC 27 squads.
+    """
+    return os.path.join(_db_dir(), name)
 
 
 def _db_dir_w():
-    """Mapa u koju uvoz baze pise (FL26: data, FL27: data/fl27)."""
+    """Folder the database importer writes to (data/fc27)."""
     d_ = _db_dir()
     if not os.path.isdir(d_):
         os.makedirs(d_, exist_ok=True)
@@ -13127,54 +12849,62 @@ def _db_own(name, default):
 
 
 def _sync_game(folder):
-    """Prebaci tablice natjecanja (imena liga, pravila registracije) na igru iz koje je save. Mijenja se samo kad se igra promijeni."""
+    """FC 27 is the only game, so the competition tables and the database never
+    switch. `folder` is a decrypted career save: its FORMAT is still detected so
+    the save readers and the read-only guard keep working. Replacing that save
+    layer with a native career is the next milestone."""
     g = _game_of(folder)
-    if g == _GAME['v']:
-        return g
-    if _GAME['fl26'] is None:
-        _GAME['fl26'] = dict(COMP_LEAGUES)
-        _GAME['regs'] = (dict(regrules.RULES), dict(regrules.DOMESTIC))
-    COMP_LEAGUES.clear()
-    COMP_LEAGUES.update(COMP_LEAGUES_FL27 if g == 'fl27' else _GAME['fl26'])
-    regrules.RULES.clear()
-    regrules.DOMESTIC.clear()
-    if g == 'fl27':
-        regrules.RULES.update(regrules.RULES_FL27)
-        regrules.DOMESTIC.update(regrules.DOMESTIC_FL27)
-    else:
-        regrules.RULES.update(_GAME['regs'][0])
-        regrules.DOMESTIC.update(_GAME['regs'][1])
-    _GAME['v'] = g
-    if g == 'pes17':
-        try:
-            pes17_auto_db(folder)   # build data/pes17/*.json from EDIT00000000
-        except Exception as ex:
-            print('[pes17] database:', ex)
-    dbimport.USE_GAME_OVR = (g == 'fl27')   # pc268: FL27 OVR iz igre (eFootball skala atributa)
-    dbimport.BASE_PATH = os.path.join(os.path.dirname(CFG.get('dump') or ''), 'players_base.bin') if CFG.get('dump') else None
-    if g != 'fl26':
-        try:   # imena liga koja je korisnik upisao kod uvoza FL27 baze
-            for _k, _v in json.load(open(os.path.join(_db_dir(), 'comps.json'), encoding='utf-8')).items():
-                if _v.get('kind') != 'groups' and _v.get('name'):
-                    COMP_LEAGUES[int(_k)] = _v['name']
-        except Exception:
-            pass
+    if g == _GAME['save']:
+        return _GAME['v']
+    _GAME['save'] = g
     _GL.clear()
     try:
-        reload_db()   # imena, pozicije i ocjene igraca iz baze te igre
+        reload_db()
     except Exception as ex:
-        print('[game] baza:', ex)
-    print('[game] tablice natjecanja i baza:', g)
-    return g
+        print('[game] database:', ex)
+    return _GAME['v']
 
-try:
-    for _k, _v in json.load(open(_dbf('comps.json'), encoding='utf-8')).items():
-        if _v.get('kind') == 'groups':
-            COMP_GROUPS[int(_k)] = (_v.get('name') or 'Natjecanje %s' % _k, _v.get('name_en') or _v.get('name') or 'Competition %s' % _k)
-        elif _v.get('name'):
-            COMP_LEAGUES[int(_k)] = _v['name']
-except Exception:
-    pass
+
+def _qint(q, k, default=0):
+    """Read an int query argument without throwing on junk input."""
+    try:
+        return int((q.get(k, [''])[0] or '').strip())
+    except (ValueError, TypeError):
+        return default
+
+
+def _fc27_tables():
+    """Competition names and registration rules for FC 27.
+
+    The FL26 defaults must be DROPPED, not merged: FC 27 reuses the same small
+    ids for different competitions (17 is Ligue 2, not Premier League) and 12
+    FL26 ids do not exist in FC 27 at all, so merging leaves stale names behind.
+    Nationality ids differ too, so regrules.EU is swapped for the EA set.
+    """
+    COMP_LEAGUES.clear()
+    COMP_GROUPS.clear()
+    try:
+        for _k, _v in json.load(open(_dbf('comps.json'), encoding='utf-8')).items():
+            if _v.get('kind') == 'groups':
+                COMP_GROUPS[int(_k)] = (_v.get('name') or 'Competition %s' % _k,
+                                        _v.get('name_en') or _v.get('name') or 'Competition %s' % _k)
+            elif _v.get('name'):
+                COMP_LEAGUES[int(_k)] = _v['name']
+    except Exception as ex:
+        print('[fc27] competitions:', ex)
+    regrules.RULES.clear()
+    regrules.RULES.update(regrules.RULES_FC27)
+    regrules.DOMESTIC.clear()
+    regrules.DOMESTIC.update(regrules.DOMESTIC_FC27)
+    regrules.EU.clear()
+    regrules.EU.update(regrules.EU_FC27)
+    # FC 27 ships its own overall rating; recomputing it with the PES attribute
+    # weights would produce a different number from the mapped attributes.
+    dbimport.USE_GAME_OVR = True
+    dbimport.BASE_PATH = None
+
+
+_fc27_tables()
 
 
 
@@ -15596,47 +15326,6 @@ _CQ = []
 _CT = {'t': None}
 
 
-def _crest_worker():
-    while _CQ:
-        n = _CQ.pop(0)
-        try:
-            r = wiki.fetch_club(n, CREST_DIR)
-            if r and r.get('error') and not r.get('ok') and '429' in r['error']:
-                _CQ.insert(0, n)
-                time.sleep(60)
-                continue
-        except Exception:
-            pass
-        time.sleep(1.0)
-    _CT['t'] = None
-
-
-def crest_prefetch(names, prio=False):
-    if _game_crests_on():
-        return dict(queued=0, left=0, game=True)
-    if not _wiki_web():
-        return dict(queued=0, left=0, offline=True)
-    n = 0
-    for nm in (list(reversed(names)) if prio else names):
-        nm = str(nm).strip()
-        if not nm:
-            continue
-        if nm in _CQ:
-            if prio:
-                _CQ.remove(nm); _CQ.insert(0, nm)
-            continue
-        try:
-            c = json.load(open(os.path.join(CREST_DIR, wiki._slug(nm) + '.json'), encoding='utf-8'))
-            if (c.get('ok') or not c.get('error')) and not (wiki.norm_club(nm).lower() in wiki.CLUB_KEYS and not c.get('ov')):
-                continue
-        except Exception:
-            pass
-        (_CQ.insert(0, nm) if prio else _CQ.append(nm)); n += 1
-    if _CQ and (_CT['t'] is None or not _CT['t'].is_alive()):
-        _CT['t'] = threading.Thread(target=_crest_worker, daemon=True)
-        _CT['t'].start()
-    return dict(queued=n, left=len(_CQ))
-
 
 COMP_WIKI = {3: 'UEFA Champions League', 5: 'UEFA Europa League', 17: 'Premier League', 18: 'Serie A', 19: 'La Liga', 20: 'Bundesliga', 21: 'Eredivisie',
              22: 'Primeira Liga', 79: 'EFL Championship', 80: 'Segunda División', 81: '2. Bundesliga', 82: 'Serie B', 116: 'Ligue 1', 117: 'Super League Greece',
@@ -15654,46 +15343,6 @@ LEAGUE_WIKI = {'Serie A': 'Serie A', 'La Liga': 'La Liga', 'Bundesliga': 'Bundes
                'International Champions Cup NA': 'International Champions Cup', 'International Champions Cup SA': 'International Champions Cup',
                'International Champions Cup Asia': 'International Champions Cup', 'International Champions Cup': 'International Champions Cup',
                'The FA Community Shield': 'FA Community Shield', 'FA Community Shield': 'FA Community Shield'}
-
-
-def comp_logo(tid):
-    """Logo natjecanja: glavna slika Wikipedia clanka (data/crests/comp_<tid ili ime>.png). tid je int ili ime lige. Neuspjeh se pamti 1 dan."""
-    if not isinstance(tid, str) and _GAME.get('v') == 'fl27' and tid in COMP_LEAGUES_FL27:
-        tid = COMP_LEAGUES_FL27[tid]   # pc367: FL27 ima druge brojeve natjecanja (81 = Ligue 2, a ne 2. Bundesliga)
-    if isinstance(tid, str):
-        fp = os.path.join(CREST_DIR, 'comp_%s.png' % wiki._slug(tid))
-    else:
-        fp = os.path.join(CREST_DIR, 'comp_%d.png' % tid)
-    try:
-        return open(fp, 'rb').read()
-    except Exception:
-        pass
-    miss = fp + '.miss'
-    try:
-        if time.time() - os.path.getmtime(miss) < 86400:
-            return None
-    except Exception:
-        pass
-    t = LEAGUE_WIKI.get(tid) if isinstance(tid, str) else COMP_WIKI.get(tid)
-    if not t:
-        return None
-    try:
-        import urllib.parse
-        sm = wiki._get('%s/api/rest_v1/page/summary/%s' % (wiki.API, urllib.parse.quote(t.replace(' ', '_'), safe='')))
-        th = (sm.get('thumbnail') or {}).get('source')
-        if th:
-            os.makedirs(CREST_DIR, exist_ok=True)
-            b = wiki._get(th, binary=True)
-            open(fp, 'wb').write(b)
-            return b
-    except Exception:
-        pass
-    try:
-        os.makedirs(CREST_DIR, exist_ok=True)
-        open(miss, 'w').write('x')
-    except Exception:
-        pass
-    return None
 
 
 
@@ -15789,47 +15438,10 @@ def _cpk_roots():
                 out.append(pth)
     except Exception:
         pass
-    # pc277: SP FL27 drzi bazu (Competition, CompetitionEntry, CompetitionRegulation, Team...) u cpk arhivi u <igra>/download,
-    # ne u livecpk. Ako je nijedan livecpk korijen nema, male pesdb datoteke se izvuku u work/gamedb/<cpk> i ta mapa se doda
-    # kao zadnji korijen (katalog liga, imena natjecanja, europske faze, prijave klubova). Samo citanje.
-    try:
-        if not any(os.path.isfile(os.path.join(r_, 'common', 'etc', 'pesdb', 'Competition.bin')) for r_ in out):
-            gr = _gamedb_root()
-            if gr:
-                out.append(gr)
-    except Exception as ex:
-        print('[game db]', ex)
     _GL['roots'] = out
     return out
 
 
-def _gamedb_root():
-    exe = CFG.get('pes_exe') or ''
-    gdir = exe if os.path.isdir(exe) else os.path.dirname(exe)
-    dl = os.path.join(gdir, 'download') if gdir else ''
-    if not dl or not os.path.isdir(dl):
-        return None
-    import cpkread
-    for f in sorted(os.listdir(dl), reverse=True):   # zadnja arhiva ima prednost
-        fp = os.path.join(dl, f)
-        if not f.lower().endswith('.cpk') or os.path.getsize(fp) > 50 * 1024 * 1024:
-            continue
-        try:
-            c = cpkread.Cpk(fp)
-        except Exception:
-            continue
-        rels = [n for n in c.files if n.startswith('common/etc/pesdb/') and c.files[n].get('FileSize', 0) < 2 * 1024 * 1024]
-        if 'common/etc/pesdb/Competition.bin' not in rels:
-            continue
-        root = os.path.join(CFG['work'], 'gamedb', f)
-        mt = os.path.getmtime(fp)
-        for n in rels:
-            dst = os.path.join(root, *n.split('/'))
-            if not (os.path.exists(dst) and os.path.getmtime(dst) >= mt):
-                os.makedirs(os.path.dirname(dst), exist_ok=True)
-                open(dst, 'wb').write(c.read(n))
-        return root
-    return None
 
 def _other_cpk_roots():
     """pc270: livecpk mape Sidera ostalih igara iz config.json 'profiles' (npr. FL26 kad je odabrana FL27), za slike kojih nova igra nema."""
@@ -15854,48 +15466,6 @@ def _other_cpk_roots():
     _GL['roots_o'] = out
     return out
 
-
-def _game_logo_index():
-    """{team_id: putanja} za grbove iz igre: livecpk/*/common/render/symbol/flag/e_<id>_<varijanta>.png (kesirano)."""
-    if 'idx' in _GL:
-        return _GL['idx']
-    idx = {}
-    try:
-        pref = ['r_l', 'r_w_l', 'r_b_l', 'r', 'r_w', 'r_b', 'r_ll', 'r_w_ll', 'r_b_ll']
-        for ri, rt in enumerate(_cpk_roots()):
-            fd = os.path.join(rt, 'common', 'render', 'symbol', 'flag')
-            if not os.path.isdir(fd):
-                continue
-            for f in os.listdir(fd):
-                m = re.match(r'e_(\d+)_(.+)\.png$', f, re.I)
-                if not m or m.group(2).lower() not in pref:
-                    continue
-                tid, rk = int(m.group(1)), (ri, pref.index(m.group(2).lower()))
-                if tid not in idx or rk < idx[tid][0]:
-                    idx[tid] = (rk, os.path.join(fd, f))
-    except Exception:
-        pass
-    # pc305: FL27 (SP) drzi grbove u cpk arhivama igre, ne u livecpk (vrijedi i za reprezentacije)
-    try:
-        for k_ in _cpk_kit_index():
-            if not k_.startswith('flag/'):
-                continue
-            m = re.match(r'flag/e_(\d+)_(.+)\.(png|dds)$', k_)
-            if not m:
-                continue
-            v_ = m.group(2)
-            tid, rk = int(m.group(1)), (99, pref.index(v_) if v_ in pref else 50, m.group(3) != 'png')
-            if tid not in idx or rk < idx[tid][0]:
-                idx[tid] = (rk, 'cpk:' + k_[5:])
-    except Exception:
-        pass
-    _GL['idx'] = {k: v[1] for k, v in idx.items()}
-    try:
-        ids = json.load(open(_dbf('teamids.json'), encoding='utf-8'))
-        _GL['n2t'] = {v: int(k) for k, v in ids.items()}
-    except Exception:
-        _GL['n2t'] = {}
-    return _GL['idx']
 
 
 def _save_team_ids():
@@ -15939,10 +15509,21 @@ def _save_team_ids():
     return out
 
 
+def _team_name_map():
+    """{ime kluba: team id} iz baze (teamids.json). Samo podaci, bez slika."""
+    if 'n2t' not in _GL:
+        try:
+            ids = json.load(open(_dbf('teamids.json'), encoding='utf-8'))
+            _GL['n2t'] = {v: int(k) for k, v in ids.items()}
+        except Exception:
+            _GL['n2t'] = {}
+    return _GL['n2t']
+
+
 def _team_id(name):
     """Team ID iz igre za ime kluba: prvo iz trenutne karijere (pc256), pa data/teamids.json, a ako ga ni tamo nema
     (stara baza bez npr. Wolfsburga/Mainza), iz EDIT datoteke iz mape saveova (svi klubovi s ID-evima). Usporedba i po normaliziranom imenu."""
-    _game_logo_index()
+    _team_name_map()
     t = _save_team_ids().get(name)
     if t:
         return t
@@ -15968,63 +15549,6 @@ def _team_id(name):
         _GL['n2tx'] = m
     return _GL['n2tx'].get(nk(name))
 
-
-def game_logo(name):
-    idx = _game_logo_index()
-    tid = _team_id(name)
-    p = idx.get(tid) if tid else None
-    if p and p.startswith('cpk:'):
-        p = _cpk_kit_file(p[4:], 'flag/')   # pc305: iz arhive igre
-    if p:
-        try:
-            raw = open(p, 'rb').read()
-            if p.lower().endswith('.dds'):
-                import dds
-                raw = dds.dds_to_png(raw) or None
-            return raw
-        except Exception:
-            return None
-    return None
-
-
-def _game_crests_on():
-    """pc360: igra ima svoje grbove (livecpk ili cpk). Tada se grbovi uzimaju SAMO iz igre; s interneta bi klub kojeg igra
-    nema mogao dobiti tudji grb (Olympiacos B -> Aris). Bez grba app nacrta znak s inicijalima."""
-    try:
-        if CFG.get('pes17_only', True) and _GAME['v'] != 'pes17':
-            _GAME['v'] = 'pes17'
-        if _GAME['v'] == 'pes17' or CFG.get('pes17_patch_dir'):
-            try:
-                import pes17_crests
-                if pes17_crests.count(CFG) >= 1:
-                    return True
-            except Exception as _ex:
-                print('[pes17 crests]', _ex)
-        return len(_game_logo_index()) >= 50
-    except Exception:
-        return False
-
-
-def crest_img(name):
-    if CFG.get('pes17_only', True) and _GAME['v'] != 'pes17':
-        _GAME['v'] = 'pes17'
-    if _GAME['v'] == 'pes17' or CFG.get('pes17_patch_dir'):
-        try:
-            import pes17_crests
-            _b17 = pes17_crests.crest_img(name, CFG)
-            if _b17:
-                return _b17
-        except Exception as _ex:
-            print('[pes17 crests]', _ex)
-    b = game_logo(name)
-    if b:
-        return b
-    if _game_crests_on():
-        return None
-    try:
-        return open(wiki.crest_path(CREST_DIR, name), 'rb').read()
-    except Exception:
-        return None
 
 
 def wiki_img(pid):
@@ -18592,32 +18116,24 @@ def _img_mime(b):
 
 
 def _clear_face_caches():
-    try:
-        import pes17_faces
-        pes17_faces.clear()
-    except Exception:
-        pass
     _GF.clear()
     _GL.pop('kitidx', None)
     _GL.pop('roots', None)
 
 
 def game_face(pid):
-    """Lice iz igre (livecpk/*/common/render/symbol/player/<pid>.dds, npr. UML_Minifaces) kao PNG; kesira se u data/gface. Regeni se preskacu (datoteka je lice starog igraca)."""
-    if CFG.get('pes17_only', True) and _GAME['v'] != 'pes17':
-        _GAME['v'] = 'pes17'
-    if (_GAME['v'] == 'pes17' or CFG.get('pes17_patch_dir')) and pid and pid not in _REGEN:
+    """Lice iz igre (livecpk/*/common/render/symbol/player/<pid>.dds, npr. UML_Minifaces) kao PNG; kesira se u data/gface. Regeni se preskacu (datoteka je lice starog igraca).
+    PES 2017: uvoz mini-lica je uklonjen, pa se cita samo vec spremljeni data/gface kes."""
+    if _GAME['save'] == 'pes17':
+        # r10: the PES 2017 mini-face importer was removed. Only portraits already
+        # cached in data/gface are served; nothing is scanned in the game folder.
+        if not pid or pid in _REGEN:
+            return None
         try:
-            import pes17_faces
-            _f17 = pes17_faces.face_img(pid, CFG)
-            if _f17:
-                return _f17
-        except Exception as _ex:
-            print('[pes17 faces]', _ex)
-    if _GAME['v'] == 'pes17':
-        # Do not re-read an invalid/stale game file through the legacy FL
-        # scanner after the PES 2017 reader has already rejected it.
-        return None
+            with open(os.path.join(HERE, 'data', 'gface', '%d.png' % pid), 'rb') as f:
+                return f.read()
+        except Exception:
+            return None
     if 'dirs' not in _GF:
         _gf_dirs()
     if not pid or pid in _REGEN:
@@ -18629,16 +18145,7 @@ def game_face(pid):
             return f.read()
     except Exception:
         pass
-    _extra = []
-    for ext in ('.dds', '.png'):
-        try:
-            if not any(_gf_find(pd_, '%d%s' % (pid, e2)) for pd_ in _GF['dirs'] for e2 in ('.dds', '.png')):
-                _cf = _cpk_kit_file('%d%s' % (pid, ext), 'player/')   # pc284: FL27 portreti iz arhiva igre
-                if _cf:
-                    _extra.append(os.path.dirname(_cf))
-        except Exception:
-            pass
-    for pd_ in list(_GF['dirs']) + _extra:
+    for pd_ in list(_GF['dirs']):
         for ext in ('.dds', '.png'):
             fp = _gf_find(pd_, '%d%s' % (pid, ext))
             if fp:
@@ -19091,8 +18598,11 @@ def setup_status():
     except Exception:
         sl = []
     # pc270: koraci za Football Life 2027 (Setup ih prikazuje kad je odabrana FL27 mapa saveova)
-    g27 = 'spgame' in os.path.normcase(sv) or _GAME['v'] == 'fl27'
-    game = dict(v='pes17' if _GAME['v'] == 'pes17' else ('fl27' if g27 else 'fl26'))
+    g27 = 'spgame' in os.path.normcase(sv) or _GAME['save'] == 'fl27'
+    _fcs = fc27db.summary()
+    game = dict(v='fc27', name='EA SPORTS FC 27', save=_GAME['save'] or '',
+                db=_fcs['players'], clubs=_fcs['clubs'], leagues=_fcs['leagues'],
+                db_ok=_fcs['ok'])
     if g27:
         _pj = os.path.join(HERE, 'data', 'fl27', 'players.json')
         try:
@@ -19113,17 +18623,8 @@ def _reload_cfg():
     CFG.update(newc)
     _GL.clear()
     _GF.clear()
-    if CFG.get('pes17_only', True) or pes17.looks_like_pes17_path(CFG.get('save_dir')):
-        _GAME['v'] = 'pes17'
-        try:
-            pes17.ensure_teamids(CFG, os.path.join(HERE, 'data', 'pes17'), force=True)
-        except Exception:
-            pass
-    try:
-        import pes17_crests
-        pes17_crests.clear()
-    except Exception:
-        pass
+    if pes17.looks_like_pes17_path(CFG.get('save_dir')):
+        _GAME['save'] = 'pes17'
     _clear_face_caches()
 
 
@@ -19694,7 +19195,7 @@ def _is_fl27_setup():
     """pc283: je li odabrana igra Football Life 2027 (profil/exe/zadnji ucitani save). FL26 Sider moduli (Michele, regen fix,
     ozljede) nisu provjereni na FL27 i ne nude se tamo."""
     try:
-        if _GAME.get('v') == 'fl27':
+        if _GAME.get('save') == 'fl27':
             return True
         return '2027' in (CFG.get('pes_exe') or '') or '2027' in (CFG.get('save_dir') or '')
     except Exception:
@@ -19953,9 +19454,14 @@ def setup_install_michele(body=None):
                 % (', '.join(done) or '-', ', '.join(added) or '-', note), status=setup_status())
 
 
-PKG_DATA = ('players.json', 'ratings.json', 'positions.json', 'playpos.json', 'teamids.json', 'fm_text.json', 'comps.json', 'owners.json', 'club_identity.json',
-            'venue_metadata.json', 'fl26_installed_league_counts.json')   # pc319: stadioni i mjesta u tablici (izvjestaj testera 09)
-PKG_DATA_DIRS = ('art', 'stadiums', 'myscenes', 'i18n')   # pc319: i18n = stringovi za prijevod (strings_en.json, it.json)   # pc209: scene ureda i press sobe (Home banner, konferencije)
+# The player database lives in data/fc27 (shipped via PKG_DATA_DIRS below), not
+# at the data/ root. put() silently skips missing files, so listing the old root
+# paths here would produce a package with no players at all.
+# data/teamids.json + venue_metadata.json stay: they are a matched FL26 pair used
+# only by the name-keyed venue lookup, which verifies ids between those two files.
+PKG_DATA = ('teamids.json', 'fm_text.json', 'owners.json', 'club_identity.json',
+            'venue_metadata.json', 'fl26_installed_league_counts.json')
+PKG_DATA_DIRS = ('fc27', 'art', 'stadiums', 'myscenes', 'i18n')   # fc27 = the game database; i18n = translations; myscenes = office/press scenes
 
 
 PY_EMBED = ('https://www.python.org/ftp/python/3.12.8/python-3.12.8-embed-amd64.zip',)
@@ -20110,10 +19616,6 @@ def make_package(opt=None):
 
 
 
-# ---------------------------------------------------------------- Uvoz baze (nova baza igraca / nove lige)
-_DBI = {}
-
-
 def _edit_data():
     """Dekriptirana EDIT datoteka (klubovi s ID-evima): CFG['edit_dat'] ili dekripcija EDIT00000000 iz mape saveova."""
     p = CFG.get('edit_dat')
@@ -20129,97 +19631,13 @@ def _edit_data():
 
 
 
-def _find_csv(kind):
-    """Pronadji CSV: 'fm' = Genie Scout izvoz (Unique ID), 'pes' = popis igraca iz PES editora (Id;Name;...;Country2). Najnoviji po datumu."""
-    key = 'fm_export' if kind == 'fm' else 'pes_csv'
-    if CFG.get(key) and os.path.exists(CFG[key]):
-        return CFG[key]
-    up = os.environ.get('USERPROFILE') or os.path.expanduser('~')
-    dirs = [os.path.join(HERE, 'faces'), os.path.join(HERE, 'data'), os.path.join(up, 'Downloads'), os.path.join(up, 'Documents'), os.path.join(up, 'Desktop'),
-            os.path.join(up, 'OneDrive', 'Dokumenti'), os.path.join(up, 'OneDrive', 'Radna površina'),
-            os.path.join(up, 'OneDrive', 'Dokumenti', 'Sports Interactive', 'Football Manager 26'), r'C:\FM Genie Scout 26g']
-    if CFG.get('csv_dir'):
-        dirs.insert(0, CFG['csv_dir'])
-    best = None
-    for d_ in dirs:
-        try:
-            names = os.listdir(d_)
-        except Exception:
-            continue
-        for f in names:
-            if not f.lower().endswith('.csv'):
-                continue
-            fp = os.path.join(d_, f)
-            try:
-                head = open(fp, 'rb').read(600)
-            except Exception:
-                continue
-            ok = facemap.is_fm_csv(head) if kind == 'fm' else head.lstrip(b'\xef\xbb\xbf').startswith(b'Id;Name;')
-            if ok and (best is None or os.path.getmtime(fp) > os.path.getmtime(best)):
-                best = fp
-    return best
-
-
-def _faces_plan(B):
-    """FM lica za igrace iz nove baze: -> (mapa {pid: uid}, izvjestaj)"""
-    fp = _find_csv('fm')
-    if not fp:
-        return None, dict(fm=None)
-    fm = facemap.read_fm(open(fp, 'rb').read())
-    pes = {}
-    pp = _find_csv('pes')
-    if pp:
-        try:
-            import csv as _csv
-            for r in _csv.DictReader(open(pp, encoding='utf-8-sig'), delimiter=';'):
-                pes[int(r['Id'])] = (r.get('Country2') or '')
-        except Exception:
-            pes = {}
-    nats = B.get('nats') or {}
-    pl = [(p[0], p[1], p[2], nats.get(p[0]), pes.get(p[0])) for p in B['players']]
-    M = facemap.build(fm, pl)
-    try:
-        old = {int(k): v for k, v in json.load(open(os.path.join(HERE, 'data', 'face_map.json'), encoding='utf-8')).items()}
-    except Exception:
-        old = {}
-    fd = os.path.join(HERE, 'static', 'faces')
-    try:
-        have = {f[5:-4] for f in os.listdir(fd) if f.startswith('face_') and f.endswith('.png')}
-    except Exception:
-        have = set()
-    miss = sorted({u for u in M.values() if u not in have})
-    return M, dict(fm=fp, pes=pp, fm_players=len(fm), mapped=len(M), same=sum(1 for k, v in M.items() if old.get(k) == v),
-                   changed=sum(1 for k, v in M.items() if k in old and old[k] != v), new=sum(1 for k in M if k not in old), have_img=len(M) - sum(1 for v in M.values() if v not in have),
-                   missing_img=len(miss), _miss=miss)
-
-
-# ---------------------------------------------------------------- prepoznavanje natjecanja za uvoz baze
-LEAGUE_LAND = {  # ime lige u appu -> (drzava HR, drzava EN, konfederacija)
-    'Premier League': ('Engleska', 'England', 'UEFA'), 'EFL Championship': ('Engleska', 'England', 'UEFA'), 'Serie A': ('Italija', 'Italy', 'UEFA'),
-    'Serie B': ('Italija', 'Italy', 'UEFA'), 'La Liga': ('Španjolska', 'Spain', 'UEFA'), 'La Liga 2': ('Španjolska', 'Spain', 'UEFA'),
-    'Bundesliga': ('Njemačka', 'Germany', 'UEFA'), '2. Bundesliga': ('Njemačka', 'Germany', 'UEFA'), 'Eredivisie': ('Nizozemska', 'Netherlands', 'UEFA'),
-    'Liga Portugal': ('Portugal', 'Portugal', 'UEFA'), 'Ligue 1': ('Francuska', 'France', 'UEFA'), 'Belgian Pro League': ('Belgija', 'Belgium', 'UEFA'),
-    'Scottish Premiership': ('Škotska', 'Scotland', 'UEFA'), 'Süper Lig': ('Turska', 'Turkey', 'UEFA'), 'Super League Greece': ('Grčka', 'Greece', 'UEFA'),
-    'Danish Superliga': ('Danska', 'Denmark', 'UEFA'), 'Ostale europske lige': (None, None, 'UEFA'), 'Russian Premier League': ('Rusija', 'Russia', 'UEFA'),
-    'Brasileirão Série A': ('Brazil', 'Brazil', 'CONMEBOL'), 'Brasileirão Série B': ('Brazil', 'Brazil', 'CONMEBOL'),
-    'Liga Profesional Argentina': ('Argentina', 'Argentina', 'CONMEBOL'), 'Primera Chile': ('Čile', 'Chile', 'CONMEBOL'),
-    'Primera A Colombia': ('Kolumbija', 'Colombia', 'CONMEBOL'), 'MLS': ('SAD', 'USA', 'CONCACAF'), 'J1 League': ('Japan', 'Japan', 'AFC'),
-    'Saudi Pro League': ('Saudijska Arabija', 'Saudi Arabia', 'AFC'),
-}
-CUP_BY_LAND = {'England': 'FA Cup', 'Italy': 'Coppa Italia', 'Spain': 'Copa del Rey', 'Germany': 'DFB-Pokal', 'Netherlands': 'KNVB Beker',
-               'Portugal': 'Taça de Portugal', 'France': 'Coupe de France', 'Belgium': 'Belgian Cup', 'Scotland': 'Scottish Cup', 'Turkey': 'Turkish Cup',
-               'Greece': 'Greek Cup', 'Denmark': 'Danish Cup', 'Russia': 'Russian Cup', 'Brazil': 'Copa do Brasil', 'Argentina': 'Copa Argentina',
-               'Chile': 'Copa Chile', 'Colombia': 'Copa Colombia', 'USA': 'U.S. Open Cup', 'Japan': "Emperor's Cup", 'Saudi Arabia': "King's Cup"}
-CONF_CUP = {'UEFA': 'UEFA Conference League', 'CONMEBOL': 'Copa Libertadores', 'AFC': 'AFC Champions League Elite', 'CONCACAF': 'CONCACAF Champions Cup'}
-
-
 def official_comp_name(tid, app_name):
     """Pravo (sluzbeno) ime natjecanja za prikaz: COMP_WIKI po ID-u ili LEAGUE_WIKI po imenu iz appa."""
     if app_name == 'Ostale europske lige':
         return L_('Ostale europske lige (FL)', 'Other European leagues (FL)')
-    if _GAME.get('v') == 'fl27':   # pc367: COMP_WIKI ima FL26 brojeve natjecanja
-        return LEAGUE_WIKI.get(app_name or '') or app_name
-    return COMP_WIKI.get(tid) or LEAGUE_WIKI.get(app_name or '') or app_name
+    # COMP_WIKI is keyed by FL26 competition ids; FC 27 reuses those numbers for
+    # different competitions, so only the name lookup is safe here.
+    return LEAGUE_WIKI.get(app_name or '') or app_name
 
 
 def _lc_norm():
@@ -20307,97 +19725,11 @@ def guess_comp(tid, clubs, kind, maxg):
     return None, None, None
 
 def dbimport_preview(slot):
-    dp = CFG.get('dump') or ''
-    if not os.path.exists(dp):
-        return dict(ok=False, why=L_('The app has no F7 dump yet (snapshot of players from the game).', 'The app does not have an F7 dump yet (a snapshot of the players from the game).'))
-    raw = open(dp, 'rb').read()
-    try:
-        ed, esrc = _edit_data()
-    except Exception as e:
-        ed, esrc = None, None
-    if _GAME['v'] == 'fl26':
-        old_p = json.load(open(_dbf('players.json'), encoding='utf-8'))
-        oldR = json.load(open(_dbf('ratings.json'), encoding='utf-8'))['p']
-        oldT = json.load(open(_dbf('teamids.json'), encoding='utf-8'))
-    else:   # pc268: druga igra (FL27) se usporedjuje samo sa svojom bazom, ne s FL26
-        old_p = _db_own('players.json', [])
-        oldR = (_db_own('ratings.json', {}) or {}).get('p', {})
-        oldT = _db_own('teamids.json', {})
-    B = dbimport.build(raw, ed, old_p, oldR)
-    _DBI['build'] = B
-    newR = B['ratings']['p']
-    common = [k for k in newR if k in oldR]
-    same_name = {p[0] for p in old_p}
-    new_ids = [int(k) for k in newR if k not in oldR]
-    _onm = {str(p[0]): p[1] for p in old_p}
-    # u staroj bazi su i treneri/menadzeri (OVR 40, 35-50 god.), prazni zapisi i 'Face Edit': njih igra nema u tablici igraca, pa se ne broje
-    gone = [int(k) for k in oldR if k not in newR and oldR[k][0] > 40 and _onm.get(k) and _onm.get(k) != 'Face Edit']
-    oN = {str(p[0]): p[2] for p in old_p}
-    renamed = sum(1 for p in B['players'] if str(p[0]) in oN and oN[str(p[0])] != p[2])
-    T = B['teamids']
-    t_same = sum(1 for k, v in oldT.items() if T.get(k) == v)
-    # lige iz utakmica save-a
-    leagues = []
-    try:
-        s = mlwrite.Save(slot_folder(slot), ro=True)
-        M = _season(slot, s)
-        L = dbimport.leagues_from_matches(M['matches'], lambda ci: seasonstats.club_name(s.d, ci))
-        try:
-            saved = json.load(open(_dbf('comps.json'), encoding='utf-8'))
-        except Exception:
-            saved = {}
-        for tid, v in sorted(L.items(), key=lambda kv: (-kv[1]['n'], kv[0])):
-            nm, src, why = guess_comp(tid, v['clubs'], v['kind'], v.get('maxg', 99))
-            _ll = LEAGUE_LAND.get(nm or '')
-            _land = (_ll[0] if CFG.get('lang', 'hr') == 'hr' else _ll[1]) if _ll and _ll[0] else None
-            _user = bool((saved.get(str(tid)) or {}).get('name'))
-            _off = (LEAGUE_WIKI.get(nm or '') or nm) if (_user or src == 'clubs') else (official_comp_name(tid, nm) if src == 'app' else nm)   # pc411
-            leagues.append(dict(tid=tid, n=v['n'], kind=v['kind'], name=nm, official=_off, land=_land,
-                                src=src, why=why, known=src in ('app', 'clubs'), played=v.get('played', 0), sample=v['clubs'][:8]))
-    except Exception as e:
-        leagues = []
-    idx = _game_logo_index()
-    n2t = {v: int(k) for k, v in T.items()}
-    try:
-        s_ = mlwrite.Save(slot_folder(slot), ro=True)
-        clubs = [n for n in mlsave.team_names(s_.d, max(693, mlsave.club_layout(s_.d)[0])) if n]
-    except Exception:
-        clubs = []
-    c_id = sum(1 for n in clubs if n in n2t)
-    c_logo = sum(1 for n in clubs if n in n2t and n2t[n] in idx)
-    warn = []
-    _np = len(newR) + B.get('regens', 0)
-    if len(gone) - B.get('regens', 0) > 0.03 * len(oldR):
-        warn.append(L_('The dump has fewer players than the current database (%d vs %d). Players not in the dump keep their old data.' % (_np, len(oldR)),
-                       'The dump has fewer players than the current database (%d vs %d). Players missing from the dump keep their old data.' % (_np, len(oldR))))
-    if not ed:
-        warn.append(L_('EDIT file was not read: club IDs (for crests) stay as before.', 'The EDIT file could not be read: club IDs (for crests) stay as they are.'))
-    try:
-        FM, frep = _faces_plan(B)
-    except Exception as e:
-        FM, frep = None, dict(fm=None, err=str(e))
-    _DBI['faces'] = (FM, frep.pop('_miss', []))
-    gf = 0
-    try:
-        game_face(0)
-        have = set()
-        for pd_ in _GF.get('dirs') or []:
-            for f in os.listdir(pd_):
-                if f[:-4].isdigit():
-                    have.add(int(f[:-4]))
-        try:   # pc413: FL27 portreti iz arhiva igre (cpk), ne iz livecpk - prije su se brojali kao 0
-            for k_ in _cpk_kit_index():
-                if k_.startswith('player/') and k_[7:-4].isdigit():
-                    have.add(int(k_[7:-4]))
-        except Exception:
-            pass
-        gf = sum(1 for p in B['players'] if p[0] in have)
-    except Exception:
-        gf = 0
-    return dict(ok=True, faces_rep=frep, game_faces=gf, dump_time=_fmt_mtime(dp), edit=esrc, players=len(newR) + B.get('regens', 0), old_players=len(oldR), common=len(common) + B.get('regens', 0), new_players=len(new_ids), gone=max(0, len(gone) - B.get('regens', 0)), renamed=renamed,
-                teams=len(T), old_teams=len(oldT), teams_same=t_same, teams_new=sum(1 for k in T if k not in oldT), teams_fixed=sum(1 for k, v in oldT.items() if k in T and T[k] != v),
-                clubs=len(clubs), clubs_id=c_id, clubs_logo=c_logo, leagues=leagues, unknown_leagues=sum(1 for l in leagues if not l['known']), warn=warn, regens=B.get('regens', 0),
-                faces=len(_GF.get('dirs') or []), same_db=len(new_ids) < 50 and len(common) > 0.9 * len(oldR), slot=slot)
+    # The FC 27 database is generated at build time by tools/import_fc27.mjs.
+    # A PES F7 dump has different player ids and a different attribute scale, so
+    # importing one here would corrupt it. Rebuild with the importer instead.
+    return dict(ok=False, why=L_('FC 27 baza se gradi sa tools/import_fc27.mjs; PES F7 dump se ne moze uvesti u nju.',
+                                 'The FC 27 database is built with tools/import_fc27.mjs; a PES F7 dump cannot be imported into it.'))
 
 
 def _fmt_mtime(p):
@@ -20430,125 +19762,9 @@ pause
 """
 
 
-def dbimport_faces_run():
-    b = _DBI.get('bat')
-    if not b or not os.path.exists(b):
-        return dict(ok=False, message='No extraction script.')
-    try:
-        os.startfile(b)  # Windows: otvara prozor s izvlacenjem
-        return dict(ok=True, message='Started extracting images in a new window.')
-    except Exception as e:
-        return dict(ok=False, message='Run manually: %s (%s)' % (b, e))
-
-
 def dbimport_apply(body):
-    B = _DBI.get('build')
-    if not B:
-        dbimport_preview(body.get('slot', ''))
-        B = _DBI.get('build')
-    if not B:
-        return dict(ok=False, message='No data to import.')
-    dd = _db_dir_w()   # pc267: baza igraca je po igri (FL27 u data/fl27), da uvoz FL27 baze ne prebrise FL26
-    bk = os.path.join(dd, 'backup_db_%s' % time.strftime('%Y%m%d_%H%M%S'))
-    os.makedirs(bk, exist_ok=True)
-    for f in ('players.json', 'ratings.json', 'positions.json', 'playpos.json', 'teamids.json', 'comps.json'):
-        if os.path.exists(os.path.join(dd, f)):
-            shutil.copy2(os.path.join(dd, f), os.path.join(bk, f))
-    # igraci koji nisu u dumpu zadrzavaju stare podatke (spoji)
-    if _GAME['v'] == 'fl26':
-        oldP = json.load(open(os.path.join(dd, 'players.json'), encoding='utf-8'))
-        oldR = json.load(open(os.path.join(dd, 'ratings.json'), encoding='utf-8'))
-        oldPos = json.load(open(os.path.join(dd, 'positions.json'), encoding='utf-8'))
-    else:
-        # pc268: FL27 dump je cijela tablica igraca: baza FL27 = dump (bez ostataka FL26 baze)
-        oldP, oldR, oldPos = [], {}, {}
-    newids = {p[0] for p in B['players']}
-    players = B['players'] + [p for p in oldP if p[0] not in newids]
-    R = dict(B['ratings'])
-    R['p'] = dict(oldR.get('p', {}), **B['ratings']['p'])
-    pos = dict(oldPos, **B['positions'])
-    try:
-        oldPP = json.load(open(os.path.join(dd, 'playpos.json'), encoding='utf-8')) if _GAME['v'] == 'fl26' else {}
-    except Exception:
-        oldPP = {}
-    pp = dict(oldPP, **B['playpos'])
-    def w(f, obj):
-        tmp = os.path.join(dd, f + '.tmp')
-        _jdump(obj, tmp, ensure_ascii=False)
-        os.replace(tmp, os.path.join(dd, f))
-    if not body.get('only_teams'):
-        w('players.json', sorted(players))
-        w('ratings.json', R)
-        w('positions.json', pos)
-        w('playpos.json', pp)
-    msg_f = ''
-    FM, miss = _DBI.get('faces') or (None, [])
-    if FM and body.get('faces', True):
-        fm_ = os.path.join(HERE, 'data', 'face_map.json')   # FM lica ostaju zajednicka (FM id -> slika)
-        if os.path.exists(fm_):
-            shutil.copy2(fm_, os.path.join(bk, 'face_map.json'))
-        try:
-            oldF = json.load(open(fm_, encoding='utf-8'))
-        except Exception:
-            oldF = {}
-        newF = dict(oldF)
-        newF.update({str(k): v for k, v in FM.items()})
-        _jdump(newF, fm_ + '.tmp', ensure_ascii=False)
-        os.replace(fm_ + '.tmp', fm_)
-        _FACE.clear()
-        if miss:
-            fdir = os.path.join(HERE, 'faces')
-            os.makedirs(fdir, exist_ok=True)
-            open(os.path.join(fdir, 'face_list_novo.txt'), 'w', encoding='utf-8', newline='\r\n').write('\n'.join('*face_%s.png' % u for u in miss) + '\n')
-            arc = ''
-            for bn in ('izvuci_slike2.bat', 'izvuci_slike.bat'):
-                try:
-                    m_ = re.search(r'set ARC=(.+)', open(os.path.join(fdir, bn), encoding='utf-8', errors='ignore').read())
-                    if m_:
-                        arc = m_.group(1).strip()
-                        break
-                except Exception:
-                    pass
-            bat = BAT_TPL.replace('{ARC}', arc or r'%USERPROFILE%\Downloads\sortitoutsi_cutout_megapack.rar').replace('{DEST}', os.path.join(HERE, 'static', 'faces'))
-            open(os.path.join(fdir, 'izvuci_novo.bat'), 'w', encoding='utf-8', newline='\r\n').write(bat)
-            _DBI['bat'] = os.path.join(fdir, 'izvuci_novo.bat')
-        msg_f = L_(' FM faces: %d players linked, %d images need extracting from the archive.' % (len(FM), len(miss)), ' FM faces: %d players linked, %d images to extract from the archive.' % (len(FM), len(miss)))
-    if B['teamids']:
-        w('teamids.json', B['teamids'])
-        _GL.clear()
-    comps = {}
-    try:
-        comps = json.load(open(os.path.join(dd, 'comps.json'), encoding='utf-8'))
-    except Exception:
-        comps = {}
-    for tid, v in (body.get('leagues') or {}).items():
-        if v.get('name'):
-            comps[str(tid)] = dict(name=v['name'].strip(), kind=v.get('kind') or 'league')
-    w('comps.json', comps)
-    try:   # pc411: nova imena odmah (prije tek nakon ponovnog pokretanja appa)
-        for _k, _v in comps.items():
-            if _v.get('kind') == 'groups':
-                COMP_GROUPS[int(_k)] = (_v.get('name') or 'Natjecanje %s' % _k, _v.get('name_en') or _v.get('name') or 'Competition %s' % _k)
-            elif _v.get('name'):
-                COMP_LEAGUES[int(_k)] = _v['name']
-        _GL.pop('compsv', None)
-        _GL.pop('embmap', None)
-        PCACHE.clear()
-    except Exception as ex:
-        print('[dbimport] comps live:', ex)
-    bat_ = _DBI.get('bat')
-    _DBI.clear()
-    if bat_:
-        _DBI['bat'] = bat_
-    try:
-        reload_db()
-    except Exception as ex:
-        print('[dbimport] reload:', ex)
-    if body.get('only_teams'):
-        return dict(ok=True, backup=bk, message=L_('Clubs (%d) and league names imported. Players untouched. Old files are in %s. Reloaded, no restart needed.' % (len(B['teamids']), os.path.basename(bk)) + msg_f,
-                                                   'Clubs (%d) and league names imported. Players were not touched. Old files are in %s. Reloaded, no restart needed.' % (len(B['teamids']), os.path.basename(bk)) + msg_f), bat=bool(_DBI.get('bat')))
-    return dict(ok=True, backup=bk, message=L_('Database imported (%d players, %d clubs). Old files are in %s. Reloaded, no restart needed.' % (len(players), len(B['teamids']), os.path.basename(bk)) + msg_f,
-                                               'Database imported (%d players, %d clubs). Old files are in %s. Reloaded, no restart needed.' % (len(players), len(B['teamids']), os.path.basename(bk)) + msg_f), bat=bool(_DBI.get('bat')))
+    return dict(ok=False, message='The FC 27 database is built with tools/import_fc27.mjs, not imported from a PES dump.')
+
 
 def fm_face(pid):
     """FM cutout lice (static/faces/face_<UID>.png) ako imamo par PES id -> FM UID i datoteku."""
@@ -20573,9 +19789,8 @@ def fm_face(pid):
 # uredjaja uz PIN (kolacic); admin radnje (Setup, paket, gasenje) samo s PC-a.
 LAN_GET_BLOCK = ('/api/setup/browse', '/api/setup/detect', '/api/show', '/api/dev/', '/api/lan')
 LAN_POST_BLOCK = ('/api/setup/save', '/api/setup/pick', '/api/setup/sider', '/api/setup/michele', '/api/setup/injuries',
-                  '/api/setup/regen', '/api/setup/check', '/api/package', '/api/quit', '/api/lan/set', '/api/dbimport/faces',
+                  '/api/setup/regen', '/api/setup/check', '/api/package', '/api/quit', '/api/lan/set',
                   '/api/backups/keep', '/api/backups/clean', '/api/dev/',
-                  '/api/pes17/crests/dir', '/api/pes17/assets/extract',
                   '/api/pes17/setup/savefolder')
 _LAN = dict(srv=None, port=None, err=None, fails={})
 
@@ -20685,7 +19900,7 @@ if(r.ok)location.replace('/');else document.getElementById('e').textContent=r.er
 
 class H(BaseHTTPRequestHandler):
     def log_message(self, fmt, *a):
-        if len(a) > 1 and str(a[1]) not in ('200', '204') and not (str(a[1]) == '404' and ('/api/wiki/' in str(a[0]) or '/api/crest' in str(a[0]))):
+        if len(a) > 1 and str(a[1]) not in ('200', '204') and not (str(a[1]) == '404' and '/api/wiki/' in str(a[0])):
             print('HTTP', *a)
 
     def _remote(self):
@@ -20755,7 +19970,7 @@ class H(BaseHTTPRequestHandler):
         self.send_header('Content-Length', str(len(data)))
         # pc369: slike (lica, grbovi, logotipi, dresovi) preglednik smije cuvati sat vremena; prije se sve skidalo iznova
         # pri svakom osvjezavanju popisa (na mobitelu preko Wi-Fija i do 4-5 s za Inbox)
-        self.send_header('Cache-Control', 'private, max-age=3600' if (code == 200 and ctype.startswith('image/') and not any(k in self.path for k in ('/api/kitimg', '/api/coach/custom', '/api/wiki/img', '/api/wiki/photo', '/api/pes17/face', 'spon', '/api/kit?'))) else 'no-store')
+        self.send_header('Cache-Control', 'private, max-age=3600' if (code == 200 and ctype.startswith('image/') and not any(k in self.path for k in ('/api/kitimg', '/api/coach/custom', '/api/wiki/img', '/api/wiki/photo', 'spon', '/api/kit?'))) else 'no-store')
         self.end_headers()
         self.wfile.write(data)
 
@@ -20779,33 +19994,48 @@ class H(BaseHTTPRequestHandler):
                 except Exception as _ex:
                     import pes17_setup
                     return self.send(200, pes17_setup.unavailable(CFG, _slot, _ex, HERE))
-            if u.path == '/api/pes17/crests':
-                import pes17_crests
-                return self.send(200, pes17_crests.report(
-                    CFG, bool(parse_qs(u.query).get('rescan'))))
-            if u.path == '/api/pes17/faces':
-                import pes17_faces
-                _fquery = parse_qs(u.query)
-                if _fquery.get('rescan'):
-                    _clear_face_caches()
-                return self.send(200, pes17_faces.report(
-                    CFG, bool(_fquery.get('rescan')), _fquery.get('slot', [''])[0]))
-            if u.path == '/api/pes17/face':
-                import pes17_faces
-                _fp_raw = parse_qs(u.query).get('pid', ['0'])[0] or '0'
-                _fp = int(_fp_raw) if _fp_raw.isdigit() else 0
-                _fb17 = pes17_faces.face_img(_fp, CFG) if _fp > 0 and _fp not in _REGEN else None
-                if _fb17 is None:
-                    return self.send(404, b'', 'image/png')
-                return self.send(200, _fb17, _img_mime(_fb17))
-            if u.path == '/api/pes17/assets':
-                import pes17_assets
-                return self.send(200, pes17_assets.manifest(
-                    CFG, bool(parse_qs(u.query).get('rescan'))))
             if u.path == '/api/pes17/mode':
-                return self.send(200, dict(pes17=(_GAME['v'] == 'pes17'),
-                                          only=bool(CFG.get('pes17_only', True)),
+                return self.send(200, dict(pes17=(_GAME['save'] == 'pes17'), game='fc27', only=False,
                                           offline=not bool(CFG.get('wiki_web', False))))
+            # --- FC 27 database (read-only) ---------------------------------
+            # Pure-stdlib reads of data/fc27, generated by tools/import_fc27.mjs.
+            if u.path == '/api/fc27/status':
+                return self.send(200, fc27db.summary())
+            if u.path == '/api/fc27/leagues':
+                _q = parse_qs(u.query)
+                _w = _q.get('women', [''])[0]
+                _out = []
+                for _k, _v in sorted(fc27db.leagues().items(), key=lambda kv: int(kv[0])):
+                    if _w in ('0', '1') and int(_v.get('women') or 0) != int(_w):
+                        continue
+                    _out.append(dict(id=int(_k), **_v))
+                return self.send(200, dict(ok=True, leagues=_out))
+            if u.path == '/api/fc27/league':
+                _lid = _qint(parse_qs(u.query), 'id')
+                _lg = fc27db.league(_lid)
+                if not _lg:
+                    return self.send(404, dict(ok=False, error='No league %d' % _lid))
+                return self.send(200, dict(ok=True, id=_lid, league=_lg, clubs=fc27db.league_clubs(_lid)))
+            if u.path == '/api/fc27/club':
+                _tid = _qint(parse_qs(u.query), 'id')
+                _c = fc27db.club(_tid)
+                if not _c:
+                    return self.send(404, dict(ok=False, error='No club %d' % _tid))
+                _sq = [fc27db.player(_p) for _p in fc27db.squad(_tid)]
+                return self.send(200, dict(ok=True, id=_tid, club=_c, squad=[_p for _p in _sq if _p]))
+            if u.path == '/api/fc27/player':
+                _pid = _qint(parse_qs(u.query), 'id')
+                _p = fc27db.player(_pid)
+                if not _p:
+                    return self.send(404, dict(ok=False, error='No player %d' % _pid))
+                return self.send(200, dict(ok=True, player=_p))
+            if u.path == '/api/fc27/search':
+                _q = parse_qs(u.query)
+                _cid = _qint(_q, 'club') or None
+                _pos = _qint(_q, 'pos', -1)
+                return self.send(200, dict(ok=True, players=fc27db.search(
+                    _q.get('q', [''])[0], limit=min(200, max(1, _qint(_q, 'limit', 40))),
+                    club_id=_cid, pos=None if _pos < 0 else _pos)))
             if u.path == '/api/pes17/setup':
                 import pes17_setup
                 return self.send(200, pes17_setup.status(CFG, HERE))
@@ -21115,33 +20345,6 @@ class H(BaseHTTPRequestHandler):
                     return self.send(200, venue_kit_info(parse_qs(u.query).get('club', [''])[0]))
                 except Exception as e:
                     return self.send(200, dict(kits=[], error=str(e)[:120]))
-            if u.path == '/api/compemb':
-                b = None
-                try:
-                    b = comp_emblem_img(int(parse_qs(u.query)['id'][0]))
-                except Exception:
-                    b = None
-                if b is None:
-                    return self.send(404, b'', 'image/png')
-                return self.send(200, b, 'image/png')
-            if u.path == '/api/flag':
-                b = flag_img(parse_qs(u.query).get('cc', [''])[0])
-                return self.send(200, b, 'image/png') if b else self.send(404, b'', 'image/png')
-            if u.path == '/api/complogo':
-                _q = parse_qs(u.query)
-                b = None
-                try:
-                    _e = _emb_for(_q['name'][0] if _q.get('name') else None, int(_q['tid'][0]) if _q.get('tid') else None)
-                    b = comp_emblem_img(_e) if _e else None
-                except Exception:
-                    b = None
-                if b is not None:
-                    return self.send(200, b, 'image/png')
-                _cu = _comp_user().get(_q['tid'][0]) if (_q.get('tid') and not _q.get('name')) else None   # pc411: korisnikovo ime, ne zadani broj
-                b = comp_logo(_q['name'][0] if _q.get('name') else (_cu or int(_q.get('tid', ['0'])[0])))
-                if b is None:
-                    return self.send(404, b'', 'image/png')
-                return self.send(200, b, 'image/png')
             if u.path == '/api/scene':
                 b = scene_img(parse_qs(u.query).get('k', [''])[0])
                 if b is None:
@@ -21202,10 +20405,10 @@ class H(BaseHTTPRequestHandler):
                 if b is None:
                     return self.send(404, b'', 'image/jpeg')
                 return self.send(200, b, 'image/jpeg')
-            if u.path in ('/api/comp/logo', '/api/coach/img'):
+            if u.path == '/api/coach/img':
                 try:
                     _i = int(parse_qs(u.query).get('id', ['0'])[0])
-                    b = comp_emblem_img(_i) if u.path == '/api/comp/logo' else coach_img(_i)
+                    b = coach_img(_i)
                 except Exception:
                     b = None
                 if b is None:
@@ -21227,14 +20430,6 @@ class H(BaseHTTPRequestHandler):
                 return self.send(200, coach_info(_q.get('slot', [''])[0], _q.get('club', [''])[0] or None))
             if u.path == '/api/coach/list':
                 return self.send(200, coach_list(parse_qs(u.query).get('q', [''])[0]))
-            if u.path == '/api/crest':
-                b = crest_img(parse_qs(u.query).get('club', [''])[0])
-                if b is None:
-                    return self.send(404, b'', 'image/png')
-                _ct = ('image/jpeg' if b[:2] == b'\xff\xd8' else
-                       'image/webp' if b[:4] == b'RIFF' else
-                       'image/bmp' if b[:2] == b'BM' else 'image/png')
-                return self.send(200, b, _ct)
             if u.path == '/api/wiki/img':
                 _pq = int(parse_qs(u.query).get('pid', ['0'])[0])
                 _old = parse_qs(u.query).get('old', [''])[0] == '1'   # pc245: slika umirovljenog igraca (Hall of Fame) iako je ID sad regen
@@ -21259,7 +20454,7 @@ class H(BaseHTTPRequestHandler):
                 _pp = int((parse_qs(u.query).get('pid', ['0'])[0] or '0')
                           if (parse_qs(u.query).get('pid', ['0'])[0] or '0').lstrip('-').isdigit() else 0)
                 b = wiki_photo(_pp)
-                if b is None and (_GAME['v'] == 'pes17' or CFG.get('pes17_only', True)):
+                if b is None and _GAME['save'] == 'pes17':
                     b = game_face(_pp)
                 if b is None:
                     return self.send(404, b'', 'image/jpeg')
@@ -21331,24 +20526,8 @@ class H(BaseHTTPRequestHandler):
                 return self._lan_login(body)
             if self.path == '/api/lan/set':
                 return self.send(200, lan_set(body))
-            if self.path == '/api/pes17/assets/extract':
-                import pes17_assets
-                _src = pes17_assets.source_for(CFG)
-                _out = os.path.join(HERE, 'data', 'pes17', 'harvest')
-                _lim = min(500, max(1, int(body.get('limit') or 200)))
-                _hr = pes17_assets.harvest(
-                    _src, _out, classes=(body.get('classes') or
-                                         list(pes17_assets.DEFAULT_EXTRACT)),
-                    limit=_lim)
-                try:
-                    import pes17_crests
-                    pes17_crests.clear()
-                except Exception:
-                    pass
-                _clear_face_caches()
-                return self.send(200, _hr)
             if self.path == '/api/pes17/setup/savefolder':
-                import pes17_setup, pes17_crests
+                import pes17_setup
                 try:
                     _sd = pes17_setup.validate_save_dir(body.get('save_dir'))
                 except ValueError as _ex:
@@ -21359,24 +20538,13 @@ class H(BaseHTTPRequestHandler):
                     if _exe:
                         _kw['pes_exe'] = _exe
                 _cfg_update(**_kw)
-                _GAME['v'] = 'pes17'
+                _GAME['save'] = 'pes17'
                 try:
                     pes17.ensure_teamids(CFG, os.path.join(HERE, 'data', 'pes17'), force=True)
                 except Exception:
                     pass
-                pes17_crests.clear()
                 _clear_face_caches()
                 return self.send(200, pes17_setup.status(CFG, HERE))
-            if self.path == '/api/pes17/crests/dir':
-                import pes17_crests, pes17_setup
-                try:
-                    _pd = pes17_setup.validate_patch_dir(body.get('dir'))
-                except ValueError as _ex:
-                    return self.send(400, dict(error=str(_ex)))
-                _cfg_update(pes17_patch_dir=_pd)
-                pes17_crests.clear()
-                _clear_face_caches()
-                return self.send(200, pes17_crests.report(CFG, True))
             if self.path == '/api/pes17/write':
                 lc = body.get('layout', True)
                 if lc not in (True, False, 'auto', 'report'):
@@ -21387,7 +20555,7 @@ class H(BaseHTTPRequestHandler):
                                                         lc))
             if self.path not in ('/api/clientlog',):
                 _WRITES[0] += 1   # pc310: svaki upis ponisti kesirane poglede
-                if not self.path.startswith(('/api/setup', '/api/support', '/api/wiki/prefetch', '/api/crest/prefetch')):
+                if not self.path.startswith(('/api/setup', '/api/support', '/api/wiki/prefetch')):
                     # pc413: drugi preglednici (mobitel preko LAN-a) vide da se nesto promijenilo i osvjeze se
                     _REV[0] += 1
                     _REV[1] = (self.headers.get('X-Gaffer-Client') or '')[:40]
@@ -21461,8 +20629,6 @@ class H(BaseHTTPRequestHandler):
                 if not _is_owner():
                     return self.send(403, dict(error='Sharing is only available to the app owner.'))
                 return self.send(200, make_package(body))
-            if self.path == '/api/dbimport/faces':
-                return self.send(200, dbimport_faces_run())
             if self.path == '/api/dbimport/apply':
                 CFG['lang'] = body.get('lang') or 'hr'
                 return self.send(200, dbimport_apply(body))
@@ -21518,8 +20684,6 @@ class H(BaseHTTPRequestHandler):
                 return self.send(200, r)
             if self.path == '/api/ai/move':
                 return self.send(200, ai_moves(body))
-            if self.path == '/api/crest/prefetch':
-                return self.send(200, crest_prefetch((body.get('names') or [])[:60], bool(body.get('prio'))))
             if self.path == '/api/wiki/prefetch':
                 return self.send(200, wiki_prefetch((body.get('pids') or [])[:40]))
             if self.path == '/api/requests/act':
@@ -21793,12 +20957,13 @@ def main():
                     help='bind address (default 127.0.0.1; 0.0.0.0 for LAN/preview)')
     a = ap.parse_args()
     CFG = load_cfg()
-    if CFG.get('pes17_only', True) or pes17.looks_like_pes17_path(CFG.get('save_dir')):
-        _GAME['v'] = 'pes17'
-        try:
-            pes17.ensure_teamids(CFG, os.path.join(HERE, 'data', 'pes17'))
-        except Exception as _ex:
-            print('[pes17] startup teamids:', _ex)
+    if pes17.looks_like_pes17_path(CFG.get('save_dir')):
+        _GAME['save'] = 'pes17'
+    if not fc27db.available():
+        print('[fc27] data/fc27/players.json is missing - rebuild it with: node tools/import_fc27.mjs')
+    else:
+        _fcs = fc27db.summary()
+        print('[fc27] database: %d players, %d clubs, %d leagues' % (_fcs['players'], _fcs['clubs'], _fcs['leagues']))
     if not a.dev_folder and not _single_instance(a.port or CFG['port'], show=not a.no_browser):
         return
     DEV = a.dev_folder
