@@ -83,13 +83,6 @@ def _find(clubs, name):
     return cand[0] if len(cand) == 1 else None
 
 
-def country_of(league):
-    for c, rx in COUNTRY:
-        if re.search(rx, league or '', re.I):
-            return c
-    return None
-
-
 def for_club(name, cutoff):
     """{kljuc natjecanja: {n, last, first, wiki}} za klub, samo pobjede u sezonama < cutoff."""
     out = {}

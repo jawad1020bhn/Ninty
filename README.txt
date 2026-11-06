@@ -1,387 +1,456 @@
-﻿THE GAFFER
-Companion app for Football Life 26 / PES 2021 and Football Life 2027 Master League
-=============================================================
+THE GAFFER pc414 - PES 2017 COMPATIBILITY PACK (PES 2017 CLEAN BUILD r9)
+===================================================================
 
-IN SHORT
---------
-Football Manager style career on top of your Master League save:
-- Real negotiations: transfers, loans, sales, renewals, agents.
-- A living world: AI transfers, managers, tactics, sackings.
-- Board, press, dressing room, fans, newspaper, awards.
-- Training, youth, scouting, sponsors on your real kit.
-Everything the game needs is written into your save (with a backup if you
-want one).
+This folder is The Gaffer pc414, PES 2017 edition.  It is a private,
+modified build for personal use; please respect the original FREE TO USE
+terms of The Gaffer (do not reupload or publish this as your own work).
 
-PUBLIC TEST: thank you for testing! Back up your saves, and send problems
-with "Report a problem" (left column). What's new and known limits are at
-the end.
-
-The Gaffer is FREE. Download it only from the official Evoweb thread.
-Please do not reupload it or put it in other packs (see FREE TO USE at the
-end).
-
-
-WHAT YOU NEED
+BUILD HISTORY
 -------------
-- Windows 10 or 11.
-- PES 2021 with Football Life 26 (or Football Life 2027) and Sider.
-  Sider comes with Football Life; you do not need to install it separately.
-- About 200 MB of free disk space (more if you keep many save backups).
-- Internet is optional. Crests, kits, faces and logos come from your
-  game. Only extras (stadium photos, real player careers, photos of
-  players who have no face in the game) come from Wikipedia. Without
-  internet the app works the same, just with fewer extras.
-- Nothing else. The folder already contains a portable Python, and save
-  encryption is built into the app (no extra tools needed).
+1. First build: synthetic saves only.  It could NOT open a real PES 2017 save.
+2. Real-save build: you supplied ML00000011, EDIT00000000 and info.txt in
+   "Needed files".  Real PES 2017 saves use a 176-byte file header (not the
+   208-byte PES 2021 header).  That was fixed; decryption and byte-identical
+   re-encryption of BOTH real files is proven in tests.  Reads + a small set
+   of writes (offers, shirts) were measured on your files.
+3. Measured-pairs build: you supplied four game-generated "after" saves, one
+   per in-game change (formation, tactics, XI, budget), with the same common
+   "before" file ML00000011.  Those pairs mapped four more tables exactly.
+4. r2: the main app showed "Budget EUR 0" because the PES 2017 read adapter
+   had a hardcoded 0 stub.  The two measured budget u32 words are now read
+   from your save and shown in the app and on the tools page.  The wage word
+   in the docs was also corrected to the exact measured value.
+5. MATCHDAY PRESENTATION.  The Classic app remains the default at / and
+   uses an integrated football-management presentation shared with the
+   PES 2017 tools page.  The former separate dashboard and game-skin toggle
+   have been removed.
+6. LOCAL ICONS.  Original emoji are replaced with layered SVG game emblems.
+   The renderer also handles older saved messages, with a neutral fallback
+   for unknown pictographs.  Regular text arrows remain text.
+7. r6: PATCH-FOLDER CLUB CRESTS.  The app can now read club logos straight
+   from the local PES 2017 patch folder, offline, instead of downloading
+   crests from Wikipedia.  Loose PNG/JPG/DDS/FTEX logos and
+   common/render/symbol/flag/e_<id>_r.dds entries inside *.cpk archives are
+   decoded with the readers already shipped with the program.  See the
+   CLUB CRESTS FROM THE PATCH FOLDER section below.
+8. r7: CPK HARVEST + PES 2017-ONLY MODE.  An offline inventory of everything
+   the shipped CPK readers can reach (competition emblems, kit textures,
+   player/coach portraits, pesdb tables, generic art), a harvester that can
+   copy them before you delete the PES 2021 files, and no external CDNs by
+   default.  The Classic application remains at /.  See the CPK ASSET
+   INVENTORY / HARVEST and PES 2017-ONLY MODE sections below.
+9. r8: SAFE CLEANUP (not a rewrite).  111 FL26/FL27/Sider-only files
+   (10.01 MB) are removed from this shipped build only: addons/regenfix,
+   addons/michele, lua, FL_key.bin + its readme, and the five FL26 player
+   databases that PES 2017 regenerates into data/pes17/ from your real
+   EDIT00000000.  The classic FL26 page
+   at /index.html, its art/scenes/stadiums and all lib/*.py are KEPT because
+   they are still referenced.  realmoves_fetch_bg() is now blocked offline so
+   removing the FL26 transfer cache does not trigger a Wikipedia fetch.
+10. r9: FIRST RUN WORKS.  The original pc414 default save_dir pointed at a
+   Football Life 2026 / PES 2021 folder.  On a PES 2017 PC that folder does
+   not exist, so a fresh install showed raw Windows errors
+   ([Errno 2] / [WinError 3]) instead of your save.  r9 removes that default,
+   auto-detects KONAMI\Pro Evolution Soccer 2017\save under your profile,
+   Documents and OneDrive (including Dokumenti), and adds a "Save folder"
+   card on the PES 2017 tools page plus GET /api/pes17/setup and
+   POST /api/pes17/setup/savefolder.  Paste the path once; it is written to
+   config.json and works immediately.
 
-
-BEFORE YOU START: BACK UP YOUR SAVES
-------------------------------------
-The app writes into your Master League save. Before the first start, copy
-your whole save folder somewhere safe, for example to your Desktop:
-  FL26 / PES 2021:  Documents\KONAMI\eFootball PES 2021 SEASON UPDATE\<number>\save
-  FL27:             Documents\SPGAME\Football Life\2027\save
-If anything ever goes wrong, close the game and copy this folder back.
-
-
-INSTALL (about 5 minutes)
--------------------------
-1. Unzip the zip. You get a folder called "TheGaffer". Put it anywhere,
-   for example in Documents. Do not run the app from inside the zip.
-
-2. Double-click "The Gaffer.vbs".
-   - The app opens in its own window.
-   - The first start creates a "The Gaffer" shortcut on your Desktop.
-     From then on, start the app with that shortcut.
-   - If Windows says "Windows protected your PC": click "More info",
-     then "Run anyway". The app is not signed, that is all.
-   - If nothing opens after 30 seconds, double-click "The Gaffer.bat".
-     A black window shows what went wrong, or offers to install Python.
-
-3. The Setup window opens on its own the first time. Go from top to bottom:
-   a) Paths. The app looks for your save folder, Sider and the game by
-      itself. Check that the three paths are right and click "Save paths".
-   b) Sider modules. Click "Install modules", then restart the game.
-      These two small modules let the game send your players' data to the
-      app (PlayerDump) and let the app's training reach the game
-      (GrowthBridge). PlayerDump only reads; GrowthBridge only adds the
-      training progress the app calculated.
-   c) Regen fix (optional, recommended). Click "Install regen fix" and
-      restart the game. Regens then become real new players (new name,
-      potential and face) instead of copies of retired players.
-   d) Backups. Choose how many copies of each save the app keeps before it
-      writes (Off, 1, 3 or 15). 3 is a good choice.
-   You can open Setup again at any time (left column, "Setup").
-
-4. In the left column, pick your career (Career / slot) and you are ready.
-   The Home page shows a "Getting started" checklist until everything is
-   connected.
-
-
-EVERYDAY USE - THE ONE RULE TO REMEMBER
+WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------
-The app READS your save whenever the game saves. That is always safe.
+  club                Birmingham City FC
+  in-game date        10/01/2029  (D/M/YYYY)
+  next competition    Emirates FA Cup
+  clubs               624
+  your squad          26 players, with real EDIT names and shirt numbers
+  league table        20 rows, Sky Bet Championship (from your EDIT file)
+  player database     20,018 players from your EDIT00000000
+  negotiations        0 active (after filtering garbage blocks)
 
-When the app WRITES to your save (signings, sales, loans, contracts,
-line-up, tactics, sponsors, AI transfers), the game must not be inside
-Master League, otherwise the game overwrites the app's change. So:
-  1. Save in the game.
-  2. Go back to the game's MAIN MENU (leave Master League).
-  3. In the app, click "I am on the main menu" (or close the game).
-  4. Do what you want in the app. It writes and tells you when it is done.
-  5. In the game, choose "Load" and load your Master League again.
-If you forget, the app shows a red banner and waits; nothing is lost.
+Note: description.dat says "Premier League" while the standings/EDIT tables
+place Birmingham in the Sky Bet Championship.  Both values are shown.
+Points / played / goals are still shown as 0: not mapped yet.  r5 scanned
+8,610,000..8,720,000 for a 20-row stats array (w+d+l == played, plausible
+points) and found none, so zeros are kept instead of guessed values.
+Real shirt numbers and the starting XI order are now read (r5).
 
-Good to know:
-- Switching between the game and the app: press Ctrl+F8 on the keyboard,
-  or hold Back + Start on the controller for half a second (Xbox: View +
-  Menu, PlayStation: Share + Options). Do the same in the app to jump back
-  to the game. Works best with the game in Borderless or Windowed mode.
-- Transfers and loans arrive in the game after you play or simulate ONE
-  day.
-- The first time you sign a player, the app asks for your Salary Budget:
-  type the number the game shows at the top of the Master League screens.
-- Player data (attributes, OVR, morale, form, youth) refreshes by itself
-  before every match. Want fresh data without a match? In the game press
-  Space, press 1 until "PlayerDump" appears, then press F7.
-- Training runs by itself: every 30 game days the app processes a month
-  of training and sends it to the game before your next match. Save after
-  that match so the progress stays.
-- If the app says the Sider modules are out of date, click "Update
-  modules" on the Home page and restart the game.
+BUDGET DISPLAY (r2)
+-------------------
+Earlier builds showed "Budget EUR 0": the PES 2017 read adapter had a
+hardcoded 0 stub, even though the budget words were measured for writing.
+r2 reads them from YOUR save.  The app's "Transfer budget" tile now shows the
+raw u32 word at data.dat offset 8,812,904:
 
+  before (the file you gave me)      2,535,240
+  after  (game-generated budget)     3,088,641
+  second word at 8,812,936           9,692,344 -> 10,245,745
 
-PHONE AND TABLET
-----------------
-You can use The Gaffer on your phone or tablet while the game runs on the
-PC, for example from the couch with the controller in your hand.
-  1. On the PC, open Setup, go to "Phone & tablet" and click
-     "Turn on phone access".
-  2. Connect the phone to the same Wi-Fi as the PC.
-  3. Scan the QR code with the phone camera (or type the address shown).
-  4. Enter the 6-digit PIN from Setup. The phone remembers it.
-Everything works like on the PC: writes still go into the save on the PC,
-and the same main-menu rule applies. Setup, the package and closing the
-app can only be done on the PC. "New PIN" signs out every device.
-If the page does not open, Windows has probably asked whether Python may
-use the network: allow it on Private networks.
+These are RAW save units, NOT confirmed EUR amounts.  FL26 stores its budget
+in 100-EUR units and the original app multiplies by 100; PES 2017's currency
+scale has NOT been checked in game, so no conversion is applied.  Compare the
+number with what PES 2017 shows on screen.  If the game shows a multiple
+(e.g. 10x or 100x), report the figure and the scale can be added.  The
+PES 2017 tools page ("Load info") shows both words and their offsets.
 
-SAFETY
-------
-- The app keeps a copy of your save before every write if Backups is not
-  "Off" (folder work\backup inside the app folder). Only the newest
-  copies are kept; older ones are deleted on their own.
-- The app only writes to save formats it knows. With an unknown save it
-  only reads.
-- The Sider modules never touch your save files.
+BUDGET LABELLING (r5)
+---------------------
+The tools page now shows a RAW / NOT CONFIRMED EUR badge instead of a bare
+currency amount, and /api/pes17/info reports currency_verified=false plus
+unit="raw u32 save units".  A "Display scale (view only)" selector (x1, x10,
+x100, x1000) lets you compare the raw word with the number PES 2017 shows on
+screen; it is display-only and NEVER writes to the save.  Report the in-game
+figure and the correct scale can be applied -- until then the EUR sign in
+the Classic UI is only presentation.
 
+LAYOUT GUARD (r5)
+-----------------
+The four custom ops (formation, tactics, xi, budget) used to write arbitrary
+values without checking the save layout.  apply_ops() now calls
+pes17_pairs.verify_layout() first:
 
-IF SOMETHING GOES WRONG
------------------------
-- Click "Report a problem" (left column), write what happened and click
-  "Create report". A folder opens with a zip file: send that zip to the
-  person who gave you the app. It contains your save, a check of the save
-  and the app's settings and logs (no passwords).
-- To undo the app's last write: close the game, open work\backup inside
-  the app folder, take the newest copy of your save (its name starts
-  with your slot, for example ML00000003_...), rename it to the slot name
-  (for example ML00000003) and copy it over the one in your save folder.
-- The app does not open: start "The Gaffer.bat" to see the error.
-- The game crashes after the app wrote something: restore your save as
-  above and send a report.
+  * data.dat must be exactly 13,304,607 B (the measured save);
+  * formation record markers, the 26-slot XI permutation, two invariant
+    tactics bytes and plausible budget u32 words must all be present;
+  * 50 stable anchor bytes sampled around the tables and across the file
+    (identical in BEFORE and all four AFTERs, outside every writable range)
+    must match at least 60%.
 
+A save from another season/patch is REFUSED before a single byte changes;
+the response includes the layout report.  The tools page has a checked
+"verify save layout" box -- unchecking it disables the guard with a loud
+warning, for advanced users only.  `layout_check='report'` runs the checks
+without refusing.  Synthetic test buffers (<10 MB) are reported, never
+written to a user's save.  This is a save-file comparison, NOT in-game
+validation.
 
-UPDATING AND UNINSTALLING
--------------------------
-- Update: unzip the new version over the old "TheGaffer" folder and
-  allow Windows to replace the files. Your careers and settings stay.
-- Uninstall: delete the "TheGaffer" folder and the Desktop shortcut. Your
-  saves stay as they are. The Sider modules can stay in the game; without
-  the app they have nothing to do.
+MATCHDAY PRESENTATION
+---------------------
+The Classic application opens directly at /.  Its matchday controls, panels
+and PES 2017 tools use the same dark football-management presentation.  On
+larger desktop displays, the six-section Game Shell activates after the
+first-run tour; screens scroll inside the window.  To return to the original
+scrolling Classic navigation, open Look & sound and switch Game shell off.
+Phones and tablets retain their existing layout.  There is no separate
+dashboard.  PES 2017 tools remain at /pes17.html and in the sidebar.
 
+  * Layered local SVG emblems replace emoji in the shipped UI and in older
+    saved messages.  Morale has directional indicators; unknown pictographs
+    use a neutral emblem.  Normal text arrows remain text.
+  * The icon renderer preserves text-only controls and translations.  No
+    external icon library, font or network connection is required.
+  * Files: static/hud-icons.svg, static/hud-icons.js, static/hud-ui.css.
 
-FEATURES
---------
-The Gaffer turns Master League into a Football Manager style career. The
-things marked [writes] are saved into your Master League save, so you see
-them in the game. Everything else lives in the app next to your career.
+This is a presentation update.  Save-writing restrictions, layout checks,
+dry runs, backups and API behaviour remain in force.
 
-Your club
-- Home: next match, league table, form, transfer window, notifications
-  and a short "today" summary of what is happening at your club.
-- Inbox: messages from players, agents, the board and other clubs:
-  expiring contracts, offers, requests, injuries, news about your club.
-- Assistant manager: advice on your squad, what is missing (positions,
-  depth, quality, age) and what to do next.
-- Squad & tactics [writes]: starting XI, bench, shirt numbers, formations
-  (kick-off, in possession, out of possession) and team instructions.
-- Player profiles: attributes, positions, form, contract, value, season
-  and career stats, similar players, and a radar of his strengths.
-- Training [writes, live]: individual training focus. With the
-  GrowthBridge Sider module, training is applied to the game while you play.
-- Youth academy: your youth players and regens with estimated OVR and
-  potential, and new regens since your last save.
+WHAT CAN BE WRITTEN (MEASURED, ROUND-TRIP VERIFIED)
+---------------------------------------------------
+Open  http://localhost:8766/pes17.html  (or the "PES 2017 tools" button in
+the Classic sidebar).  The page reads your real save and lets you queue ops:
 
-Transfers
-- Search the whole world database with filters (league, club, position,
-  age, OVR, value, attributes), plus a shortlist.
-- Transfer negotiations [writes]: talk to the club (fee, add-ons such as
-  appearance bonus and sell-on clause), then the player (wage, years, role,
-  release clause, appearance/goal/win bonuses), then the agent fee and the
-  medical. Clubs and players have moods, can counter, stall, walk away or
-  pick a rival offer, and replies take game days. The deal is written on
-  a "paper contract" with both club crests and signatures.
-- Loans in [writes]: plain loans and loans with an option to buy (buy
-  price and future wage are written into the game's own loan contract).
-- Selling players [writes]: clubs send offers for your players. Haggle
-  over the fee, let them wait, claim a rival bid or leak it to the press,
-  agree the player's bonus, add your own sell-on, then confirm the sale.
-- Loans out [writes]: send players out on loan.
-- Contract renewals [writes]: negotiate new wage and length with your
-  own players. Unhappy players and agents put pressure on you.
-- Free agents and scouting: hire scouts (paid from the transfer budget),
-  send them to leagues or countries, get scouting reports and free agents.
-- Deadline day: the last days of the window with late offers, the
-  latest deals and the biggest spenders.
-- Salary Budget check, so the game never cancels a deal on arrival day.
+  offer_add     inject an active transfer negotiation into a club's block
+  offer_clear   restore an empty negotiation slot
+  shirt         set one of the 32 shirt numbers of a club
+  squad         experimental, requires experimental=true (NOT in-game tested)
+  pair          reproduce EXACTLY one of your four measured changes
+  formation     write a 33-byte formation record (hex)
+  tactics       write one measured byte in the tactics block
+  xi            write the 26-slot XI / squad order
+  budget        write the two measured budget u32 words
+  raw           u32 escape hatch for offsets you measured yourself
 
-A living football world
-- AI transfers [writes]: other clubs buy, sell and loan players between
-  themselves during the transfer windows, so the world changes every season.
-- AI managers and tactics [writes]: every club gets its own playing style
-  and line-ups. A new manager brings his own formation, and the club then
-  buys players who fit it. Clubs short of players switch formation for
-  one match. Managers get sacked and hired. If you are sacked or move
-  to a new club, the app follows you and keeps your career history.
-- Player history: no quick return to the club a player just left; older
-  players sometimes go home to the club where they grew up.
-- End-of-season revaluation for the whole world: players who score and
-  play well become more expensive.
-- Other clubs: squads, managers and transfer activity of every club.
-- Competitions: league tables, cup groups and the new Champions League /
-  Europa League format, with results, fixtures, top scorers and assists.
-- Calendar: fixtures, transfer windows and club events.
-- Match debrief and opponent analysis before and after each match.
+Measured offsets, all confirmed on ML00000011 (decrypted data.dat,
+13,304,607 B):
 
-Board, media and dressing room
-- Board: season objective, board confidence over time, your reputation
-  and your career history. Miss the target and your job is at risk.
-- Press conferences and interviews: answer questions in your own words.
-  Your answers affect players, fans and the board.
-- Dressing room: talk to your players (praise, warn, promise minutes),
-  handle transfer requests and unhappy players.
-- Fans & atmosphere: how the fans feel about results, signings and sales.
-- News, rumours and the club journal: stories about your season,
-  transfer rumours and newspaper pages.
-- Awards and records: Team of the Week, monthly awards, Ballon d'Or,
-  honours and club records.
+  club table            80, 1312 B records, name at +4
+  shirt numbers         club + 512, 32 x 1 byte
+  squad slots           club + 248, 32 x 8 B (roster pointer, player id)
+  negotiation table     9,591,148 .. 9,829,596, 280 B blocks
+  negotiation slots     block + 4, 16 x 16 B
+  empty slot            (6488064, 65535, 0, 1664)
+  active slot           (0, source roster ptr, player id, 4210816)
 
-Finances and sponsors
-- Board & finances: monthly report, club account and Budget Settings
-  (which budget receives gate, prize money, etc.) [writes].
-- Kit sponsors on chest, sleeve and back with real contracts, exit fees
-  and a relegation clause. Add your own sponsors with a logo. The logo is
-  drawn on your real kit in the game (needs the Sider kit-server).
+Four tables measured from YOUR before/after save pairs (lib/pes17_pairs.py):
 
-Tools
-- Several careers and save folders: switch between Master League slots
-  (and between Football Life and PES 2021 save folders). Each career keeps
-  its own app data.
-- Import database: match the app to your game's player database (new
-  patch, new leagues) from the F7 dump.
-- Regen fix (by mataodzanata): regens become real new players.
-- Club colours and a retro PES theme for the whole app.
+  formation records     1,256,248, 33 B records, 3 records
+                        formation pair changed 17 bytes in record 0
+  tactics block         1,256,348, 15 B; 13 bytes changed by the tactics pair
+  XI / squad order      1,256,728, 26 B permutation of squad slots 0..25
+                        + 42 B order block, 24 B float sliders at 2,230,192
+  budget u32            8,812,904 (2,535,240 -> 3,088,641)
+  wage budget u32       8,812,936 (9,692,344 -> 10,245,745)
+                        budget pair also touched 15 companion bytes
+                        (9,836,708 .. 9,845,147)
 
+Each "pair" op is verified by tools/verify_pairs.py: applied to the common
+before file it reproduces every byte the game itself changed for that action,
+and changes no other byte.  Per-save bytes (the 32-byte token at data.dat
+[48:80], the 64-byte header hash, the encryption-header salt and two UI-state
+words) are NOT written: the game rewrites those on every save.  The 64-byte
+header hash algorithm is unknown; we keep the original hash, exactly as the
+public MLTE tool does.  IN-GAME LOAD VALIDATION IS STILL REQUIRED.
 
-WHAT'S NEW IN THIS UPDATE (since pc378)
----------------------------------------
-You can keep your career: unzip this version over your old TheGaffer
-folder and allow Windows to replace the files. Careers and settings stay,
-no new career needed. Then click "Update modules" on the Home screen
-(or Setup > Install modules) and restart the game once.
+SAFETY MODEL
+------------
+* Every write goes through lib/pes17_write.py: decrypt -> edit a bytearray ->
+  re-encrypt with the PES 2017 key -> decrypt again -> compare ALL SIX parts
+  byte-for-byte -> write to a .tmp file -> os.replace -> load the file from
+  disk again and compare.  A timestamped backup is kept in work\backup.
+* Every changed byte is checked to be inside a measured table.  A bad op
+  (unknown club, unknown pair, offset outside the tables) raises and NOTHING
+  is written.  The "pair" op additionally checks that the current save still
+  matches the measured before-state before writing.
+* All FL26-style write endpoints (transfers, loans, contracts, tactics,
+  formations, budgets, training, AI moves, revalues) are STILL REFUSED in the
+  main app.  Use the PES 2017 tools page for the measured writes.  Do the rest
+  in the game.
+* The dry-run checkbox proves the operation without touching the save.
 
-No more "I'm on the main menu" click
-- The app now knows by itself whether the game is in Master League or on
-  the main menu. Saving from the app unlocks a few seconds after you leave
-  Master League and locks again as soon as you load your career. The bar
-  at the top says which one it is. It only reads (nothing is written to
-  the game). It needs the updated GrowthBridge module ("Update modules").
-  If the app can't tell (another game version), the old button works as
-  before. Turn it off in config.json with "auto_menu": false.
-  Idea and memory address found by a tester.
-
-Football Life 2027
-- More save layouts can be written to: saves with the Carabao Cup mod and
-  saves with Classic Teams on (thanks to the FL27 testers for the layout
-  work). Reading always worked; writing is now unlocked too.
-- Long careers: writing was refused after many club responses (a safety
-  check on a counter was too strict). Fixed.
-- Player faces come from the game files (FL27 keeps them inside its own
-  archives).
-- Sponsors on your kit work on FL27 (see Kits below).
-
-Kits and sponsors
-- Sponsors on your kit no longer need a Sider kit-server. If your club
-  has no kit-server entry (all FL27 clubs, and FL26 clubs whose kits come
-  from the game or a kit pack), the app copies your real kits, puts the
-  sponsor on the copies and the game loads them through livecpk. Only the
-  kit texture changes: the cut, collar, numbers and colours stay exactly
-  as in the game, and your original files are never touched ("Restore
-  original kits" removes the copies). On FL26 the app adds its own folder
-  (livecpk\TheGaffer_kits) at the top of sider.ini the first time, so
-  restart the game once. A kit-server setup is still the better option if
-  you have one: the app then uses your kit-server kits directly.
-- The old sponsor is removed more cleanly: the app patches it with a part
-  of the shirt where the pattern lines up, or smooths it over (no more
-  half-circles or dark patches on patterned kits). The logo also sits a
-  little lower so it never shows inside a deep V-neck.
-- Fixed "bytes must be in range" when putting a sponsor on some kits.
-- The app no longer mistakes other Sider folders (like SleeveBadge) for
-  the kit-server.
-
-Transfer market
-- AI transfers: new "Activity" setting (Normal / Low, about half the
-  moves) and "Skip the first transfer window" for databases already
-  updated to the end of the real September window.
-- Clubs no longer pay more for one player than fits their class (no more
-  mid-table clubs spending 45 million on one signing).
-- Real transfers from Wikipedia: players who actually joined their club
-  this summer don't get sold on or flooded with offers right away. The
-  list now comes with the download (no internet needed at first start)
-  and covers more leagues and the 2026 windows.
-- Offers for your players: "Reject" on every offer, and "Not for sale"
-  (no more offers for that player until you put him on the list).
-- Offers now also arrive in the two weeks before a window opens (from
-  mid-December and mid-June); the deal itself is done once the window is
-  open, as in real life.
-
-Board, leagues and competitions
-- Board confidence: the new-manager honeymoon is shorter, and confidence
-  no longer goes up while your results are poor.
-- South American, Asian and North American leagues: the table and the
-  season objective use their own competitions (Copa Libertadores and
-  Sudamericana, AFC Champions League, CONCACAF Champions Cup) instead of
-  "Europe".
-- Expanded databases (FL Mod Studio): the league names you set in
-  "Import database" now also decide the country a league is listed under
-  (Austrian Premier League no longer under Albania, and so on).
-- Stadium attendance uses the real stadium capacity.
-
-Squad and tactics
-- 45 MB "new save layout" (Michele's UML): lineup, formation, team
-  instructions and shirt numbers can be changed in the app (measured in
-  the game by Michele).
-- OVR from FL Mod Studio databases above 99 is shown as the game shows it.
-- A negative Salary Budget (as the game sometimes shows) can be entered.
-
-Fixes and small things
-- PlayerDump (F7) now shows the real result in the Sider overlay: "DONE:
-  ... players written" or "FAILED: ..." with the reason (before, a
-  technical line "step C: ok=true" hid it).
-- Lite mode for slower PCs and handhelds (ROG Ally and similar): fewer
-  effects, smoother pages. Switches on by itself when the device is slow.
-- If an old copy of The Gaffer got stuck in the background ("Failed to
-  fetch"), starting the app again closes it by itself.
-- The page is no longer auto-translated by the browser (that broke
-  numbers and names).
-- Linux (Wine/Proton): the app detects when the game is running.
-- Dates written with dots or dashes are read correctly.
-- No more false "contract rows" warnings after a transfer.
-
-
-KNOWN LIMITS (PUBLIC TEST)
+WHAT IS STILL NOT POSSIBLE
 --------------------------
-- "Stop the game on a day" is switched off for now (it crashed the game
-  when the stop fell on a match day).
+Contracts/renewals (the player-record table was located via the Cheat Engine
+table but not confirmed by a pair), loans, youth players, training/growth,
+points/goals in the league table, forced transfers, AI transfers, the human
+club's own inbox negotiations, and any arbitrary formation/tactic value that
+is not inside the measured table layout.  More before/after pairs (one change
+per pair) are needed for those.  See REAL_SAVE_REPORT.md.
 
-CREDITS
--------
-- Regen fix: mataodzanata (FL Mod Studio), included with his permission.
-- Michele & Claude: Economia Lunga revaluation, Injuries For All and
-  many ideas and tests, included with their permission.
-- Main menu detection (no more "I'm on the main menu" click): idea, memory
-  address and timing rules from our FL27 tester on Linux, thank you!
-- FL27 save layouts (1600-slot table, Carabao Cup, Classic Teams): the
-  FL27 testers' layout work and saves.
-- Save encryption: built in, based on pesXdecrypter (public domain).
-- Football Life 26 belongs to its authors. The Gaffer is a free fan-made
-  companion and is not affiliated with Konami.
+Human-controlled clubs normally have NO AI negotiation block in the save.
+The "claim an unused block for my club" checkbox is a structural inference,
+NOT in-game validated, and is flagged experimental.  Prefer an AI club
+(e.g. Arsenal, tid 101) for a fully published write.
 
+CLUB CRESTS FROM THE PATCH FOLDER (r6)
+--------------------------------------
+Set "pes17_patch_dir" in config.json to the folder that holds your patch's
+logos, e.g.
 
-FREE TO USE
------------
-The Gaffer is free, and it will stay free.
-- Use it as much as you like for your own Master League careers.
-- The only official download is the official The Gaffer thread on Evoweb.
-  Copies from anywhere else may be old, changed or unsafe.
-- Please do not reupload The Gaffer, sell it, or include it in other packs,
-  patches or tools without the author's permission.
-- Please do not publish changed versions of it as your own work.
-- Screenshots, videos and streams are welcome. A link to the official
-  thread is appreciated.
-- The included Sider modules (the regen fix and Michele's modules) belong
-  to their authors and follow their rules.
-- The Gaffer is provided as it is, without any warranty. Keep backups of
-  your saves.
-Want to share it, build on it or include it somewhere? Just ask in the
-official thread.
+    "pes17_patch_dir": "D:\\Games\\Pro Evolution Soccer 2017"
+
+or leave it blank ("") and the app auto-detects download/, Data/, patch/,
+content/ and livecpk/ next to "pes_exe".  On the PES 2017 tools page, card
+"3c. Club logos and player mini-faces" can also set/clear the folder
+without editing JSON by hand; press "Set folder & scan".
+
+Recognised crest files (case-insensitive, read-only):
+
+    common/render/symbol/flag/e_201_r.png       game emblem, team id 201
+    common/render/symbol/flag/e_201_r_l.dds     DDS emblem (converted to PNG)
+    logos/201.png  logos/logo_201.png  logos/flag_201.png
+    logos/Birmingham City FC.png                named after the club
+    map.txt / teams.txt with lines like "201=Birmingham City FC"
+    <patch>/download/T99_v20.cpk                CPK archive containing
+       common/render/symbol/flag/e_201_r.dds    (CPK TOC read only)
+
+Preferred emblem variants are r, r_l, r_w, r_b, ... (same order the game
+uses).  Club names are matched against data/pes17/teamids.json, which the app
+builds from YOUR real ML/EDIT files; the stable team id wins over the raw
+bit-packed id.  When patch crests are found they are served FIRST by the
+existing /api/crest?club=... endpoint and the Wikipedia crest prefetch is
+skipped, so no network request is made for club logos.
+
+GET  /api/pes17/crests           diagnostic: folders scanned, files, CPK
+                                archives, logos found, clubs matched, sample
+POST /api/pes17/crests/dir       set/clear the folder (PC only, saves
+                                config.json). {"dir": ""} clears it.
+
+Nothing is ever written into the game or patch folder.  No CDN, font, API or
+external library is added.  If the report says "Logos found: 0", point the
+folder at the place where your patch keeps emblems (often download/*.cpk) and
+press Rescan.  Kit textures, player faces and stadium images are ignored.
+
+LIMIT: the user's real patch folder was not available in this sandbox.  Loose
+files, DDS/WESYS decoding, ID/name mapping and the HTTP endpoints were tested
+against a synthetic patch folder and the REAL save; CPK reading was tested
+with the shipped cpkread.Cpk API via a mocked archive.  Try it on your patch
+and read the diagnostic card -- that is the confirmation step for your layout.
+
+PLAYER MINI-FACES
+-----------------
+ML and EDIT saves supply IDs and names, not portrait images. Open PES 2017
+Tools, choose your save slot, and in card 3c enter the game folder containing
+PES2017.exe and download. Press "Set folder & scan" or "Rescan mini-faces".
+A standalone mini-face folder can also be selected. The app reads PNG, JPG,
+DDS and FTEX portraits in supported loose and named CPK locations, and checks
+the game's sibling Data and Sider folders when download is selected. It does
+not write to the game, patch or save folder.
+
+The report shows indexed IDs, matching squad IDs, tested/decoded portraits,
+folders searched and archive/read/decode errors. Indexed does not mean every
+file can be displayed. If none match, check that the mini-face pack and EDIT
+belong to the same patch. If matching files cannot be read, use "Copy diagnostic"
+(the report contains local paths) and provide a small sample.
+3D face models are not 2D mini-faces; missing and regenerated players can use
+silhouettes. Supported CPK layouts are not guaranteed for every patch: real
+user archives were not available for this build's validation.
+
+GET /api/pes17/faces?slot=ML00000011&rescan=1  read-only diagnostic
+GET /api/pes17/face?pid=<id>                  decoded local mini-face
+
+CPK ASSET INVENTORY / HARVEST (r7)
+----------------------------------
+There is NO .cpk archive in this repository -- only the CPK readers shipped
+with pc414 and the FL26 databases extracted from those games.  The harvester
+must be pointed at YOUR patch folder on Windows.  It reads the CPK table of
+contents only, never modifies the source, and has no network access.
+
+  python tools\harvest_cpk.py "D:\...\Pro Evolution Soccer 2017\download" ^
+      -o manifest.json --extract "data\pes17\harvest" ^
+      --classes crest,emblem,art
+
+Or use /pes17.html card "3d. CPK assets in the patch folder" (Scan assets /
+Harvest crests / logos / art).  Manifest fields:
+CLASS, id, size, PES 2017 usability (YES / MAP / NO) and the reason.
+
+  crest   common/render/symbol/flag/e_<id>_r.png|dds        MAP (team ids)
+  emblem  common/render/symbol/emblem*/emb_<id>_*.png|dds   MAP (comp ids)
+  kit     .../uniform/texture/.../u<tid>p1.ftex             MAP (team ids)
+  face    common/render/symbol/player/<pid>.dds             MAP (player ids)
+  coach   common/render/symbol/coach/coach_<id>.png         MAP (staff ids)
+  pesdb   common/etc/pesdb/Competition.bin                  NO (version-specific)
+  art     any other PNG/JPG/DDS                            YES (ID-independent)
+
+DDS/FTEX/WESYS are converted to PNG with the shipped dds/ftex/bc7 readers.
+Harvested files go into the APP folder (data\pes17\harvest), never into the
+game folder.
+
+GET  /api/pes17/assets             diagnostic inventory
+POST /api/pes17/assets/extract     harvest selected classes (PC only)
+GET  /api/pes17/mode               reports PES 2017 and offline mode
+
+PES 2017-ONLY MODE
+------------------
+The Classic application is served at / (and /index.html) regardless of the
+PES 2017-only setting.  The PES 2017 read/write tools are at /pes17.html.
+"pes17_only": true in config.json keeps PES 2017 defaults active.  Build-time
+cleanup removes the Google Fonts links and flag CDN references from the
+Classic app, flag_img() no longer downloads flags, and wiki_web defaults to
+false.  Local patch assets can be used without a CDN or Wikipedia request.
+Set "wiki_web": true only if you want those lookups back.
+
+LIMIT: the FL26 UI and its app-side endpoints still exist; the PES 2017
+edition is not a complete rewrite.  A real PES 2021 -> t99p17v20
+team/player/competition ID map is still needed.
+
+SAFE CLEANUP (r8)
+-----------------
+The r8 cleanup removed 111 files (10.01 MB): the FL26 Sider regen fix (94 files), Michele & Claude Lua
+mods (8), F7 dump Lua modules (2), the FL27 save key + readme (2), and
+data/players.json, positions.json, playpos.json, ratings.json and
+realmoves.json (5 FL26 databases, 6.8 MB).  On a PES 2017 save the app
+rebuilds data/pes17/players.json etc. from EDIT00000000 (20,018 players),
+so those FL26 IDs are never used.  Nothing in your save, patch or game
+folder is touched.  Kept: the classic FL26 UI (still at /index.html), its
+art, scenes, stadium photos, i18n strings, teamids.json and small metadata
+JSONs, and all lib/*.py.  All 132 GET endpoints
+were compared against the unpruned r7 build: 132 identical status pairs,
+zero new errors.
+
+FIRST RUN - SAVE FOLDER (r9)
+----------------------------
+A fresh install has NO config.json and NO hard-coded FL26 save path any more.
+The app looks for ...\KONAMI\Pro Evolution Soccer 2017\save in your
+profile, Documents and OneDrive (including localised names like Dokumenti).
+If it cannot find one, open PES 2017 tools from the Classic sidebar; the
+"Save folder" card appears at the top instead of raw Windows errors.  Paste the full path that holds ML00000011 and
+EDIT00000000, e.g.
+    C:\Users\<you>\Documents\KONAMI\Pro Evolution Soccer 2017\save
+    C:\Users\<you>\OneDrive\Dokumenti\KONAMI\Pro Evolution Soccer 2017\save
+and press "Use this folder".  It is saved to config.json and takes effect at
+once.  Crests and CPK cards show
+0 on a fresh install - both are OPTIONAL and the save reads work without
+them.
+
+HOW TO USE ON WINDOWS
+---------------------
+1. Unzip this build anywhere (not inside the zip) on Windows.
+   Check VERSION.txt in that folder: it must say
+   "pc414-pes17-clean-r9 (2026-11-04)".  If it says
+   "pc414 (2026-11-01)" you unzipped the ORIGINAL program, which cannot
+   decrypt a PES 2017 save at all.
+   Both builds use port 8766, so close the old one first (or run
+   "The Gaffer.bat" from the new folder, which stops the old process).
+2. Double-click "The Gaffer.vbs" (or "The Gaffer.bat").
+3. In Setup > Save folder choose
+      ...\Documents\KONAMI\Pro Evolution Soccer 2017\save
+   (or wherever your ML00000011 / EDIT00000000 live), then Save paths.
+   Keep EDIT00000000 in that folder (or set "edit_dat" in config.json).
+   The Classic sidebar's "PES 2017 tools" button opens /pes17.html.
+4. Back up your save folder anyway.  Close PES 2017 before writing.
+5. TEST IN GAME: apply a "pair" op (e.g. formation), load the written save in
+   PES 2017 and confirm the change appears.  That is the only remaining
+   validation step.  If the game rejects the save, restore from work\backup
+   and tell us: the header hash is the most likely cause.
+
+config.json keys (see config_pes2017.example.json):
+    "save_dir": "...\\save"
+    "edit_dat": "...\\save\\EDIT00000000"   (optional override)
+    "pes17_date_order": "dmy"              (default; "mdy" for US saves)
+    "pes_process": "PES2017"
+    "pes17_allow_writes": false             keep false: it only gates the
+                                            old FL26 write engine.
+
+COMMAND LINE (needs Python 3.10+ installed)
+-------------------------------------------
+    python lib\pes17_write.py roundtrip ML00000011
+    python lib\pes17_write.py info ML00000011 --edit EDIT00000000
+    python lib\pes17_write.py offers ML00000011
+    python lib\pes17_layout.py info C:\dec\ML00000011
+    python lib\pes17_write.py apply ML00000011 --ops ops.json --work work
+
+ops.json example:
+[
+  {"op":"offer_add","buyer":101,"slot":0,"pid":55246},
+  {"op":"shirt","club":201,"slot":0,"number":9},
+  {"op":"pair","name":"formation"},
+  {"op":"tactics","values":{"1256356":3}},
+  {"op":"xi","order":[9,15,4,12,13,22,19,17,5,3,6,25,16,18,10,21,8,24,11,2,7,23,20,14,0,1]},
+  {"op":"budget","value":3088641,"wage":10245745}
+]
+
+DIFF TOOLS (on the development machine)
+---------------------------------------
+    git fetch origin main
+    python3 pes2017/tools/fetch_after_pairs.py   # stage the 4 after saves from main
+    python3 pes2017/tools/diff_saves.py  BEFORE AFTER --json diff.json
+    python3 pes2017/tools/verify_pairs.py --before "Needed files/ML00000011" \
+        --after-dir build/pairs
+    python3 pes2017/tools/analyze_save_noise.py \
+        --json build/analysis/noise_report.json
+
+TESTS
+-----
+    python3 -m unittest discover -s pes2017/tests -p 'test_*.py' -v
+The suite includes tests that decrypt, read, modify and re-encrypt real
+ML00000011 / EDIT00000000 files (on copies only), tests that prove the four
+measured pair patches against game-generated after files, budget read-side
+regressions, matchday icon / translation checks, and layout guard tests
+(refusal on a different-size or broken-table save, all four custom ops,
+report/opt-out modes, real shirt numbers / XI, RAW budget labels), and r6
+tests for the offline crest reader (loose files, CPK/WESYS, DDS -> PNG,
+stable-id mapping, auto-detection, read-only, no network API).  A live HTTP
+smoke on the real save with a synthetic patch folder passed 32/32 checks
+(r6), plus r7 tests for the CPK asset inventory / harvester (8 classes,
+DDS/WESYS -> PNG, source read-only, CLI, no network) and the offline /
+PES 2017 tools wiring.  A live r7 HTTP smoke passed 42/42 checks.  r8 adds 13
+cleanup / shipped-zip / offline-guard tests; a live HTTP smoke of the PRUNED
+build passed 76/76 checks, including all 132 GET endpoints returning exactly
+the same status as the unpruned r7 build (zero new 5xx, no timeouts).  r9
+adds 15 first-run / save-folder tests; a fresh-install HTTP smoke (NO
+config.json) and a configured-install smoke passed 66/66 checks, and a
+133-GET sweep against r8 returned 132 identical statuses (the only new
+endpoint is /api/pes17/setup).
+
+TECHNICAL SOURCES
+-----------------
+* the4chancup/pesXdecrypter (public domain): container algorithm, PES 2017
+  master key (src/masterkey.c), 176 B FileHeader in crypt.h.
+* Rigged Wiki "Pro Evolution Soccer 2017/Edit file": player entry bitfields.
+* irvantaufik28/PES2017-Master-League-Transfer-Engine: club/squad/standings
+  offsets, negotiation layout, team-id bit shift, in-game validation checklist.
+* "Needed files/cheat engine variations.CT": live-RAM player field semantics,
+  used to locate the 232 B ML player-record / contract table.
+* Your own files in "Needed files" (t99p17v20) and the four after saves
+  (formation/after, tactics/after, xi/after, budget/after) for every offset
+  and value above.

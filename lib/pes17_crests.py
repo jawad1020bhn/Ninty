@@ -583,10 +583,6 @@ def _id_names(cfg):
     return out
 
 
-def _name_for_id(cfg, tid, idnames=None):
-    return (idnames if idnames is not None else _id_names(cfg)).get(str(tid))
-
-
 def resolve(cfg, name_or_id):
     """Club name / id -> team id, using the PES 2017 database (tid preferred)."""
     extra = {}

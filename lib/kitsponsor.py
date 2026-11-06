@@ -139,17 +139,6 @@ def _axis_ends(px):
 W4 = [0, 4, 9, 13, 17, 21, 26, 30, 34, 38, 43, 47, 51, 55, 60, 64]
 
 
-def _q7(v):
-    """8-bitna vrijednost -> (7 bita, p bit) za BC7 mode 6 (krajevi s p bitom: 7+1 bit)."""
-    best = None
-    for p in (0, 1):
-        q = max(0, min(127, int(round((v - p) / 2.0))))
-        e = abs(((q << 1) | p) - v)
-        if best is None or e < best[0]:
-            best = (e, q, p)
-    return best[1], best[2]
-
-
 def bc7_mode6(px):
     a, b = _axis_ends(px)
     # zajednicki p bit po kraju: odaberi onaj s manjom ukupnom greskom

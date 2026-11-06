@@ -96,11 +96,6 @@ def _picks(name, age=None, year=2025):
     return good + maybe
 
 
-def _pick(name):
-    k = _picks(name)
-    return k[0] if k else None
-
-
 def fetch(pid, name, folder, age=None, year=2025):
     os.makedirs(os.path.join(folder, 'img'), exist_ok=True)
     fp = os.path.join(folder, '%s.json' % pid)

@@ -840,22 +840,6 @@ class Save:
     # ---- transfer lista (zapisi od 56 B; slobodan zapis pocinje s 255)
     LIST_REC = 56
 
-    def list_entries(self):
-        """Svi zapisi transfer liste: [(offset, club_code, tag, id, date)] i pocetak niza."""
-        import re
-        d = self.d
-        out = []
-        hi = self.own_hi()
-        for mt in re.finditer(re.escape(struct.pack('<H', hi)), bytes(d[Y(12000000):Y(13200000)])):
-            p = Y(12000000) + mt.start()
-            o = p - 6
-            if o < 0 or p + 14 > len(d):
-                continue
-            code, tag, pid, w = struct.unpack_from('<IIII', d, o)
-            if (tag >> 16) == hi and 0 < pid < 400000 and w == 0xffff and code < 0x400 and struct.unpack_from('<I', d, o + 48)[0] in (0xffff, 0xffffffff):
-                out.append((o, code, tag, pid, struct.unpack_from('<I', d, o + 52)[0]))
-        return sorted(out)
-
     def own_hi(self):
         """Visi 16 bitova oznake (tag) igraca ovog kluba: razlicit po karijeri/klubu; igraci na posudbi imaju drugu. Uzima se najcesca vrijednost u momcadi."""
         from collections import Counter
@@ -1992,34 +1976,6 @@ class Save:
             pos += len(c)
         self._rebuild(new, end_)
 
-    def set_contract_start_many(self, pids, date):
-        """Kao set_contract_start, ali za vise igraca odjednom (jedna dekompresija/kompresija)."""
-        pids = list(pids)
-        if not pids:
-            return 0
-        chunks, end_ = self._chunks()
-        big = bytearray(b''.join(chunks))
-        want = {pid: struct.pack('<I', pid) for pid in pids}
-        # indeks svih zapisa: pid na r+48
-        n = (len(big) - 144) // 156
-        pos = {}
-        for k in range(n):
-            r = 144 + 156 * k
-            v = struct.unpack_from('<I', big, r + 48)[0]
-            if v in want and v not in pos:
-                pos[v] = r
-        miss = [x for x in pids if x not in pos]
-        if miss:
-            raise ValueError('player record not found: %s' % miss[:5])
-        for pid, r in pos.items():
-            struct.pack_into('<I', big, r + 148, date)
-        new, p = [], 0
-        for c in chunks:
-            new.append(bytes(big[p:p + len(c)]))
-            p += len(c)
-        self._rebuild(new, end_)
-        return len(pos)
-
     def fix_squad_counts(self, limit=800):
         """Brojac igraca kluba (club+1058) mora biti jednak duljini popisa sastava. Vraca broj ispravljenih klubova."""
         n = 0
@@ -2557,14 +2513,8 @@ class Save:
         if not (self.fmt60 and free and not loan_end):
             self.pid_guard(pid)   # pc250
         if self.fmt60 and free and not loan_end:
-            # pc235: 60 MB slobodni igrac (izvjestaj testera papandreas5, 30.10.): app samo upise dogovor i dolazak za sutra,
-            # igra sama obavi dolazak. Beta, ukljucuje se u config.json ("free60_beta": true); inace ostaje zakljucano.
-            if not getattr(self, '_free60_ok', False):
-                raise ValueError('Signing free agents is not unlocked yet on the 60 MB format (beta, off). The save was not touched.')
-            import fl26_freeagent60 as _fa60
-            _fa60.queue_new_agreement(self, sys.modules[__name__], pid, salary, end_year, release)
-            self._beta_write = True
-            return 'Free-agent agreement queued for %d; load the career and advance one day for his arrival.' % pid
+            # PES 2017 build: the 60 MB FL26 write module was removed.
+            raise ValueError('Signing free agents on the 60 MB FL26 format is not supported in this PES 2017 build. The save was not touched.')
         if not self.ext:
             if free and not loan_end:
                 return self.classic_join(pid, 'fa', salary, end_year, number)
@@ -2869,7 +2819,7 @@ class Save:
         BL = [int(x) for x in d[blo:blo + n]]
         self._allow = [(self.CH0 - 4, end_), (self.BUDGET, self.BUDGET + 4)] + [(o, o + len(bb)) for o, bb in W]
         # pc189: 60 MB format - kupnja iz kluba je beta (pravila izmjerena na jednom pravom transferu u igri); ostalo ostaje zakljucano
-        self._beta_write = bool(self.beta_ok and not loan_end)   # pc240: slobodni igrac na 45 MB obitelji (isti upis kao 45 MB); 60 MB slobodni ide ranije kroz fl26_freeagent60
+        self._beta_write = bool(self.beta_ok and not loan_end)   # pc240: slobodni igrac na 45 MB obitelji (isti upis kao 45 MB)
         for o, bb in W:
             d[o:o + len(bb)] = bb
         self._rebuild(new, end_)
@@ -2927,13 +2877,6 @@ class Save:
 
     def free_agents(self):
         """{pid: (kraj_ugovora_kod, kod)} igraca bez kluba u spremljenoj bazi (+140 = ffffffff) koji nisu ni u jednom klupskom sastavu."""
-        if self.fmt60:
-            # pc235: puni kljuc (tag, PID), PID-ovi s vise slobodnih igraca se preskacu (izvjestaj testera 03)
-            try:
-                from fl26_freeagent60 import free_catalog
-                return {pid: item[1] for pid, item in free_catalog(self).items()}
-            except Exception:
-                pass
         chunks, _ = self._chunks()
         big = b''.join(chunks)
         out = {}
@@ -2943,41 +2886,6 @@ class Save:
             if 0 < pid < 400000 and struct.unpack_from('<I', big, o + 140)[0] == 0xffffffff:
                 out[pid] = struct.unpack_from('<I', big, o + 144)[0]
         return out
-
-    def repair_slot(self, pid, fee=0):
-        """Popravlja igraca koji je u sastavu, ali nema redove u po-slotnim tablicama (prazan red u Squad Listi)."""
-        my = self.club_offset()
-        n = self._squad_len(my)
-        tags = {struct.unpack_from('<I', self.d, my + self.PAIR_OFF + 8 * k + 4)[0]: struct.unpack_from('<I', self.d, my + self.PAIR_OFF + 8 * k)[0] for k in range(n)}
-        if pid not in tags:
-            raise ValueError('player is not in your squad')
-        tag = tags[pid]
-        plan = self._slot_plan(tag, pid, fee, self.game_date_code())
-        chunks, end_ = self._chunks()
-        big = bytearray(b''.join(chunks))
-        pat = struct.pack('<I', pid)
-        r = None
-        i = self._bf(big, pat)
-        while i >= 0:
-            if i >= 192 and (i - 192) % 156 == 0:
-                r = i - 48
-                break
-            i = self._bf(big, pat, i + 1)
-        if r is None:
-            raise ValueError('player record not found')
-        if big[r + 64] >= 100 or big[r + 64] == 0x4f:
-            big[r + 64] = 17 if big[r + 64] in (0x4f,) or big[r + 64] >= 100 else big[r + 64]
-        big[r + 68] = 23
-        big[r + 116] = 0
-        big[r + 136:r + 140] = bytes.fromhex('6a01fa01')
-        new, pos = [], 0
-        for c in chunks:
-            new.append(bytes(big[pos:pos + len(c)]))
-            pos += len(c)
-        self._rebuild(new, end_)
-        for o, bts in plan:
-            self.d[o:o + len(bts)] = bts
-        return 'fixed row for %d' % pid
 
     def direct_sign(self, pid, fee, salary, end, pos=None, loan=False, rec116=None, mycode=None, posv=None):
         """EKSPERIMENT: igrac dolazi u tvoj klub BEZ zamjene slota: izvorni klub ga gubi (postava + brojevi, kao ai_move),
@@ -3127,134 +3035,6 @@ class Save:
     LOG0 = 55300            # tablica 60 B redova transfera u repu (uzorak: Dowman @55312)
     OPT0 = 151052           # opcija otkupa: 3 reda po 12 B u repu (uzorak: Dowman)
 
-    def loan_in(self, pid, fee, end_code, option=None, pos=None, opt_row=True):
-        """EKSPERIMENT: posudba IGRACA U MOJ KLUB (uzorci Dowman s opcijom, Valdimarsson bez). Igrac ostaje ugovorom kod vlasnika
-        (zapis: samo +136 = kod vlasnika, +152 = kraj posudbe), dolazi na kraj mog sastava, naknada = fee u budzet/po-slotne tablice,
-        red u tablici transfera u repu; s opcijom jos red u tablici ugovora (placa otkupa, release, kraj) i red opcije (cijena otkupa).
-        option = dict(buy, wage, release, end) u EUR / kod datuma ili None."""
-        chunks, end_ = self._chunks()
-        big = bytearray(b''.join(chunks))
-        pat = struct.pack('<I', pid)
-        r = None
-        i = self._bf(big, pat)
-        while i >= 0:
-            if i >= 192 and (i - 192) % 156 == 0:
-                r = i - 48
-                break
-            i = self._bf(big, pat, i + 1)
-        if r is None:
-            raise ValueError('player record not found')
-        orig = bytes(big[r:r + 156])
-        owner = struct.unpack_from('<I', orig, 140)[0]
-        if owner == 0xffffffff or owner == 0:
-            raise ValueError('player has no owning club')
-        if struct.unpack_from('<I', orig, 136)[0] != 0xffffffff:
-            raise ValueError('player is already on loan')
-        sal = struct.unpack_from('<I', orig, 128)[0] * 100
-        endc = struct.unpack_from('<I', orig, 144)[0]
-        tag = struct.unpack_from('<I', orig, 44)[0]
-        from collections import Counter
-        cc = Counter()
-        my = self.club_offset()
-        for k in range(self._squad_len(my)):
-            q = struct.unpack_from('<I', self.d, my + self.PAIR_OFF + 8 * k + 4)[0]
-            ri = self._bf(big, struct.pack('<I', q))
-            while ri >= 0 and not (ri >= 192 and (ri - 192) % 156 == 0):
-                ri = self._bf(big, struct.pack('<I', q), ri + 1)
-            if ri >= 0 and struct.unpack_from('<I', big, ri - 48 + 136)[0] == 0xffffffff:
-                cc[struct.unpack_from('<I', big, ri - 48 + 140)[0]] += 1
-        mycode = cc.most_common(1)[0][0] if cc else 0x198006
-        pv = (pos or {}).get(pid)
-        posv = 6 if pv == 0 else 10
-        if self.ext:
-            msg = self.sign_outside_x(pid, fee, sal, endc, pos=pos, loan_end=end_code)
-        else:
-            msg = self.direct_sign(pid, fee, sal, endc, pos=pos, loan=True, rec116=bytes(orig[116:124]), mycode=mycode, posv=posv)
-        # zapis igraca: vrati original, samo posudba
-        chunks, end_ = self._chunks()
-        big = bytearray(b''.join(chunks))
-        big[r:r + 156] = orig
-        # oblik kao kod posudbi iz baze igre (npr. Satpaev): +136 = klub vlasnik, +140 = klub u kojem igra (moj)
-        big[r + 136:r + 140] = orig[140:144]
-        # nativna posudba izvrsena u igri (Dowman): +136 = +140 = klub vlasnik (igra ga prikazuje u Other Teams)
-        big[r + 140:r + 144] = orig[140:144]
-        struct.pack_into('<I', big, r + 152, end_code)
-        # oznake statusa igraca (parovi u16 id + u16 oznaka od +52): posudba = id 3 / 0x02c0 u prvi slobodni slot (uzorak Valdimarsson)
-        ents = [struct.unpack_from('<H', big, r + 52 + 4 * k)[0] for k in range(13)]
-        if 3 not in ents and 0xffff in ents:
-            k = ents.index(0xffff)
-            struct.pack_into('<HH', big, r + 52 + 4 * k, 3, 0x02c0)
-        new, pos_ = [], 0
-        for c in chunks:
-            new.append(bytes(big[pos_:pos_ + len(c)]))
-            pos_ += len(c)
-        self._rebuild(new, end_)
-        _, e2 = self._chunks()
-        d = self.d
-        done = ['zapis']
-        # red u tablici transfera (60 B)
-        last = None
-        for k in range(-60, 61):
-            o = e2 + self.LOG0 + 60 * k
-            if bytes(d[o + 4:o + 8]) != b'\xff\xff\xff\xff':
-                last = k
-        k = 0 if last is None else last + 1
-        o = e2 + self.LOG0 + 60 * k
-        if k <= 60 and bytes(d[o + 4:o + 8]) == b'\xff\xff\xff\xff':
-            struct.pack_into('<IIIIII', d, o + 4, owner, tag, pid, fee // 100, fee // 100, end_code)
-            done.append('tablica transfera')
-        if self._xfer_append(e2, tag, pid, mycode, owner, fee // 100, self.game_date_code()):
-            done.append('povijest transfera')
-        # popisi igraca vezanih uz klub (kljuc = donja 2 bajta oznake igraca): tablica P (12 B, novi red na vrh) i tablica Q (40 B, prvi slobodni red)
-        tagl = tag & 0xffff
-        PB = Y(12586632)
-        if bytes(d[PB - 12:PB - 8]) == b'\xff\xff\x00\x00':
-            f = None
-            for j in range(0, 40):
-                o = PB + 12 * j
-                if struct.unpack_from('<II', d, o) == (0xffff, 0xffffffff):
-                    f = j
-                    break
-            if f is not None:
-                d[PB + 12:PB + 12 * (f + 1)] = bytes(d[PB:PB + 12 * f])
-                struct.pack_into('<III', d, PB, tagl, 0x03f9c002, 0)
-                done.append('popis P')
-        QB = None
-        for o in range(Y(13287000), Y(13291000), 4):
-            if bytes(d[o:o + 12]) == b'\xff\xff\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff' and not any(d[o + 12:o + 40]):
-                QB = o
-                break
-        if QB is not None:
-            struct.pack_into('<10I', d, QB, tagl, 0x03f9c002, mycode, 0, 2, 0, 0, 2, 0, 0)
-            done.append('popis Q')
-        # brojaci posudbi u bloku mog kluba (uzorak Dowman: +746,+747,+749 +1; +752,+756,+760 +2 s opcijom otkupa)
-        my2 = self.club_offset()
-        for off_, inc_ in ():   # pc202: NE dirati. +746..+760 su bodovi/odigrano/W/D/L/GF/GA u tablici lige (u starim uzorcima je izmedu saveova odigrana utakmica); igra ih pri posudbi ne mijenja (Moonan P0/P2, Arsenal 60 MB)
-            if d[my2 + off_] < 250:
-                d[my2 + off_] += inc_
-        done.append('club counters')
-        # tablica ugovora: nativna posudba BEZ opcije otkupa nema red (uzorak Allen), samo posudba S opcijom ima red (uzorak Dowman)
-        crow = option if option else dict(wage=sal, release=fee * 12, end=endc)
-        if option:
-            kk = None
-            for k in range(0, 60):
-                o = e2 + 44 + 48 * k
-                if (struct.unpack_from('<I', d, o)[0] >> 24) != 0x90:
-                    kk = k
-                    break
-            if kk is not None:
-                o = e2 + 44 + 48 * kk
-                struct.pack_into('<IIIII', d, o, tag, pid, crow['wage'] // 100, crow['release'] // 100, crow['end'])
-                done.append('buy option contract row')
-            if option and opt_row:
-                o = e2 + self.OPT0
-                empty = all(bytes(d[o + 12 * j:o + 12 * j + 2]) == b'\xff\xff' and bytes(d[o + 12 * j + 4:o + 12 * j + 6]) == b'\xff\xff' for j in range(3))
-                if empty:
-                    struct.pack_into('<IIIIIIIII', d, o, 0xffff, 0, 0x1409, 0x30, 1, option['buy'] // 100, 0x32, 0xffff, 0)
-                    done.append('red opcije otkupa')
-        return 'posuden %d do %s (%s); %s' % (pid, hex(end_code), ', '.join(done), msg)
-
-
     # ---- posudba U MOJ klub kao NATIVNI "dogovoreni" posao (uzorci Doak/Kroupi/Gavi, Man City 2026-10-12): igra posudbu dovrsi sama na dan prijelaza
     @staticmethod
     def _next_day_code(code):
@@ -3353,27 +3133,6 @@ class Save:
                 out.update(bonus_app=a_[1], bonus_goal=b_[1], bonus_win=c_[1])
                 break
         return out
-
-    def deal_layout(self):
-        """Redovi dogovora u repu: FL26 ima kod kupca (moj klub) na +4 i prodavatelja na +28; vanilla PES 2021 obrnuto
-        (prodavatelj/vlasnik na +4, moj klub na +28). -> 'buyer_first' | 'seller_first' | 'unknown'."""
-        try:
-            my = self.my_club_code()
-            _ch, e2 = self._chunks()
-            mb = e2 + self.META0
-            a = b = 0
-            for j in range(-60, 60):
-                o = mb + 60 * j
-                if o < 0 or o + 60 > len(self.d) or self.d[o:o + 2] == b'\xff\xff':
-                    continue
-                p4, p28 = struct.unpack_from('<I', self.d, o + 4)[0], struct.unpack_from('<I', self.d, o + 28)[0]
-                if p28 == my and p4 != my:
-                    a += 1
-                elif p4 == my and p28 != my:
-                    b += 1
-            return 'seller_first' if a > b else 'buyer_first' if b else 'unknown'
-        except Exception:
-            return 'unknown'
 
     def my_club_code(self):
         """Kod mog kluba (owner kod u zapisima igraca iz mog sastava, najcesci)."""
@@ -3508,10 +3267,6 @@ class Save:
         raise ValueError('Nothing was written: the club-response table in this save does not look as expected (counter %d, row %d is taken). '
                          'Workaround: send the loan offer in the game, save, then use "Finish offer sent in game" here (or do the loan in the game). '
                          'Please send this save file to the app author so it can be supported.' % (cnt, idx))
-
-    def _s16_next(self):
-        """Klasicni format: sljedeci red S16 (k, red 0 na 12488832)."""
-        return self._s16_slot()[2]
 
     def loan_in_pending(self, pid, fee, end_code, today=None, s16=True, option=None, native=False, multi=False):
         """Upisuje SAMO stanje 'dogovoreno, igrac dolazi sutra' (status 4) kao da je klub prihvatio ponudu za posudbu; zapis igraca se ne dira,
@@ -3714,17 +3469,8 @@ class Save:
         Igra posudbu sama dovrsi pri sljedecem danu simulacije."""
         d = self.d
         if self.fmt60 and option:
-            # pc247: modul testera 60 MB (Report 04), beta; ukljucuje se samo uz config.json "loan_opt60_beta": true (odvojeno od free60_beta)
-            if not getattr(self, '_opt60_ok', False):
-                raise ValueError('On the 60 MB save format a loan with an option to buy is still a beta (a plain loan works). Turn it on in config.json ("loan_opt60_beta": true) or do this one in the game. The save was not touched.')
-            if multi:
-                raise ValueError('On the 60 MB save format only one option loan at a time is supported (beta). The save was not touched.')
-            import fl26_optionloan60 as _option60
-            info = _option60.queue_new_option(self, sys.modules[__name__], pid, fee, end_code, option)
-            self._allow = list(getattr(self, '_allow', [])) + info['ranges']
-            self._beta_write = True
-            return 'dogovoreno %d: posudba s opcijom otkupa (60 MB beta), dolazi %s do %s (dogovor %d, uvjeti %d, opcija %d)' % (
-                pid, hex(info['arrival_date']), hex(end_code), info['deal_serial'], info['term_serial'], info['option_id'])
+            # PES 2017 build: the 60 MB FL26 option-loan module was removed (a plain loan still works).
+            raise ValueError('On the 60 MB FL26 format a loan with an option to buy is not supported in this PES 2017 build. The save was not touched.')
         chunks, e2 = self._chunks()
         big = b''.join(chunks)
         pat = struct.pack('<I', pid)
@@ -6008,82 +5754,6 @@ class Save:
         struct.pack_into('<I', d, cur + 36, sal)
         struct.pack_into('<I', d, cur + 44, endc)
         self._allow = list(getattr(self, '_allow', [])) + [(cur + 36, cur + 48)]
-        self._beta_write = True
-        return 'contract extended: %d until %d/%d, wage %d EUR' % (pid, end_month, end_year, salary)
-
-    def _extend_fl27(self, pid, sal, endc, end_month, end_year, salary):
-        """pc274: FL27 produljenje kao u igri (izmjereno: James McConnell, Liverpool, 25.8.2026; saveovi: ponuda poslana, igrac pristao,
-        potvrdeno). Pri potvrdi igra: zapis igraca (placa, kraj; vec napravljeno u extend_contract), novi red uvjeta T
-        [ser, moj klub, status 4, danas, ff*8, ffff, tag, id, placa, klauzula, kraj], stari red ugovora (status 5) -> status 7,
-        red dogadjaja 0x70 (tag, id, danas). Lista za izvrsenje se ne dira."""
-        d = self.d
-        _ch, e = self._chunks()
-        tag = self.my_squad_tags()[pid]
-        pr = struct.pack('<II', tag, pid)
-        cbase = e + 16
-        crows, k, cur = [], 0, None
-        while bytes(d[cbase + 48 * k + 4:cbase + 48 * k + 8]) != b'\xff\xff\xff\xff':
-            row = bytes(d[cbase + 48 * k:cbase + 48 * k + 48])
-            if row[28:36] == pr:
-                if row[8] in (1, 2, 3, 4):
-                    raise ValueError('There is already a contract offer for this player in the game. Finish or cancel it in the game. The save was not touched.')
-                if row[8] == 5:
-                    cur = len(crows)
-            crows.append(row)
-            k += 1
-            if k > 200:
-                raise ValueError('terms table: no end')
-        if cur is None:
-            raise ValueError('current contract of this player not found in the save; extend him in the game. The save was not touched.')
-        rel = struct.unpack_from('<I', crows[cur], 40)[0]
-        today = self.game_date_code()
-        mbase = e + 54736
-        used = {struct.unpack_from('<H', x, 0)[0] for x in crows}
-        for j in range(110):
-            sv = struct.unpack_from('<H', d, mbase + 60 * j)[0]
-            if sv not in (0, 0xffff):
-                used.add(sv)
-        for j in range(40):
-            v = struct.unpack_from('<H', d, e + self.SERLIST + 2 * j)[0]
-            if v != 0xffff:
-                used.add(v)
-        # pc274: igra daje najmanji slobodni serijski (McConnell 0x08, posudba Fredrick 0x22); max+1 je na testu (Bradley) zapeo pri spremanju
-        ser = next(v for v in range(0, 0x400) if v not in used)
-        ent = next((self.ENT0 + 56 * j for j in range(40) if d[self.ENT0 + 56 * j] == 0xff), None)
-        if ent is None:
-            raise ValueError('event log is full; advance a day in the game and try again')
-        old = bytearray(crows[cur])
-        old[8] = 7
-        crows[cur] = bytes(old)
-        mycode = struct.unpack_from('<I', d, self.club_offset() - 4)[0]
-        nr = struct.pack('<HHIII', ser, 0, mycode, 4, today) + b'\xff' * 8 + struct.pack('<IIIIII', 0xffff, tag, pid, sal, rel, endc)
-        allc = sorted(crows + [nr], key=lambda x: struct.unpack_from('<H', x, 0)[0])
-        if bytes(d[cbase + 48 * len(allc) + 4:cbase + 48 * len(allc) + 8]) != b'\xff\xff\xff\xff' and \
-                struct.unpack_from('<H', d, cbase + 48 * len(allc))[0] != 0xffff:
-            raise ValueError('terms table is full')
-        for n_, rb in enumerate(allc):
-            d[cbase + 48 * n_:cbase + 48 * n_ + 48] = rb
-        d[ent:ent + 56] = struct.pack('<III', 0x70, tag, pid) + bytes.fromhex(
-            'ffff000000000000ffff000000000000ffffffffffff0000ffffffff00000000ffff0000ffff0000') + struct.pack('<I', today)
-        # pc274: igra pri potvrdi upise DVA dogadjaja: 0x70 i odmah iza njega 0x40 (McConnell redovi 3 i 4); bez 0x40 igra novi ugovor
-        # ne potvrdi nego ga obrise (test Bradley, slot 9)
-        ent2 = next((self.ENT0 + 56 * j for j in range(60) if d[self.ENT0 + 56 * j] == 0xff), None)
-        if ent2 is None:
-            raise ValueError('event log is full; advance a day in the game and try again')
-        d[ent2:ent2 + 56] = struct.pack('<III', 0x40, tag, pid) + bytes.fromhex(
-            'ffff000000000000ffff000000000000ffffffffffff0000ffffffff00000000ffff0000ffff0000') + struct.pack('<I', today)
-        # pc274: kad igrac pristane, igra upise S16 red 0x1b (kao kod kupnje) i poveca brojac; bez njega igra sljedeci dan obrise
-        # i novi i stari red ugovora (test Bradley, slot 8: nema reda, klauzula '-', prazan komentar direktora)
-        S16, CNT, k16 = self._s16_slot()
-        o16 = S16 + 80 * k16
-        row = struct.pack('<IIIIIIIII', 0x1b, today, 3, 0xff, 1, 0, 0xffffffff, 0xffff, 0xffffffff) + struct.pack('<II', tag, pid) + \
-            bytes.fromhex('ffff000000000000ffff0000000000000000000000000000ff00ffffffff0000')
-        d[o16 + 4:o16 + 80] = row
-        if o16 + 80 < S16 + 80 * 112:
-            d[o16 + 80:o16 + 84] = bytes.fromhex('09414100')
-        struct.pack_into('<I', d, CNT, struct.unpack_from('<I', d, CNT)[0] + 1)
-        self._allow = list(getattr(self, '_allow', [])) + [(ent, ent + 56), (ent2, ent2 + 56), (cbase, cbase + 48 * (len(allc) + 1)),
-                                                            (o16, o16 + 84), (CNT, CNT + 4)]
         self._beta_write = True
         return 'contract extended: %d until %d/%d, wage %d EUR' % (pid, end_month, end_year, salary)
 
