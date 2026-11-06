@@ -1,0 +1,11 @@
+# Bytecode / caches created by running the app locally.
+__pycache__/
+*.pyc
+*.pyo
+
+# Local runtime state written next to the program on first run
+# (holds this machine's PES 2017 save-folder path).
+config.json
+_dev_work/
+
+.DS_Store
