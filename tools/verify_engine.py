@@ -269,9 +269,33 @@ def run(verbose=False, quick=False):
         check('engine reuses the existing lineup AI', 'ailineup' in imports)
         check('engine reuses the existing form algorithm', 'formengine' in imports)
         check('engine reuses the credited valuation curve', 'revalue' in imports)
-        check('engine reuses the pure assignment helpers', 'mlwrite' in imports)
-        pes = imports & {'mlsave', 'pescrypt', 'pes17', 'pes17_write', 'mlwrite_save'}
-        check('engine never imports PES save machinery', not pes, str(sorted(pes)))
+        check('engine reuses the pure assignment helpers', 'pitch' in imports)
+        # Transitive: the engine's own imports AND everything they pull in.
+        banned_mods = {'mlsave', 'mlwrite', 'pescrypt', 'pes17', 'pes17_write',
+                       'pes17_layout', 'pes17_pairs', 'pes17_setup', 'dbimport',
+                       'facemap', 'layoutscan', 'loanscan', 'savediff', 'seasonstats',
+                       'kitsponsor', 'gamemem', 'coaches', 'bc7', 'dds', 'ftex'}
+        seen, todo, edges = set(), list(imports), {}
+        libdir = os.path.join(HERE, 'lib')
+        while todo:
+            m = todo.pop()
+            if m in seen:
+                continue
+            seen.add(m)
+            fp = os.path.join(libdir, m + '.py')
+            if not os.path.isfile(fp):
+                continue
+            for dep in _file_imports(fp):
+                edges.setdefault(dep, set()).add(m)
+                if dep not in seen:
+                    todo.append(dep)
+        gone = sorted(banned_mods & seen)
+        check('no PES save machinery anywhere in the engine import closure',
+              not gone, ', '.join('%s via %s' % (g, sorted(edges.get(g, {'(direct)'}))) for g in gone))
+        check('the deleted PES modules are really absent from lib/',
+              not [m for m in banned_mods if os.path.isfile(os.path.join(libdir, m + '.py'))])
+        check('the server imports no PES module',
+              not (_file_imports(os.path.join(HERE, 'server.py')) & banned_mods))
         check('match simulation reads EA\'s 34 raw attributes',
               'ea_attrs' in _source(os.path.join(HERE, 'lib', 'engine', 'match.py')))
 
@@ -377,8 +401,8 @@ def run(verbose=False, quick=False):
               all(15 <= RS.age(r, p) <= 22 for p in gen))
         check('generated players have 34 EA attributes',
               all(len(RS.ea_of(r, p)) == 34 for p in gen))
-        check('generated players project to 25 PES attributes',
-              all(len(RS.pes_attrs(r, p)) == 25 for p in gen))
+        check('generated players project to the 25-attribute row',
+              all(len(RS.ab25_attrs(r, p)) == 25 for p in gen))
         check('generated ids stay above the real id space',
               all(int(p) >= RO.NEW_PID_BASE for p in gen))
         check('generated youth can be selected and simulated',
@@ -404,11 +428,11 @@ def run(verbose=False, quick=False):
               _single_pool(mn[:120], pools, 0))
         # Compact codecs must round-trip, and still read the legacy shape.
         od = {'Speed': 3, 'Finishing': -2}
-        enc = RS.encode_named(od, RS.PES_AB)
-        check('attribute codec round-trips', RS.decode_named(enc, RS.PES_AB) == od)
-        check('attribute codec reads a legacy dict', RS.decode_named(od, RS.PES_AB) == od)
+        enc = RS.encode_named(od, RS.AB25)
+        check('attribute codec round-trips', RS.decode_named(enc, RS.AB25) == od)
+        check('attribute codec reads a legacy dict', RS.decode_named(od, RS.AB25) == od)
         check('empty progress is not stored',
-              RS.encode_named({}, RS.PES_AB) is None)
+              RS.encode_named({}, RS.AB25) is None)
         check('rollover survives a save/reload round trip',
               _roundtrip(engine, store, r, 'verify-roll'))
         # A second season must actually be playable, and the world must not
@@ -591,18 +615,24 @@ def _no_duplicates(st):
     return True
 
 
+def _file_imports(path):
+    """Actual import statements in one file, not docstring mentions."""
+    out = set()
+    tree = ast.parse(open(path, encoding='utf-8').read())
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            out.update(a.name.split('.')[0] for a in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+            out.add(node.module.split('.')[0])
+    return out
+
+
 def _imports(folder):
-    """Actual import statements, not docstring mentions of a module name."""
+    """Actual import statements across a folder, not docstring mentions."""
     out = set()
     for f in os.listdir(folder):
-        if not f.endswith('.py'):
-            continue
-        tree = ast.parse(open(os.path.join(folder, f), encoding='utf-8').read())
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                out.update(a.name.split('.')[0] for a in node.names)
-            elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
-                out.add(node.module.split('.')[0])
+        if f.endswith('.py'):
+            out |= _file_imports(os.path.join(folder, f))
     return out
 
 

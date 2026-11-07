@@ -85,7 +85,7 @@ const EA_POS = {
 };
 const POSN = ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'LMF', 'RMF', 'AMF', 'LWF', 'RWF', 'SS', 'CF'];
 
-// lib/dbimport.py AB order (25 PES attributes) <- FC 27 field names
+// AB order (the legacy 25 attributes) <- FC 27 field names
 const AB = ['OffensiveAwareness', 'BallControl', 'Dribbling', 'TightPossession', 'LowPass',
   'LoftedPass', 'Finishing', 'Heading', 'PlaceKicking', 'Curl', 'Speed', 'Acceleration',
   'KickingPower', 'Jump', 'PhysicalContact', 'Balance', 'Stamina', 'DefensiveAwareness',
@@ -96,12 +96,12 @@ const AB_SRC = ['positioning', 'ballcontrol', 'dribbling', '@tight', 'shortpassi
   'defensiveawareness', 'standingtackle', 'aggression', 'gkpositioning', 'gkhandling',
   'gkkicking', 'gkreflexes', 'gkdiving'];
 
-// EA's own attribute set, kept RAW and lossless alongside the PES 25 above.
-// The PES mapping is lossy: it has no slot for crossing, volleys, reactions,
+// EA's own attribute set, kept RAW and lossless alongside the legacy 25 above.
+// The 25-attribute mapping is lossy: it has no slot for crossing, volleys, reactions,
 // longshots, interceptions, vision, penalties, composure or slidingtackle, and
 // it blends agility into TightPossession. A match engine wants the real values
 // (an interceptor and a slider are not the same defender), so both are shipped:
-// the PES 25 keep the existing algorithms working, ea_attrs feeds the engine.
+// the legacy 25 keep the growth algorithm working, ea_attrs feeds the engine.
 const EA_ATTRS = ['crossing', 'finishing', 'headingaccuracy', 'shortpassing', 'volleys',
   'dribbling', 'curve', 'freekickaccuracy', 'longpassing', 'ballcontrol', 'acceleration',
   'sprintspeed', 'agility', 'reactions', 'balance', 'shotpower', 'jumping', 'stamina',
@@ -282,7 +282,7 @@ for (const p of T.players) {
   eaAttrs[String(pid)] = EA_ATTRS.map(k => Number(p[k]) || 0);
 
   // formations.json slots are EA position ids (4 = RCB, 11 = LDM, 25 = ST...).
-  // The PES 13-slot projection collapses those (RCB/LCB/CB -> CB), so matching a
+  // The legacy 13-slot projection collapses those (RCB/LCB/CB -> CB), so matching a
   // player to a formation slot needs the raw list, in preference order.
   eaPos[String(pid)] = [1, 2, 3, 4, 5, 6, 7]
     .map(i => p['preferredposition' + i])
@@ -935,7 +935,7 @@ w('fc27_meta.json', {
   skipped: { noName, noClub, womenPlayers: women },
   posn: POSN, ab: AB, abSource: AB_SRC, eaPos: EA_POS,
   eaAttrs: EA_ATTRS,
-  eaPositionsNote: 'ea_positions.json holds raw EA slot ids in preference order; formations.json uses the same enum but side-specific slots. Use its slotCompat map to collapse a formation slot to the coarse id a player can hold. positions.json/playpos.json are the lossy PES 13-slot projection.',
+  eaPositionsNote: 'ea_positions.json holds raw EA slot ids in preference order; formations.json uses the same enum but side-specific slots. Use its slotCompat map to collapse a formation slot to the coarse id a player can hold. positions.json/playpos.json are the lossy legacy 13-slot projection.',
   slotCompat: SLOT_COMPAT,
   nationalTeams: Object.keys(natTeams).length,
   teamsheets: Object.keys(teamsheets).length,
@@ -972,8 +972,8 @@ w('fc27_meta.json', {
   attrIdSpaceNote: 'ovr_weights.json and playstyles.json reference EA\'s internal attribute enum, which is NOT the ea_attrs.json field order and could not be resolved (identity mapping tops only 29% of players in their own position; best fit 48% with impossible assignments). Ids are shipped raw and unmapped; the star bands in ovr_weights.json are rating-based and safe to use.',
   traitsNote: 'trait1/trait2 remain RAW: no defensible mapping to playstyle ids was found (best F1 0.32 across every bit/requirement pairing), so playstyles.json ships unlock thresholds only',
   calendarNote: 'transfer windows are month/day; template absolute dates are a 2008 placeholder and are not shipped',
-  eaAttrsNote: 'raw EA values, lossless; the PES 25 in ratings.json are a lossy projection kept for the existing algorithms',
-  pesProjectionDrops: ['crossing', 'volleys', 'reactions', 'longshots', 'interceptions',
+  eaAttrsNote: 'raw EA values, lossless; the legacy 25 in ratings.json are a lossy projection kept for the growth algorithm',
+  ab25ProjectionDrops: ['crossing', 'volleys', 'reactions', 'longshots', 'interceptions',
     'vision', 'penalties', 'composure', 'slidingtackle', 'agility (blended into TightPossession)'],
   birthEpoch: '1582-10-14', foot: { 1: 'R', 2: 'L' },
 });
@@ -998,7 +998,7 @@ for (const id of [158023, 20801, 231747, 202126, 192985, 239085, 203376]) {
 const sizes = Object.entries(squadObj).map(([k, v]) => [TN.get(Number(k)), v.length]).sort((a, b) => b[1] - a[1]);
 console.log('\nlargest squads:', sizes.slice(0, 5).map(x => x.join('=')).join(', '));
 console.log('smallest squads:', sizes.slice(-5).map(x => x.join('=')).join(', '));
-console.log('  ea attrs   %d players x %d raw EA attributes (%d dropped by the PES-25 projection)',
+console.log('  ea attrs   %d players x %d raw EA attributes (%d dropped by the 25-attribute projection)',
   Object.keys(eaAttrs).length, EA_ATTRS.length, 10);
 console.log('  ea pos     %d players | national teams %d (%d capped players)',
   Object.keys(eaPos).length, Object.keys(natTeams).length,

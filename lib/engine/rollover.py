@@ -91,7 +91,7 @@ def develop(st, tid, pid, months=MONTHS_PER_SEASON, period=None):
     if age <= YOUTH_TRAIN_AGE and share < YOUTH_TRAIN_SHARE:
         share = YOUTH_TRAIN_SHARE
         rating = max(rating, NEUTRAL_RATING)
-    attrs = R.pes_attrs(st, pid)
+    attrs = R.ab25_attrs(st, pid)
     prog = R.prog_of(st, pid)
     live = dict(attrs=attrs, form=row[S.P_FORM], aff=200, inj=0, _prog=prog)
     settings = growth.settings_for(pid, pos, (st.get('training') or {}))

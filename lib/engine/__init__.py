@@ -1,8 +1,8 @@
 """The FC 27 career engine - a separate game with its own save.
 
 This package is the engine the FC 27 database was prepared for.  It is
-deliberately independent of the PES career: it never reads or writes a PES save,
-never needs mlsave/mlwrite state, and keeps its own JSON careers under
+self-contained: it reads the FC 27 database for static facts and keeps its own
+JSON careers under
 data/saves/.  The database (lib/fc27.py) supplies static facts; everything that
 changes during a career lives in the save.
 
@@ -15,11 +15,11 @@ changes during a career lives in the save.
 
 Existing, credited algorithms are reused rather than reimplemented:
   lib/ailineup    how many changes to make for a big/normal/low match
-  lib/mlwrite     position-distance matrix + Hungarian assignment (pure helpers)
+  lib/pitch       position-distance matrix + Hungarian assignment (pure maths)
   lib/formengine  the 0-7 Form level from real match ratings
   lib/revalue     the valuation curve used to seed market values
 
-Match simulation uses EA's 34 raw attributes, because the 25-attribute PES
+Match simulation uses EA's 34 raw attributes, because the legacy 25-attribute
 projection drops nine match-relevant fields (see lib/fc27.py).
 """
 from . import store as _save

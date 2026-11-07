@@ -1,6 +1,6 @@
 """Bridge between EA's 28-id position enum and the app's 13-role POSN space.
 
-The existing algorithms (ailineup, mlwrite.DIST, formengine) all speak the
+The existing algorithms (ailineup, pitch.DIST, formengine) all speak the
 13-role POSN space: GK CB LB RB DMF CMF LMF RMF AMF LWF RWF SS CF.  The FC 27
 data speaks EA's 28-id enum, which is finer (RCB/LCB, RDM/CDM/LDM, RS/ST/LS).
 

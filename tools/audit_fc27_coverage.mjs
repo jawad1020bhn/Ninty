@@ -229,7 +229,7 @@ out.push('');
 out.push('KNOWN LIMITATIONS OF WHAT IS SHIPPED');
 out.push('-'.repeat(60));
 out.push('See NOTICE.txt for provenance and licensing. In summary:');
-out.push('  - ratings.json is a LOSSY PES-25 projection; use ea_attrs.json (34 raw).');
+out.push('  - ratings.json is a LOSSY 25-attribute projection; use ea_attrs.json (34 raw).');
 out.push('  - formation slots are side-specific, player positions are coarse; bridge');
 out.push('    them with ea_positions.json slotCompat (7887/7887 starters fit).');
 out.push('  - ovr_weights.json / playstyles.json attribute ids use an UNRESOLVED EA');

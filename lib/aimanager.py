@@ -97,15 +97,19 @@ def mood_of(f):
     return None
 
 
+def _match_order(m):
+    """Chronological order of a match record (year, month, day, number)."""
+    return (m['y'], m['m'], m['dd'], m['n'])
+
+
 def form_table(M, max_idx=750):
     """club idx -> chronological [(gf, ga)] za odigrane utakmice zadnje sezone."""
-    import seasonstats
     ms = [m for m in M['matches'] if m['played'] and m['home'] != m['away'] and m['home'] < max_idx and m['away'] < max_idx]
     if not ms:
         return {}
     season = max(m['season'] for m in ms)
     out = {}
-    for m in sorted(ms, key=seasonstats.sort_key):
+    for m in sorted(ms, key=_match_order):
         if m['season'] != season:
             continue
         gh = (m['sc'][0] if m.get('sc') else sum(r[2] for r in m['rows'] if r[1] == m['home']))
@@ -130,7 +134,7 @@ def form_of(res):
 
 
 def plan(clubs, forms, state, daynum, seed, skip=()):
-    """clubs: aitransfers.load_clubs (idx -> dict(tier,players,name,...)); state: {str(idx): dict(p, mood, day)}.
+    """clubs: aitransfers.ai_world (idx -> dict(tier,players,name,...)); state: {str(idx): dict(p, mood, day)}.
     Vraca (promjene, novo stanje). Promjena = dict(idx, name, kind, prof_from, prof_to, mood_from, mood_to, tactics)."""
     changes = []
     new = {k: dict(v) for k, v in state.items()}

@@ -76,13 +76,13 @@ slot_compat() to compare them - fits_slot() does it for you. Comparing raw ids
 directly leaves 1998 of 7887 designated starters unable to fill their own
 club's formation; with the map, all 7887 fit.
 
-About the two attribute sets: ratings.json carries the 25 PES attributes the
+About the two attribute sets: ratings.json carries the legacy 25 attributes the
 existing algorithms read, which is a LOSSY projection of EA's data - it has no
 slot for crossing, volleys, reactions, longshots, interceptions, vision,
 penalties, composure or slidingtackle, and it blends agility into
 TightPossession. ea_attrs.json keeps EA's 34 values raw and unblended, so a
 match engine can tell an interceptor from a slider. Prefer ea_attrs for
-simulation; the PES 25 exist for backwards compatibility.
+simulation; the legacy 25 exist for backwards compatibility.
 
 The first six files are the same schema the existing algorithms already read
 through server._dbf(), so market/growth/negotiate/aitransfers keep working
@@ -399,7 +399,7 @@ def ea_ab():
 def ea_attrs(pid=None):
     """Raw EA attributes. With pid, a {name: value} dict; else the whole table.
 
-    These are lossless. The 25 PES attributes in ratings() are a projection of
+    These are lossless. The legacy 25 attributes in ratings() are a projection of
     this data and drop nine match-relevant fields.
     """
     tbl = (_load('ea_attrs.json', {}) or {}).get('p', {}) or {}

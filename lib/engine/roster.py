@@ -11,7 +11,7 @@ Every engine module resolves player facts through HERE, so a generated player is
 a first-class citizen. The database is still the source of truth for real ones;
 this layer only adds the save's own players and its attribute overlay.
 
-The EA->PES projection below mirrors tools/import_fc27.mjs exactly, including the
+The EA->25-attribute projection below mirrors tools/import_fc27.mjs exactly, including the
 TightPossession blend, so a generated player's 25-attribute row is computed the
 same way as a real one's.
 """
@@ -21,7 +21,7 @@ import fc27
 from . import store as S
 
 # Same order and sources as the importer's AB / AB_SRC.
-PES_AB = ['OffensiveAwareness', 'BallControl', 'Dribbling', 'TightPossession', 'LowPass',
+AB25 = ['OffensiveAwareness', 'BallControl', 'Dribbling', 'TightPossession', 'LowPass',
           'LoftedPass', 'Finishing', 'Heading', 'PlaceKicking', 'Curl', 'Speed',
           'Acceleration', 'KickingPower', 'Jump', 'PhysicalContact', 'Balance',
           'Stamina', 'DefensiveAwareness', 'BallWinning', 'Aggression', 'GKAwareness',
@@ -37,8 +37,8 @@ def _clamp(v, lo=1, hi=99):
     return max(lo, min(hi, int(round(v))))
 
 
-def project_pes(ea):
-    """EA attribute dict -> the 25 PES values, exactly as the importer does."""
+def project_ab25(ea):
+    """EA attribute dict -> the 25 legacy values, exactly as the importer does."""
     out = []
     for k in AB_SRC:
         if k == '@tight':
@@ -52,8 +52,8 @@ def project_pes(ea):
 
 # --- compact save codecs -------------------------------------------------
 # A career develops ~19,000 players a season. Storing each one's progress as a
-# dict of 25 PES attribute NAMES cost 5.92 MB after one season and 7.12 MB after
-# three. The names are identical for every player and already fixed by PES_AB,
+# dict of 25 legacy attribute NAMES cost 5.92 MB after one season and 7.12 MB after
+# three. The names are identical for every player and already fixed by AB25,
 # so the save stores a positional list instead: 2.49 MB for the same data.
 # Decoders accept both shapes, so an older save still loads.
 
@@ -78,13 +78,13 @@ def encode_named(d, names, ndigits=None):
 
 def prog_of(st, pid):
     """A player's carried sub-point growth progress, as attr->float."""
-    return decode_named((st.get('growthProg') or {}).get(str(int(pid))), PES_AB)
+    return decode_named((st.get('growthProg') or {}).get(str(int(pid))), AB25)
 
 
 def set_prog(st, pid, prog):
     """Store growth progress compactly; drop the row entirely when empty."""
     tbl = st.setdefault('growthProg', {})
-    enc = encode_named(prog, PES_AB, ndigits=3)
+    enc = encode_named(prog, AB25, ndigits=3)
     if enc is None:
         tbl.pop(str(int(pid)), None)
     else:
@@ -92,13 +92,13 @@ def set_prog(st, pid, prog):
 
 
 def overlay_of(st, pid):
-    """A player's accumulated attribute deltas, as PES attr->int."""
-    return decode_named((st.get('attrOverlay') or {}).get(str(int(pid))), PES_AB)
+    """A player's accumulated attribute deltas, as legacy attr->int."""
+    return decode_named((st.get('attrOverlay') or {}).get(str(int(pid))), AB25)
 
 
 def set_overlay(st, pid, ov):
     tbl = st.setdefault('attrOverlay', {})
-    enc = encode_named({k: v for k, v in ov.items() if v}, PES_AB)
+    enc = encode_named({k: v for k, v in ov.items() if v}, AB25)
     if enc is None:
         tbl.pop(str(int(pid)), None)
     else:
@@ -188,7 +188,7 @@ def ea_attrs(st, pid):
     """EA's 34 raw attributes as a name->value dict, including career growth.
 
     For real players the base is the database; the save's overlay is expressed
-    in PES attribute names (that is what lib/growth produces), so it is mapped
+    in legacy attribute names (that is what lib/growth produces), so it is mapped
     back onto the EA fields that project to them.
     """
     g = generated(st, pid)
@@ -197,7 +197,7 @@ def ea_attrs(st, pid):
         base = {k: 50 for k in fc27.ea_ab()}
     ov = overlay_of(st, pid)
     if ov:
-        for i, pes_name in enumerate(PES_AB):
+        for i, pes_name in enumerate(AB25):
             d = int(ov.get(pes_name, 0))
             if not d:
                 continue
@@ -210,17 +210,17 @@ def ea_attrs(st, pid):
     return base
 
 
-def pes_attrs(st, pid):
-    """The 25 PES attributes as name->value, with career growth applied."""
+def ab25_attrs(st, pid):
+    """The legacy 25 attributes as name->value, with career growth applied."""
     g = generated(st, pid)
     if g:
-        vals = project_pes(ea_of(st, pid))
+        vals = project_ab25(ea_of(st, pid))
     else:
         row = fc27.ratings().get(str(int(pid)))
         vals = list(row[10]) if row else [50] * 25
     ov = overlay_of(st, pid)
     return {n: max(1, min(99, vals[i] + int(ov.get(n, 0))))
-            for i, n in enumerate(PES_AB)}
+            for i, n in enumerate(AB25)}
 
 
 def base_ovr(st, pid):

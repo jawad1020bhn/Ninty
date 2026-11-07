@@ -1,11 +1,11 @@
-"""The FC 27 career save: the engine's own state, independent of any PES file.
+"""The FC 27 career save: the engine's own state, independent of any external save file.
 
 Design rule: the database is authoritative for STATIC facts (names, attributes,
 nationality, birthday, stadium, formation shape).  The save holds only what the
 career CHANGES.  That keeps saves small, makes a database update non-destructive,
 and means there is exactly one source of truth for each fact.
 
-Nothing here reads or writes a PES save.  lib/mlsave.py and lib/mlwrite.py are
+Nothing here reads or writes any other game's save.  The old save machinery is
 not imported for storage; the engine's state is plain JSON under data/saves/.
 
 Player rows are compact arrays, matching the convention of data/fc27/ratings.json.

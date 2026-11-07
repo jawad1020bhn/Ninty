@@ -5,7 +5,7 @@ tables, minutes, discipline and injuries.  Static facts stay in the database.
 
 Form is NOT recomputed with a new formula.  Each result is appended to a
 per-player recent-ratings list and lib/formengine.compute derives the 0-7 Form
-level exactly as it does for the PES career, so the UI keeps its existing
+level exactly as it does for the club tables, so a client keeps its existing
 meaning.
 """
 import datetime

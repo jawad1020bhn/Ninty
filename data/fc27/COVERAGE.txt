@@ -183,7 +183,7 @@ importer exits non-zero if any allowlisted table is missing or empty.
 KNOWN LIMITATIONS OF WHAT IS SHIPPED
 ------------------------------------------------------------
 See NOTICE.txt for provenance and licensing. In summary:
-  - ratings.json is a LOSSY PES-25 projection; use ea_attrs.json (34 raw).
+  - ratings.json is a LOSSY 25-attribute projection; use ea_attrs.json (34 raw).
   - formation slots are side-specific, player positions are coarse; bridge
     them with ea_positions.json slotCompat (7887/7887 starters fit).
   - ovr_weights.json / playstyles.json attribute ids use an UNRESOLVED EA

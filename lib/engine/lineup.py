@@ -2,8 +2,8 @@
 
 This does NOT reimplement selection logic.  lib/ailineup.py already decides how
 many changes to make for a big/normal/low-importance match and how to rest
-players in a congested spell; lib/mlwrite.py supplies the position-distance
-matrix and a min-cost assignment.  Both are pure functions with no PES coupling,
+players in a congested spell; lib/pitch.py supplies the position-distance
+matrix and a min-cost assignment.  Both are pure functions with no save-format coupling,
 so the engine drives them directly.
 
 Two stages:
@@ -16,7 +16,7 @@ Two stages:
 
 import ailineup
 import fc27
-import mlwrite
+import pitch
 
 from . import store as S
 from . import roster as R
@@ -93,8 +93,8 @@ def base_xi(st, tid, pids=None, date=None):
     # for being better; rating only breaks ties between equally legal options.
     cost = []
     for role in roles:
-        cost.append([mlwrite.DIST[role][p['pos']] * 100 - p['ovr'] for p in rows])
-    cols = mlwrite.hungarian(cost)
+        cost.append([pitch.DIST[role][p['pos']] * 100 - p['ovr'] for p in rows])
+    cols = pitch.hungarian(cost)
     xi = [rows[c]['pid'] for c in cols]
     used = set(xi)
     rest = [p for p in sorted(rows, key=lambda r: -r['ovr']) if p['pid'] not in used]
@@ -149,7 +149,7 @@ def select(st, tid, opp=None, kind='league', congested=False):
     by_pid = {r['pid']: r['i'] for r in rows}
     cur = [by_pid[p] for p in xi]
     if len(rows) >= 14 and any(r['pos'] == 0 for r in rows):
-        xi_i, bench_i = ailineup.pick_xi(roles, rows, mlwrite.DIST, level,
+        xi_i, bench_i = ailineup.pick_xi(roles, rows, pitch.DIST, level,
                                          congested, '%s|%s|%s' % (st.get('seed', 1), tid, date), cur)
         xi = [rows[i]['pid'] for i in xi_i]
         bench = [rows[i]['pid'] for i in bench_i]

@@ -1,6 +1,6 @@
 """Match simulation for the FC 27 engine.
 
-Uses EA's 34 RAW attributes (fc27.ea_attrs), not the 25-attribute PES projection:
+Uses EA's 34 RAW attributes (fc27.ea_attrs), not the legacy 25-attribute projection:
 the projection has no slot for interceptions, vision, reactions, composure,
 crossing, volleys, longshots, penalties or slidingtackle, so a defence built from
 it cannot tell an interceptor from a slider.  See lib/fc27.py.

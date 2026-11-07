@@ -1,13 +1,14 @@
-THE GAFFER pc414 - FC 27 DATABASE BUILD r12
+THE GAFFER pc414 - FC 27 STANDALONE CAREER BUILD r23
 ===========================================
 
 This folder is The Gaffer pc414.  It is a private, modified build for personal
 use; please respect the original FREE TO USE terms of The Gaffer (do not
 reupload or publish this as your own work).
 
-r12 begins the move from a PES save-file companion to a standalone game:
-EA SPORTS FC 27 is now the only game and supplies the player database.
-See FC 27 DATABASE below for what is wired and what is NOT yet done.
+EA SPORTS FC 27 is the only game.  r23 removed the old PES/FL26 save-file
+backend entirely: this is now a standalone career simulation with its own
+save.  See REMOVING THE PES BACKEND below for what changed and what the old
+UI's status is.
 
 r22 makes it a CAREER rather than a single season: the season now closes and
 the next one opens, with aging, development, retirement, revaluation, youth
@@ -38,7 +39,7 @@ The six files players/ratings/positions/playpos/teamids/comps.json keep the
 schema the existing algorithms already read, so market.py, growth.py,
 aitransfers.py, ailineup.py, aimanager.py, negotiate.py, revalue.py, board.py,
 formengine.py and the ovr_weights tables are all KEPT and run on FC 27 data
-unchanged.  Nothing was rebranded in the UI; the new source is wired underneath.
+unchanged.  Those algorithms are now save-format independent (see r23 below).
 
 ENGINE REFERENCE DATA
 The engine is a separate program with its own save. It needs static reference
@@ -98,10 +99,10 @@ kits, vanity, audio) and stay out.  These twelve carry career logic:
 
 THE FC 27 ENGINE (separate game, own save)
 -----------------------------------------
-lib/engine/ is the game the database was prepared for.  It is a SEPARATE
-career system: it never reads or writes a PES save, never needs a PES
-install, and keeps its own JSON careers under data/saves/ (git-ignored,
-about 1.2 MB each).
+lib/engine/ is the game the database was prepared for.  It is self-contained:
+it reads the FC 27 database for static facts and keeps its own JSON careers
+under data/saves/ (git-ignored, about 1.2 MB each).  No other game's save
+format or install is involved.
 
     lib/engine/store.py     save format, atomic writes, squad moves
     lib/engine/world.py     build a career world from the database
@@ -122,11 +123,12 @@ fact has two sources of truth.
 
 Existing, credited algorithms are REUSED, not reimplemented:
     lib/ailineup    how many changes to make for a big/normal/low match
-    lib/mlwrite     position-distance matrix + Hungarian assignment (pure)
+    lib/pitch       position-distance matrix + Hungarian assignment (pure)
     lib/formengine  the 0-7 Form level from real match ratings
     lib/revalue     the valuation curve that seeds market values
-Only the pure helpers are imported; no PES save machinery is touched, and
-tools/verify_engine.py asserts that by parsing the actual import statements.
+These are pure helpers with no save-format coupling.  verify_engine.py and
+verify_backend.py assert that by walking the actual import statements through
+the whole transitive closure, not just the engine's own files.
 
 WHAT WORKS NOW
     * create a career at any of the 717 clubs, in any of the 41 leagues
@@ -209,8 +211,8 @@ NOT BUILT YET (honest scope)
     negotiations, budgets spent, morale effects, and the UI screens.  The
     data for these is already shipped and verified; the engine increment that
     consumes it is still to come.  Rollover auto-renews expiring contracts
-    until negotiation exists.  The engine is reachable by API only - the
-    career screens still gate on a PES save.
+    until negotiation exists.  The engine is reachable by API only: there is
+    no UI yet, and static/index.html is an inert design reference.
 
 ENGINE API
     GET  /api/engine/careers                 list careers
@@ -233,8 +235,8 @@ ENGINE API
     played, rather than half-applying a rollover.
 
 VERIFYING THE ENGINE
-    python3 tools/verify_engine.py            # 129 checks, about 60 seconds
-    python3 tools/verify_engine.py --quick    # 117 checks, skips calibration
+    python3 tools/verify_engine.py            # 131 checks, about 60 seconds
+    python3 tools/verify_engine.py --quick    # 119 checks, skips calibration
 
 Careers are written to a temporary directory, so the verifier can never touch
 a real career.  It asserts BEHAVIOUR, not just consistency: reproducibility,
@@ -380,14 +382,14 @@ ATTRIBUTE IDS THAT ARE NOT WHAT THEY LOOK LIKE
     PlayStyle requirement set and the best F1 was 0.32, so no decode is invented.
 
 TWO ATTRIBUTE SETS - USE THE RAW ONE FOR SIMULATION
-    ratings.json carries the 25 PES attributes the existing algorithms read.
+    ratings.json carries the legacy 25 attributes the growth algorithm reads.
     That is a LOSSY projection of EA's data: it has no slot for crossing,
     volleys, reactions, longshots, interceptions, vision, penalties, composure
     or slidingtackle, and it blends agility into TightPossession.
     Those are match-deciding values. Van Dijk's interceptions 88 and sliding
-    tackle 85 versus Messi's 40 and 24 simply do not exist in the PES 25, so a
+    tackle 85 versus Messi's 40 and 24 simply do not exist in the legacy 25, so a
     simulator reading only those cannot tell an interceptor from a slider.
-    ea_attrs.json keeps all 34 EA values unblended for the engine; the PES 25
+    ea_attrs.json keeps all 34 EA values unblended for the engine; the legacy 25
     stay so market/growth/valuation keep working unchanged.
     /api/fc27/attrs returns both schemas and lists what the projection drops.
 
@@ -404,8 +406,8 @@ POSITIONS - TWO GRANULARITIES, ONE ENUM
         fc27.slot_compat()            the 28-entry map
         /api/fc27/attrs               returns slotCompat + the id->name enum
 
-    positions.json / playpos.json remain the lossy PES 13-slot projection the
-    old lineup code reads.  Do NOT match formation slots against those: PES
+    positions.json / playpos.json remain the lossy 13-slot projection the
+    older lineup code reads.  Do NOT match formation slots against those: it
     collapses RCB/LCB/CB into one CB and cannot express the side at all.
 
 DELIBERATELY NOT EXTRACTED - the engine owns this
@@ -428,8 +430,8 @@ Read API (no save required):
     /api/fc27/search?q=mbappe   accent-insensitive search
     /api/fc27/cups?women=0      cup list
     /api/fc27/loans?club=9      loans in/out for a club
-    /api/fc27/attrs             EA-34 / PES-25 schemas + position enum +
-                                slotCompat map
+    /api/fc27/attrs             EA-34 / legacy-25 schemas (ea / ab25) +
+                                position enum + slotCompat map
     /api/fc27/national          national teams (?women=0|1)
     /api/fc27/national?id=1318  one national team + its squad, best first
     /api/fc27/calendar          transfer windows (?month=&day= -> open bool)
@@ -438,33 +440,30 @@ Read API (no save required):
     /api/fc27/matches           marquee fixtures (?a=&b= -> big/derby/owner)
     /api/fc27/tuning            match intensity + attendance (?diff=&minute=)
 
-TWO ID COLLISIONS THAT HAD TO BE FIXED (not cosmetic)
-    FC 27 reuses small competition ids for DIFFERENT leagues: 17 is Ligue 2
-    here but Premier League in FL26, 19 is 1. Bundesliga.  Twelve FL26 ids do
-    not exist in FC 27 at all, so merging the tables left stale names behind.
-    COMP_LEAGUES/COMP_GROUPS are now REPLACED from data/fc27/comps.json.
-    Nationality ids differ too (PES uses 194-238 for Europe, FC 27 uses
-    4 Austria / 18 France / 21 Germany), so regrules.EU would have mis-checked
-    every non-EU signing.  RULES_FC27 / DOMESTIC_FC27 / EU_FC27 were added,
-    derived from the extracted leagues and nations, never guessed.
+IDS ARE EA'S AND ARE NOT INTERCHANGEABLE (not cosmetic)
+    FC 27 reuses small competition ids that meant DIFFERENT leagues in the
+    removed game: 17 is Ligue 2 here, 19 is 1. Bundesliga.  Competition names
+    come from data/fc27/comps.json, never from a merged table.
+    Nationality ids are EA's too (4 Austria / 18 France / 21 Germany /
+    27 Italy / 45 Spain).  As of r23 regrules carries FC 27 ids as its ONLY
+    table - RULES, DOMESTIC and EU - derived from the extracted leagues and
+    nations.  The old alternate-game tables and the runtime swap are gone.
 
 ALSO REMOVED IN r12
-    The PES F7-dump database importer (/api/dbimport/preview, /apply, /faces).
-    A PES dump has different player ids and a different attribute scale, so
-    importing one would corrupt the FC 27 database.  Rebuild with the importer
-    instead.  _dbf() no longer falls back to data/ root, which would silently
-    serve FL26 players against FC 27 squads.
+    The foreign F7-dump database importer (/api/dbimport/preview, /apply,
+    /faces).  A dump from another game has different player ids and a
+    different attribute scale, so importing one would corrupt this database.
+    Rebuild with tools/import_fc27.mjs instead.  The runtime reads only
+    data/fc27/, with no fallback to data/ root.
 
-SCOPE OF THIS STEP
-    This is the database step.  The separate game engine - time and season
-    progression, match simulation, career state and its own save - is the next
-    piece of work and is not built yet.  The existing UI still reads career
-    state through the old PES save path, so those screens need the engine (or a
-    save) before they show anything; the /api/fc27 routes above work standalone.
-    Overall rating is EA's own value, used directly (dbimport.USE_GAME_OVR),
-    not recomputed from attributes.  For simulation read ea_attrs.json (raw,
-    lossless) rather than the lossy PES-25 projection in ratings.json, and
-    match formation slots through slotCompat rather than by raw id.
+SCOPE
+    The database (r12-r20), the engine (r21) and multi-season rollover (r22)
+    are built and verified.  r23 removed the PES backend.  There is no UI yet:
+    static/index.html is kept unchanged as a design reference but addresses
+    removed endpoints.  Overall rating is EA's own value, used directly rather
+    than recomputed from attributes.  For simulation read ea_attrs.json (raw,
+    lossless) rather than the lossy 25-attribute projection in ratings.json,
+    and match formation slots through slotCompat rather than by raw id.
 
 LICENSING - IMPORTANT
     eafc-db-kit's MIT licence covers the KIT'S CODE, not EA's football data.
@@ -589,344 +588,123 @@ BUILD HISTORY
    checks, mutation-tested 12/12.  279-endpoint differential vs r20: zero
    regressions, all 9 sampled fc27 payloads byte-identical.
    Cups, transfers, growth and the UI screens are the next pieces of work.
-WHAT THE APP READS FROM YOUR REAL SAVE
---------------------------------------
-  club                Birmingham City FC
-  in-game date        10/01/2029  (D/M/YYYY)
-  next competition    Emirates FA Cup
-  clubs               624
-  your squad          26 players, with real EDIT names and shirt numbers
-  league table        20 rows, Sky Bet Championship (from your EDIT file)
-  player database     20,018 players from your EDIT00000000
-  negotiations        0 active (after filtering garbage blocks)
+20. r22: MULTI-SEASON CAREERS.  A season closes and the next one opens: players
+   age, develop or decline, retire and get revalued; every club gets a youth
+   intake; surplus players are released and free agents age out.  Order matters
+   and is enforced - champions, development, retirement, trim, intake, free
+   agents, history, new season - because trimming AFTER intake left 26-man
+   clubs with no graduates.  Player facts moved behind a save-aware roster so
+   generated players are first-class (a database lookup for a youth keeper
+   returned nothing and span a loop forever).  Save codecs became positional,
+   cutting a three-season save from 7.12 MB to 2.49 MB.  verify_engine grew to
+   129 checks, mutation-tested 14/14 after five weak checks were strengthened.
+   279-endpoint differential vs r21: zero regressions.
+21. r23: THE PES BACKEND IS REMOVED.  26 modules and 193 routes deleted;
+   server.py fell from 21,322 lines to 841.  The kept AI/transfer algorithms
+   were decoupled from save bytes and proven behaviourally identical.  A new
+   tools/verify_backend.py adds 102 checks, mutation-tested 22/22.  63-endpoint
+   live differential vs r22: zero regressions.  See the section below.
 
-Note: description.dat says "Premier League" while the standings/EDIT tables
-place Birmingham in the Sky Bet Championship.  Both values are shown.
-Points / played / goals are still shown as 0: not mapped yet.  r5 scanned
-8,610,000..8,720,000 for a 20-row stats array (w+d+l == played, plausible
-points) and found none, so zeros are kept instead of guessed values.
-Real shirt numbers and the starting XI order are now read (r5).
+REMOVING THE PES BACKEND (r23)
+------------------------------
+The PES/FL26 save-file companion is GONE.  server.py went from 21,322 lines to
+841 and lib/ from 53 modules to 29.  There is no longer any code that opens,
+decrypts, patches or re-encrypts another game's save, no install-path detection,
+no live-process memory reading and no external encrypter tools.
 
-BUDGET DISPLAY (r2)
--------------------
-Earlier builds showed "Budget EUR 0": the PES 2017 read adapter had a
-hardcoded 0 stub, even though the budget words were measured for writing.
-r2 reads them from YOUR save.  The app's "Transfer budget" tile now shows the
-raw u32 word at data.dat offset 8,812,904:
+Deleted modules (26): mlsave, mlwrite, pescrypt, pes17, pes17_write,
+pes17_layout, pes17_pairs, pes17_setup, dbimport, facemap, layoutscan, loanscan,
+savediff, seasonstats, kitsponsor, gamemem, coaches, bc7, dds, ftex and the six
+fl26_* career readers.  Also deleted: data/teamids.json (a foreign club-id map),
+data/fl26_installed_league_counts.json, lib/ovr_weights*.json (dead duplicates
+of the live data/fc27 copies) and config_pes2017.example.json.
 
-  before (the file you gave me)      2,535,240
-  after  (game-generated budget)     3,088,641
-  second word at 8,812,936           9,692,344 -> 10,245,745
+WHAT THE SERVER IS NOW
+    GET  /api/fc27/*      15 routes over the database (players, clubs, leagues,
+                          cups, loans, national teams, referees, regen, tuning)
+    GET  /api/engine/*    6 routes over a career (careers, state, squad, table,
+                          select, history)
+    POST /api/engine/*    8 routes (new, play, advance, save, delete, transfer,
+                          finish, close_season)
+    GET  /api/art, /api/stadium, /api/venue, /api/clubcolors, /api/i18n,
+         /api/fmtext, /api/myscene, /api/myscene-m   shared football assets
+    plus /api/version, /api/clientlog, /api/quit and PIN-gated phone/tablet
+    access on port+1.  Static files are served from static/ with a traversal
+    guard.  Everything else returns 404.
 
-These are RAW save units, NOT confirmed EUR amounts.  FL26 stores its budget
-in 100-EUR units and the original app multiplies by 100; PES 2017's currency
-scale has NOT been checked in game, so no conversion is applied.  Compare the
-number with what PES 2017 shows on screen.  If the game shows a multiple
-(e.g. 10x or 100x), report the figure and the scale can be added.  The
-PES 2017 tools page ("Load info") shows both words and their offsets.
+THE OLD UI IS AN INERT REFERENCE
+    static/index.html is deliberately UNCHANGED (byte-for-byte).  It is kept as
+    a design reference only.  All 386 of its API call sites address the removed
+    PES career endpoints, so it will not function against this server until a
+    new UI is built on /api/engine/*.  This was a deliberate choice, not an
+    oversight.  static/pes17.html is likewise inert.
 
-BUDGET LABELLING (r5)
----------------------
-The tools page now shows a RAW / NOT CONFIRMED EUR badge instead of a bare
-currency amount, and /api/pes17/info reports currency_verified=false plus
-unit="raw u32 save units".  A "Display scale (view only)" selector (x1, x10,
-x100, x1000) lets you compare the raw word with the number PES 2017 shows on
-screen; it is display-only and NEVER writes to the save.  Report the in-game
-figure and the correct scale can be applied -- until then the EUR sign in
-the Classic UI is only presentation.
+ALGORITHMS KEPT, COUPLING REMOVED
+The AI/transfer algorithms were kept, but they used to read PES save bytes.
+They are now pure and take their data from the caller:
 
-LAYOUT GUARD (r5)
------------------
-The four custom ops (formation, tactics, xi, budget) used to write arbitrary
-values without checking the save layout.  apply_ops() now calls
-pes17_pairs.verify_layout() first:
+    lib/pitch.py      POS, the 13x13 role-distance matrix, hungarian() and
+                      plan_label(), extracted VERBATIM from the old save
+                      writer.  Proven identical on 1,300 random matrices.
+                      The engine imports this instead of the save writer.
+    aitransfers       plan()/plan_v2() now take a club dict, not a save object.
+                      ai_world() replaces the two save readers and preserves
+                      the exact admission rule (printable name of 3+ chars,
+                      16..40 players, 11+ rated, managed club excluded) and the
+                      strength calculation (mean of the top 14).  The budget
+                      that was a u32 at club+1600 is now a budget_of(club)
+                      callback in EUR, and the formation is formation_of(club).
+                      A Differential against the pre-strip version on a
+                      synthetic save: 32 comparisons, ZERO differences in
+                      moves, order, reasons or stats.
+    aimanager         the one dependency on the PES statistics module was a
+                      pure date tuple; it is now a local _match_order().
+    regrules          FC 27 ids are the ONLY table.  Previously the server
+                      swapped them in at runtime; with that swap gone the module
+                      itself had to change, or the kept transfer AI would have
+                      silently used foreign league and nationality ids.
+                      6,000 check() comparisons against the old swapped-in
+                      tables: zero differences.  The EU set is now verified by
+                      deriving it from the database's ISO codes.
+    venues            was fl26_venue_metadata, which resolved a club name via a
+                      PES club-id table and returned that foreign id.  It now
+                      matches on name alone.  This RECOVERED 800 names and lost
+                      none: FC 27 club coverage rose from 74 to 264 clubs, with
+                      zero field changes for clubs that already resolved.
 
-  * data.dat must be exactly 13,304,607 B (the measured save);
-  * formation record markers, the 26-slot XI permutation, two invariant
-    tactics bytes and plausible budget u32 words must all be present;
-  * 50 stable anchor bytes sampled around the tables and across the file
-    (identical in BEFORE and all four AFTERs, outside every writable range)
-    must match at least 60%.
+The 25-attribute projection stays because growth.py speaks it, but it lost its
+PES branding: PES_AB -> AB25, project_pes -> project_ab25, pes_attrs ->
+ab25_attrs, FM2PES -> FM2AB.  /api/fc27/attrs now returns ab25/ab25Source instead
+of pes/pesSource, and the generated metadata key is ab25ProjectionDrops.  The
+values, order and sources are unchanged.
 
-A save from another season/patch is REFUSED before a single byte changes;
-the response includes the layout report.  The tools page has a checked
-"verify save layout" box -- unchecking it disables the guard with a loud
-warning, for advanced users only.  `layout_check='report'` runs the checks
-without refusing.  Synthetic test buffers (<10 MB) are reported, never
-written to a user's save.  This is a save-file comparison, NOT in-game
-validation.
+VERIFYING THE BACKEND
+    python3 tools/verify_backend.py     # 102 checks, about 1 second
+    python3 tools/mutate_backend.py     # 22 mutants, about 25 seconds
 
-MATCHDAY PRESENTATION
----------------------
-The Classic application opens directly at /.  Its matchday controls, panels
-and PES 2017 tools use the same dark football-management presentation.  On
-larger desktop displays, the six-section Game Shell activates after the
-first-run tour; screens scroll inside the window.  To return to the original
-scrolling Classic navigation, open Look & sound and switch Game shell off.
-Phones and tablets retain their existing layout.  There is no separate
-dashboard.  PES 2017 tools remain at /pes17.html and in the sidebar.
+It asserts that no PES module survives, that none is reachable through the
+transitive import closure of either the server or the engine, that the route
+surface is exactly the intended one, that the transfer AI is deterministic and
+never mutates its caller's world, that budget/formation callbacks are honoured
+and degrade safely, and that venue lookup refuses ambiguous names.
 
-  * Layered local SVG emblems replace emoji in the shipped UI and in older
-    saved messages.  Morale has directional indicators; unknown pictographs
-    use a neutral emblem.  Normal text arrows remain text.
-  * The icon renderer preserves text-only controls and translations.  No
-    external icon library, font or network connection is required.
-  * Files: static/hud-icons.svg, static/hud-icons.js, static/hud-ui.css.
+Mutation-tested 22/22: every mutant re-introduces one removed coupling or
+defect and the verifier fails.  One weak check was found and fixed during this
+step - the ambiguity guard was only tested with an UNKNOWN name (0 candidates),
+which let a `len(candidates) < 1` mutation pass.  It now also tests a real
+duplicate ('Club Nacional') and a synthetic pair with conflicting grounds.
 
-This is a presentation update.  Save-writing restrictions, layout checks,
-dry runs, backups and API behaviour remain in force.
+A live differential against r22 (both servers running, same seeds) covered 63
+kept endpoints including a full 380-match season and a rollover: ZERO
+regressions, every payload byte-identical.  24 removed PES endpoints correctly
+return 404, and the traversal guard still blocks ../ paths.
 
-WHAT CAN BE WRITTEN (MEASURED, ROUND-TRIP VERIFIED)
----------------------------------------------------
-Open  http://localhost:8766/pes17.html  (or the "PES 2017 tools" button in
-the Classic sidebar).  The page reads your real save and lets you queue ops:
+All 29 surviving modules import cleanly.  totals: verify_fc27 64 checks,
+verify_engine 131 checks, verify_backend 102 checks - 297 passing.
 
-  offer_add     inject an active transfer negotiation into a club's block
-  offer_clear   restore an empty negotiation slot
-  shirt         set one of the 32 shirt numbers of a club
-  squad         experimental, requires experimental=true (NOT in-game tested)
-  pair          reproduce EXACTLY one of your four measured changes
-  formation     write a 33-byte formation record (hex)
-  tactics       write one measured byte in the tactics block
-  xi            write the 26-slot XI / squad order
-  budget        write the two measured budget u32 words
-  raw           u32 escape hatch for offsets you measured yourself
-
-Measured offsets, all confirmed on ML00000011 (decrypted data.dat,
-13,304,607 B):
-
-  club table            80, 1312 B records, name at +4
-  shirt numbers         club + 512, 32 x 1 byte
-  squad slots           club + 248, 32 x 8 B (roster pointer, player id)
-  negotiation table     9,591,148 .. 9,829,596, 280 B blocks
-  negotiation slots     block + 4, 16 x 16 B
-  empty slot            (6488064, 65535, 0, 1664)
-  active slot           (0, source roster ptr, player id, 4210816)
-
-Four tables measured from YOUR before/after save pairs (lib/pes17_pairs.py):
-
-  formation records     1,256,248, 33 B records, 3 records
-                        formation pair changed 17 bytes in record 0
-  tactics block         1,256,348, 15 B; 13 bytes changed by the tactics pair
-  XI / squad order      1,256,728, 26 B permutation of squad slots 0..25
-                        + 42 B order block, 24 B float sliders at 2,230,192
-  budget u32            8,812,904 (2,535,240 -> 3,088,641)
-  wage budget u32       8,812,936 (9,692,344 -> 10,245,745)
-                        budget pair also touched 15 companion bytes
-                        (9,836,708 .. 9,845,147)
-
-Each "pair" op is verified by tools/verify_pairs.py: applied to the common
-before file it reproduces every byte the game itself changed for that action,
-and changes no other byte.  Per-save bytes (the 32-byte token at data.dat
-[48:80], the 64-byte header hash, the encryption-header salt and two UI-state
-words) are NOT written: the game rewrites those on every save.  The 64-byte
-header hash algorithm is unknown; we keep the original hash, exactly as the
-public MLTE tool does.  IN-GAME LOAD VALIDATION IS STILL REQUIRED.
-
-SAFETY MODEL
-------------
-* Every write goes through lib/pes17_write.py: decrypt -> edit a bytearray ->
-  re-encrypt with the PES 2017 key -> decrypt again -> compare ALL SIX parts
-  byte-for-byte -> write to a .tmp file -> os.replace -> load the file from
-  disk again and compare.  A timestamped backup is kept in work\backup.
-* Every changed byte is checked to be inside a measured table.  A bad op
-  (unknown club, unknown pair, offset outside the tables) raises and NOTHING
-  is written.  The "pair" op additionally checks that the current save still
-  matches the measured before-state before writing.
-* All FL26-style write endpoints (transfers, loans, contracts, tactics,
-  formations, budgets, training, AI moves, revalues) are STILL REFUSED in the
-  main app.  Use the PES 2017 tools page for the measured writes.  Do the rest
-  in the game.
-* The dry-run checkbox proves the operation without touching the save.
-
-WHAT IS STILL NOT POSSIBLE
---------------------------
-Contracts/renewals (the player-record table was located via the Cheat Engine
-table but not confirmed by a pair), loans, youth players, training/growth,
-points/goals in the league table, forced transfers, AI transfers, the human
-club's own inbox negotiations, and any arbitrary formation/tactic value that
-is not inside the measured table layout.  More before/after pairs (one change
-per pair) are needed for those.  See REAL_SAVE_REPORT.md.
-
-Human-controlled clubs normally have NO AI negotiation block in the save.
-The "claim an unused block for my club" checkbox is a structural inference,
-NOT in-game validated, and is flagged experimental.  Prefer an AI club
-(e.g. Arsenal, tid 101) for a fully published write.
-
-LOGO IMPORTERS REMOVED (r11)
-----------------------------
-All logo importing was deleted so a new system can be built in its place.
-Nothing is downloaded, scanned or decoded for logos any more, and the UI
-makes ZERO image requests for crests, competition logos or flags.
-
-Deleted files:
-    lib/pes17_crests.py      offline patch/livecpk/CPK club-crest reader
-    lib/pes17_assets.py      CPK asset inventory + harvester
-    lib/cpkread.py           CPK archive (TOC/WESYS) reader
-    tools/harvest_cpk.py     harvester CLI
-    static/leagues/*.png     the two bundled Premier League logos
-
-Deleted endpoints (they now return 404):
-    GET  /api/crest                  GET  /api/crest/prefetch (POST)
-    GET  /api/flag                   GET  /api/compemb
-    GET  /api/complogo               GET  /api/comp/logo
-    GET  /api/pes17/crests           POST /api/pes17/crests/dir
-    GET  /api/pes17/assets           POST /api/pes17/assets/extract
-
-Also gone: server-side crest/emblem/flag/game-logo indexers and the
-Wikipedia crest prefetch worker, the crest thumbnail download in
-lib/wiki.py, tools cards "3c. Club logos" and "3d. CPK assets", the
-"pes17_patch_dir" config key, and the db-import "with an in-game crest"
-counter.
-
-What you see instead: the generated initials shield for clubs (coloured
-from lib/clubcolors.py), the generated SVG league badge, and a trophy
-glyph for competitions.  These are drawn locally from the club/league
-name - no file and no network is involved.
-
-DELIBERATELY KEPT (they are not logo importers):
-  * lib/dds.py, lib/ftex.py, lib/bc7.py - texture codecs.  The kit-sponsor
-    feature imports them, so they stay.
-  * lib/kitsponsor.py and /api/kitsp/* - shirt/kit sponsor editing.
-  * Loose-folder readers (_cpk_find / _cpk_roots / _game_db_file) for
-    kit textures, coach portraits and pesdb competition DATA read from
-    livecpk folders.  Only CPK ARCHIVE reading was removed.
-  * Competition names/entries, club IDs and the Wikipedia article-title
-    lookup used by kit/ground/founded-year data.
-  * /api/clubcolors, /api/kit, /api/kitimg, /api/coach/img, /api/stadium.
-
-KNOWN EFFECT: kits that existed ONLY inside FL27 CPK archives can no
-longer be copied for sponsor editing (_ks_fl27_make now returns None).
-Loose kit-server files and FL26 livecpk kits still work.
-
-GET  /api/pes17/mode               reports PES 2017 and offline mode
-
-PES 2017-ONLY MODE
-------------------
-The Classic application is served at / (and /index.html) regardless of the
-PES 2017-only setting.  The PES 2017 read/write tools are at /pes17.html.
-"pes17_only": true in config.json keeps PES 2017 defaults active.  Build-time
-cleanup removes the Google Fonts links and flag CDN references from the
-Classic app, the flag endpoint was removed in r11, and wiki_web defaults to
-false.  Set "wiki_web": true only if you want Wikipedia text lookups back
-(player descriptions, club kit/ground data).  No logo is fetched either way.
-
-LIMIT: the FL26 UI and its app-side endpoints still exist; the PES 2017
-edition is not a complete rewrite.  A real PES 2021 -> t99p17v20
-team/player/competition ID map is still needed.
-
-SAFE CLEANUP (r8)
------------------
-The r8 cleanup removed 111 files (10.01 MB): the FL26 Sider regen fix (94 files), Michele & Claude Lua
-mods (8), F7 dump Lua modules (2), the FL27 save key + readme (2), and
-data/players.json, positions.json, playpos.json, ratings.json and
-realmoves.json (5 FL26 databases, 6.8 MB).  On a PES 2017 save the app
-rebuilds data/pes17/players.json etc. from EDIT00000000 (20,018 players),
-so those FL26 IDs are never used.  Nothing in your save, patch or game
-folder is touched.  Kept: the classic FL26 UI (still at /index.html), its
-art, scenes, stadium photos, i18n strings, teamids.json and small metadata
-JSONs, and all lib/*.py.  All 132 GET endpoints
-were compared against the unpruned r7 build: 132 identical status pairs,
-zero new errors.
-
-FIRST RUN - SAVE FOLDER (r9)
-----------------------------
-A fresh install has NO config.json and NO hard-coded FL26 save path any more.
-The app looks for ...\KONAMI\Pro Evolution Soccer 2017\save in your
-profile, Documents and OneDrive (including localised names like Dokumenti).
-If it cannot find one, open PES 2017 tools from the Classic sidebar; the
-"Save folder" card appears at the top instead of raw Windows errors.  Paste the full path that holds ML00000011 and
-EDIT00000000, e.g.
-    C:\Users\<you>\Documents\KONAMI\Pro Evolution Soccer 2017\save
-    C:\Users\<you>\OneDrive\Dokumenti\KONAMI\Pro Evolution Soccer 2017\save
-and press "Use this folder".  It is saved to config.json and takes effect at
-once.  Save reads work on a fresh install with no other setup.
-
-HOW TO USE ON WINDOWS
----------------------
-1. Unzip this build anywhere (not inside the zip) on Windows.
-   Check VERSION.txt in that folder: it must say
-   "pc414-pes17-clean-r11 (2026-11-06)".  If it says
-   "pc414 (2026-11-01)" you unzipped the ORIGINAL program, which cannot
-   decrypt a PES 2017 save at all.
-   Both builds use port 8766, so close the old one first (or run
-   "The Gaffer.bat" from the new folder, which stops the old process).
-2. Double-click "The Gaffer.vbs" (or "The Gaffer.bat").
-3. In Setup > Save folder choose
-      ...\Documents\KONAMI\Pro Evolution Soccer 2017\save
-   (or wherever your ML00000011 / EDIT00000000 live), then Save paths.
-   Keep EDIT00000000 in that folder (or set "edit_dat" in config.json).
-   The Classic sidebar's "PES 2017 tools" button opens /pes17.html.
-4. Back up your save folder anyway.  Close PES 2017 before writing.
-5. TEST IN GAME: apply a "pair" op (e.g. formation), load the written save in
-   PES 2017 and confirm the change appears.  That is the only remaining
-   validation step.  If the game rejects the save, restore from work\backup
-   and tell us: the header hash is the most likely cause.
-
-config.json keys (see config_pes2017.example.json):
-    "save_dir": "...\\save"
-    "edit_dat": "...\\save\\EDIT00000000"   (optional override)
-    "pes17_date_order": "dmy"              (default; "mdy" for US saves)
-    "pes_process": "PES2017"
-    "pes17_allow_writes": false             keep false: it only gates the
-                                            old FL26 write engine.
-
-COMMAND LINE (needs Python 3.10+ installed)
--------------------------------------------
-    python lib\pes17_write.py roundtrip ML00000011
-    python lib\pes17_write.py info ML00000011 --edit EDIT00000000
-    python lib\pes17_write.py offers ML00000011
-    python lib\pes17_layout.py info C:\dec\ML00000011
-    python lib\pes17_write.py apply ML00000011 --ops ops.json --work work
-
-ops.json example:
-[
-  {"op":"offer_add","buyer":101,"slot":0,"pid":55246},
-  {"op":"shirt","club":201,"slot":0,"number":9},
-  {"op":"pair","name":"formation"},
-  {"op":"tactics","values":{"1256356":3}},
-  {"op":"xi","order":[9,15,4,12,13,22,19,17,5,3,6,25,16,18,10,21,8,24,11,2,7,23,20,14,0,1]},
-  {"op":"budget","value":3088641,"wage":10245745}
-]
-
-DIFF TOOLS (on the development machine)
----------------------------------------
-    git fetch origin main
-    python3 pes2017/tools/fetch_after_pairs.py   # stage the 4 after saves from main
-    python3 pes2017/tools/diff_saves.py  BEFORE AFTER --json diff.json
-    python3 pes2017/tools/verify_pairs.py --before "Needed files/ML00000011" \
-        --after-dir build/pairs
-    python3 pes2017/tools/analyze_save_noise.py \
-        --json build/analysis/noise_report.json
-
-TESTS
------
-    python3 -m unittest discover -s pes2017/tests -p 'test_*.py' -v
-The suite includes tests that decrypt, read, modify and re-encrypt real
-ML00000011 / EDIT00000000 files (on copies only), tests that prove the four
-measured pair patches against game-generated after files, budget read-side
-regressions, matchday icon / translation checks, and layout guard tests
-(refusal on a different-size or broken-table save, all four custom ops,
-report/opt-out modes, real shirt numbers / XI, RAW budget labels).  The
-r6 crest-reader and r7 CPK-harvester tests were removed with those modules
-in r11.  r8 adds 13
-cleanup / shipped-zip / offline-guard tests; a live HTTP smoke of the PRUNED
-build passed 76/76 checks, including all 132 GET endpoints returning exactly
-the same status as the unpruned r7 build (zero new 5xx, no timeouts).  r9
-adds 15 first-run / save-folder tests; a fresh-install HTTP smoke (NO
-config.json) and a configured-install smoke passed 66/66 checks, and a
-133-GET sweep against r8 returned 132 identical statuses (the only new
-endpoint is /api/pes17/setup).
-
-TECHNICAL SOURCES
------------------
-* the4chancup/pesXdecrypter (public domain): container algorithm, PES 2017
-  master key (src/masterkey.c), 176 B FileHeader in crypt.h.
-* Rigged Wiki "Pro Evolution Soccer 2017/Edit file": player entry bitfields.
-* irvantaufik28/PES2017-Master-League-Transfer-Engine: club/squad/standings
-  offsets, negotiation layout, team-id bit shift, in-game validation checklist.
-* "Needed files/cheat engine variations.CT": live-RAM player field semantics,
-  used to locate the 232 B ML player-record / contract table.
-* Your own files in "Needed files" (t99p17v20) and the four after saves
-  (formation/after, tactics/after, xi/after, budget/after) for every offset
-  and value above.
+WHAT IS STILL NOT BUILT
+    * a UI on top of /api/engine/* (the old one is inert, by choice)
+    * cups and continental competition
+    * a transfer market with negotiation and budgets actually spent
+    * morale
+    Rollover auto-renews expiring contracts until negotiation exists.
