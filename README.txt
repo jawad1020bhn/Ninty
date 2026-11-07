@@ -56,6 +56,19 @@ data, not season state, so these tables are extracted too:
                      Rey, Coppa Italia, UCL/UEL/UECL, Libertadores...).
     prev_pos.json    last season's finishing position per club, for reputation
                      and board expectations.
+    ea_attrs.json    EA's 34 attributes per player, RAW and lossless.
+
+TWO ATTRIBUTE SETS - USE THE RAW ONE FOR SIMULATION
+    ratings.json carries the 25 PES attributes the existing algorithms read.
+    That is a LOSSY projection of EA's data: it has no slot for crossing,
+    volleys, reactions, longshots, interceptions, vision, penalties, composure
+    or slidingtackle, and it blends agility into TightPossession.
+    Those are match-deciding values. Van Dijk's interceptions 88 and sliding
+    tackle 85 versus Messi's 40 and 24 simply do not exist in the PES 25, so a
+    simulator reading only those cannot tell an interceptor from a slider.
+    ea_attrs.json keeps all 34 EA values unblended for the engine; the PES 25
+    stay so market/growth/valuation keep working unchanged.
+    /api/fc27/attrs returns both schemas and lists what the projection drops.
 
 DELIBERATELY NOT EXTRACTED - the engine owns this
     points, fixtures, results, budgets, form, injuries, league tables.
@@ -76,6 +89,7 @@ Read API (no save required):
     /api/fc27/search?q=mbappe   accent-insensitive search
     /api/fc27/cups?women=0      cup list
     /api/fc27/loans?club=9      loans in/out for a club
+    /api/fc27/attrs             EA-34 and PES-25 attribute schemas
 
 TWO ID COLLISIONS THAT HAD TO BE FIXED (not cosmetic)
     FC 27 reuses small competition ids for DIFFERENT leagues: 17 is Ligue 2
@@ -100,9 +114,9 @@ SCOPE OF THIS STEP
     piece of work and is not built yet.  The existing UI still reads career
     state through the old PES save path, so those screens need the engine (or a
     save) before they show anything; the /api/fc27 routes above work standalone.
-    The 25 PES attributes are MAPPED from EA's separate attribute set, so they
-    are approximations.  Overall rating is EA's own value, used directly
-    (dbimport.USE_GAME_OVR), not recomputed from the mapped 25.
+    Overall rating is EA's own value, used directly (dbimport.USE_GAME_OVR),
+    not recomputed from attributes.  For simulation read ea_attrs.json (raw,
+    lossless) rather than the lossy PES-25 projection in ratings.json.
 
 LICENSING - IMPORTANT
     eafc-db-kit's MIT licence covers the KIT'S CODE, not EA's football data.

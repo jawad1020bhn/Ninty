@@ -96,6 +96,19 @@ const AB_SRC = ['positioning', 'ballcontrol', 'dribbling', '@tight', 'shortpassi
   'defensiveawareness', 'standingtackle', 'aggression', 'gkpositioning', 'gkhandling',
   'gkkicking', 'gkreflexes', 'gkdiving'];
 
+// EA's own attribute set, kept RAW and lossless alongside the PES 25 above.
+// The PES mapping is lossy: it has no slot for crossing, volleys, reactions,
+// longshots, interceptions, vision, penalties, composure or slidingtackle, and
+// it blends agility into TightPossession. A match engine wants the real values
+// (an interceptor and a slider are not the same defender), so both are shipped:
+// the PES 25 keep the existing algorithms working, ea_attrs feeds the engine.
+const EA_ATTRS = ['crossing', 'finishing', 'headingaccuracy', 'shortpassing', 'volleys',
+  'dribbling', 'curve', 'freekickaccuracy', 'longpassing', 'ballcontrol', 'acceleration',
+  'sprintspeed', 'agility', 'reactions', 'balance', 'shotpower', 'jumping', 'stamina',
+  'strength', 'longshots', 'aggression', 'interceptions', 'positioning', 'vision',
+  'penalties', 'composure', 'defensiveawareness', 'standingtackle', 'slidingtackle',
+  'gkdiving', 'gkhandling', 'gkkicking', 'gkreflexes', 'gkpositioning'];
+
 // leagues that are NOT real club competitions
 const SPECIAL = new Set([111, 382, 383, 2000, 2028, 2092, 2240, 2255, 2260, 2261, 2262, 2263]);
 const REST = new Set([76, 2226]);
@@ -202,6 +215,7 @@ function pickClub(pid) {
 
 /* --------------------------------------------------------------- transform */
 const players = [], ratings = {}, positions = {}, playpos = {}, nats = {}, pot = {}, dob = {}, extra = {};
+const eaAttrs = {};   // raw EA attribute values, EA_ATTRS order
 const squads = new Map();
 let noClub = 0, noName = 0, women = 0;
 
@@ -226,6 +240,9 @@ for (const p of T.players) {
   const attrs = AB_SRC.map(k => k === '@tight'
     ? clamp((clamp(p.ballcontrol) * 2 + clamp(p.dribbling) + clamp(p.agility)) / 4)
     : clamp(p[k]));
+
+  // Raw EA values, unclamped and unblended, in EA_ATTRS order.
+  eaAttrs[String(pid)] = EA_ATTRS.map(k => Number(p[k]) || 0);
 
   const pp = new Array(13).fill(0);
   for (let i = 1; i <= 7; i++) {
@@ -495,6 +512,7 @@ w('rivals.json', rivals);
 w('formations.json', formations);
 w('loans.json', loans);
 w('traits.json', traits);
+w('ea_attrs.json', { ab: EA_ATTRS, p: eaAttrs });
 w('cups.json', cups);
 w('prev_pos.json', prevPos);
 w('fc27_meta.json', {
@@ -514,6 +532,10 @@ w('fc27_meta.json', {
   notExtractedWhy: 'season state belongs to the engine save; market value is not a column in FC 27 (only wage/releaseclause), so the engine derives it',
   skipped: { noName, noClub, womenPlayers: women },
   posn: POSN, ab: AB, abSource: AB_SRC, eaPos: EA_POS,
+  eaAttrs: EA_ATTRS,
+  eaAttrsNote: 'raw EA values, lossless; the PES 25 in ratings.json are a lossy projection kept for the existing algorithms',
+  pesProjectionDrops: ['crossing', 'volleys', 'reactions', 'longshots', 'interceptions',
+    'vision', 'penalties', 'composure', 'slidingtackle', 'agility (blended into TightPossession)'],
   birthEpoch: '1582-10-14', foot: { 1: 'R', 2: 'L' },
 });
 
@@ -537,6 +559,8 @@ for (const id of [158023, 20801, 231747, 202126, 192985, 239085, 203376]) {
 const sizes = Object.entries(squadObj).map(([k, v]) => [TN.get(Number(k)), v.length]).sort((a, b) => b[1] - a[1]);
 console.log('\nlargest squads:', sizes.slice(0, 5).map(x => x.join('=')).join(', '));
 console.log('smallest squads:', sizes.slice(-5).map(x => x.join('=')).join(', '));
+console.log('  ea attrs   %d players x %d raw EA attributes (%d dropped by the PES-25 projection)',
+  Object.keys(eaAttrs).length, EA_ATTRS.length, 10);
 console.log('\nengine reference data:');
 console.log('  stadiums   %d (%d/%d clubs linked)', Object.keys(stadiums).length,
   Object.values(clubs).filter(c => c.stadium != null).length, Object.keys(clubs).length);

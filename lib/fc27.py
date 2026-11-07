@@ -32,6 +32,15 @@ Engine-facing reference data (static; the engine's own save holds season state):
   traits.json     {pid: {t1, t2, retiring, smLikelihood}}  t1/t2 are raw bitflags
   cups.json       {compid: {name, kind, country, importance, teams, groups, ...}}
   prev_pos.json   {tid: {prev, prevLeague}}  last season's finishing position
+  ea_attrs.json   {ab: [34 EA field names], p: {pid: [34 raw values]}}
+
+About the two attribute sets: ratings.json carries the 25 PES attributes the
+existing algorithms read, which is a LOSSY projection of EA's data - it has no
+slot for crossing, volleys, reactions, longshots, interceptions, vision,
+penalties, composure or slidingtackle, and it blends agility into
+TightPossession. ea_attrs.json keeps EA's 34 values raw and unblended, so a
+match engine can tell an interceptor from a slider. Prefer ea_attrs for
+simulation; the PES 25 exist for backwards compatibility.
 
 The first six files are the same schema the existing algorithms already read
 through server._dbf(), so market/growth/negotiate/aitransfers keep working
@@ -136,6 +145,24 @@ def birthdays():
 
 def contracts():
     return _load('contract.json', {}) or {}
+
+
+def ea_ab():
+    """The 34 EA attribute names, in ea_attrs() row order."""
+    return (_load('ea_attrs.json', {}) or {}).get('ab', []) or []
+
+
+def ea_attrs(pid=None):
+    """Raw EA attributes. With pid, a {name: value} dict; else the whole table.
+
+    These are lossless. The 25 PES attributes in ratings() are a projection of
+    this data and drop nine match-relevant fields.
+    """
+    tbl = (_load('ea_attrs.json', {}) or {}).get('p', {}) or {}
+    if pid is None:
+        return tbl
+    row = tbl.get(str(int(pid)))
+    return dict(zip(ea_ab(), row)) if row else {}
 
 
 def stadiums():
@@ -312,6 +339,7 @@ def player(pid):
         release=ct.get('release', 0), gender=ct.get('gender', 0),
         shirt=shirt(pid, tid), role=role(pid, tid),
         traits=traits().get(k) or {}, loan=loan_of(pid),
+        eaAttrs=ea_attrs(pid),
     )
 
 

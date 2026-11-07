@@ -75,7 +75,13 @@ Data notes
   career can filter them; they are not silently mixed into men's competitions.
 - overallrating is EA's own value and is used directly. Recomputing it with the
   PES attribute weights would give a different number, because the 25 attributes
-  here are mapped from EA's separate attribute set.
+  in ratings.json are mapped from EA's separate attribute set.
+- TWO attribute sets ship. ratings.json holds the 25 PES attributes the existing
+  algorithms read; that is a lossy projection which drops crossing, volleys,
+  reactions, longshots, interceptions, vision, penalties, composure and
+  slidingtackle, and blends agility into TightPossession. ea_attrs.json holds
+  all 34 EA values raw and unblended - prefer it for match simulation. Every
+  direct PES mapping was verified equal to its EA source field (0 mismatches).
 - `marking` and `gkspeed` do not exist in FC 27; DefensiveAwareness maps from
   `defensiveawareness`. Contract data comes from the player record
   (`contractvaliduntil`, `wage`, `releaseclause`) because the template's
