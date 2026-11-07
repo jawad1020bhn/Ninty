@@ -800,6 +800,15 @@ PORTRAITS
     fetch_stadium is called) and were left alone rather than retrofitted; the
     new module is the only portrait path.
 
+SEEING THE GRAPHICS
+    With the server running, open /graphics-preview.html.  It is a standalone
+    page (no build step, no dependencies) that draws clubs, leagues, nations and
+    faces straight from the three routes and badges every tile with where its
+    image came from: vendored, generated, photo or avatar.  A "find every
+    generated fallback" button scans all 717 clubs and lists the ones showing a
+    shield, which is how the wrong-crest audit below was done in the first place.
+    It is a developer preview, NOT the game UI - the real UI is still unbuilt.
+
 VERIFYING GRAPHICS
     python3 tools/verify_graphics.py                    # 195 checks, under 1 second
     python3 tools/verify_graphics.py --http http://127.0.0.1:8765   # 216 with a server

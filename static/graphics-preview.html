@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Gaffer — graphics preview</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --line:#232c38; --ink:#e6edf3; --muted:#8b98a8;
+    --vend:#2ea043; --gen:#bb8009; --photo:#1f6feb; --avatar:#6e7681;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{padding:22px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 4px;font-size:19px;letter-spacing:.01em}
+  .sub{color:var(--muted);font-size:13px}
+  .stats{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .stat{background:#0d1117;border:1px solid var(--line);border-radius:8px;padding:7px 11px;font-size:12px}
+  .stat b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .stat span{color:var(--muted)}
+  main{padding:20px 24px 60px;max-width:1400px}
+  section{margin-bottom:34px}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);
+     margin:0 0 4px;font-weight:600}
+  .note{color:var(--muted);font-size:12px;margin:0 0 14px;max-width:80ch}
+  .grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
+  .grid.faces{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+        padding:10px 8px 8px;text-align:center;position:relative}
+  .tile img{width:62px;height:68px;object-fit:contain;display:block;margin:0 auto 7px}
+  .grid.faces .tile img{width:56px;height:56px;border-radius:50%;object-fit:cover}
+  .nm{font-size:11px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;
+      white-space:nowrap;color:var(--ink)}
+  .badge{position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%}
+  .b-vendored{background:var(--vend)} .b-generated{background:var(--gen)}
+  .b-photo{background:var(--photo)}   .b-avatar{background:var(--avatar)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:0 0 16px}
+  .legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+  select,button{background:#0d1117;color:var(--ink);border:1px solid var(--line);
+                border-radius:7px;padding:7px 10px;font:inherit;font-size:13px}
+  button{cursor:pointer} button:hover{border-color:#3d4757}
+  .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .warn{background:#2b2007;border:1px solid #4d3a09;color:#e3b341;border-radius:8px;
+        padding:10px 12px;font-size:12px;margin-bottom:18px}
+  .empty{color:var(--muted);font-size:13px;padding:8px 0}
+  code{background:#0d1117;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Graphics preview</h1>
+  <div class="sub">Crests and portraits resolved through <code>/api/crest</code> and <code>/api/face</code>. Every tile is badged with where its image actually came from.</div>
+  <div class="stats" id="stats"></div>
+</header>
+<main>
+  <div class="warn" id="legal">
+    Crest artwork is third-party trademarked material, cached locally and never committed.
+    Portraits are off by default, so faces below are generated placeholders, not photographs.
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--vend)"></i>vendored crest</span>
+    <span><i style="background:var(--gen)"></i>generated shield (no upstream match)</span>
+    <span><i style="background:var(--photo)"></i>free-licensed photo</span>
+    <span><i style="background:var(--avatar)"></i>generated avatar</span>
+  </div>
+
+  <section>
+    <h2>Clubs</h2>
+    <p class="note">Pick a competition. Amber dots are clubs with no upstream crest — they fall back to a shield built from that club's own FC 27 colours, so nothing ever renders broken.</p>
+    <div class="bar">
+      <select id="league"></select>
+      <button id="scan">Find every generated fallback</button>
+      <span class="sub" id="scanState"></span>
+    </div>
+    <div class="grid" id="clubs"></div>
+  </section>
+
+  <section id="fallbackSec" hidden>
+    <h2>Generated fallbacks across the whole database</h2>
+    <p class="note">These clubs intentionally show a generated shield. Some have no upstream file; others were <em>refused</em> because the only candidate was a different club (a namesake, or a reserve side's parent).</p>
+    <div class="grid" id="fallbacks"></div>
+  </section>
+
+  <section>
+    <h2>Leagues</h2>
+    <div class="grid" id="leagues"></div>
+  </section>
+
+  <section>
+    <h2>Nations</h2>
+    <div class="grid" id="nations"></div>
+  </section>
+
+  <section>
+    <h2>Players &amp; managers</h2>
+    <p class="note" id="faceNote"></p>
+    <div class="grid faces" id="faces"></div>
+  </section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const j = async u => (await fetch(u)).json();
+
+function tile(name, src, kind){
+  const d = document.createElement('div');
+  d.className = 'tile';
+  d.innerHTML = `<span class="badge b-${kind}" title="${kind}"></span>` +
+                `<img loading="lazy" src="${src}" alt="">` +
+                `<div class="nm" title="${name.replace(/"/g,'&quot;')}">${name}</div>`;
+  return d;
+}
+
+// Resolve images and their source badges with bounded concurrency.
+async function render(host, items, urlOf, metaOf){
+  host.innerHTML = '';
+  const els = items.map(it => { const t = tile(it.name, urlOf(it), 'generated'); host.appendChild(t); return t; });
+  let i = 0;
+  await Promise.all(Array.from({length: 10}, async () => {
+    while(i < items.length){
+      const k = i++;
+      try{
+        const m = await j(metaOf(items[k]));
+        els[k].querySelector('.badge').className = 'badge b-' + m.source;
+        els[k].querySelector('.badge').title = m.source;
+      }catch(e){ /* leave the default badge */ }
+    }
+  }));
+}
+
+async function loadLeague(id){
+  const d = await j('/api/fc27/league?id=' + id);
+  const clubs = (d.clubs || []).slice().sort((a,b) => (b.ovr||0)-(a.ovr||0));
+  await render($('#clubs'), clubs,
+    c => '/api/crest?club=' + c.id,
+    c => '/api/crest?club=' + c.id + '&meta=1');
+}
+
+(async function(){
+  const st = await j('/api/graphics/status');
+  const cov = st.coverage || {};
+  $('#stats').innerHTML = [
+    ['clubs', cov.clubs, cov.clubs_total],
+    ['leagues', cov.leagues, cov.leagues_total],
+    ['nations', cov.nations, cov.nations_total],
+  ].map(([k,a,b]) => `<div class="stat"><span>${k}</span> <b>${a ?? '—'}/${b ?? '—'}</b></div>`).join('')
+   + `<div class="stat"><span>crest files</span> <b>${cov.files ?? 0}</b></div>`
+   + `<div class="stat"><span>portraits cached</span> <b>${(st.faces||{}).photos ?? 0}</b></div>`
+   + `<div class="stat"><span>faces_web</span> <b>${st.faces_web ? 'on' : 'off'}</b></div>`;
+  if(!st.imported){
+    $('#legal').innerHTML = 'No crest cache imported yet — every mark below is generated. ' +
+      'Run <code>python3 tools/import_graphics.py</code> locally to fetch the third-party artwork.';
+  }
+
+  const ld = await j('/api/fc27/leagues');
+  const leagues = (ld.leagues || []).filter(l => l.kind === 'league');
+ leagues.sort((a,b) => (a.level||9)-(b.level||9) || a.name.localeCompare(b.name));
+  $('#league').innerHTML = leagues.map(l =>
+    `<option value="${l.id}"${l.id===13?' selected':''}>${l.name} — ${l.countryName||''}${l.women?' (W)':''}</option>`).join('');
+  $('#league').onchange = e => loadLeague(e.target.value);
+  await loadLeague(13);
+
+  await render($('#leagues'), leagues,
+    l => '/api/crest?league=' + l.id,
+    l => '/api/crest?league=' + l.id + '&meta=1');
+
+  const seen = new Set(), nations = [];
+  for(const l of leagues){
+    if(l.country && !seen.has(l.country)){ seen.add(l.country); nations.push({id:l.country, name:l.countryName||('Nation '+l.country)}); }
+  }
+  nations.sort((a,b) => a.name.localeCompare(b.name));
+  await render($('#nations'), nations,
+    n => '/api/crest?nation=' + n.id,
+    n => '/api/crest?nation=' + n.id + '&meta=1');
+
+  const club = await j('/api/fc27/club?id=9');
+  const xi = new Set(club.xi || []);
+  const players = (club.squad || []).filter(p => xi.has(p.id))
+    .map(p => ({key:'pid='+p.id, name:p.full || p.name}));
+  const mgrs = [{key:'manager=9', name:(club.manager||{}).name || 'Liverpool manager'}];
+  for(const id of [1,5,10,11,241,243]) mgrs.push({key:'manager='+id, name:'Club '+id+' manager'});
+  $('#faceNote').textContent = st.faces_web
+    ? 'Network portraits are enabled; anything without a free-licensed match falls back to an avatar.'
+    : 'Network portraits are disabled (faces_web=false), so these are deterministic generated avatars — not likenesses. Liverpool starting XI and a few managers.';
+  const faces = players.concat(mgrs);
+  await render($('#faces'), faces,
+    f => '/api/face?' + f.key,
+    f => '/api/face?' + f.key + '&meta=1');
+
+  $('#scan').onclick = async () => {
+    $('#scan').disabled = true;
+    const all = new Map();
+    for(const l of leagues){
+      const d = await j('/api/fc27/league?id=' + l.id);
+      for(const c of (d.clubs||[])) if(!all.has(c.id)) all.set(c.id, c);
+    }
+    const list = [...all.values()];
+    const out = [];
+    let i = 0, done = 0;
+    await Promise.all(Array.from({length: 12}, async () => {
+      while(i < list.length){
+        const c = list[i++];
+        try{
+          const m = await j('/api/crest?club=' + c.id + '&meta=1');
+          if(m.source === 'generated') out.push(c);
+        }catch(e){}
+        $('#scanState').textContent = `scanning ${++done}/${list.length}…`;
+      }
+    }));
+    out.sort((a,b) => (b.ovr||0)-(a.ovr||0));
+    $('#fallbackSec').hidden = false;
+    $('#scanState').textContent = `${out.length} of ${list.length} clubs use a generated shield`;
+    await render($('#fallbacks'), out,
+      c => '/api/crest?club=' + c.id,
+      c => '/api/crest?club=' + c.id + '&meta=1');
+    $('#scan').disabled = false;
+  };
+})();
+</script>
+</body>
+</html>
