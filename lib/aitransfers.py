@@ -1,7 +1,10 @@
-"""Pravila AI transfera: predlaze listu (igrac, iz kluba, u klub) bez ikakvog upisa u save.
-Izvrsenje je mlwrite.Save.ai_apply. Sve je deterministicno za zadani seed."""
+"""AI transfer rules: propose a list of (player, from club, to club) without writing anything.
+
+Pure algorithm, no save format: the caller supplies the club world (see ai_world),
+the names, and optional value/budget/formation callbacks. Execution belongs to the
+career engine. Everything is deterministic for a given seed.
+"""
 import random
-import struct
 
 POS_NAME = {0: 'GK', 1: 'CB', 2: 'LB', 3: 'RB', 4: 'DMF', 5: 'CMF', 6: 'LMF', 7: 'RMF', 8: 'AMF', 9: 'LWF', 10: 'RWF', 11: 'SS', 12: 'CF'}
 GROUP = {0: 'GK', 1: 'DF', 2: 'DF', 3: 'DF', 4: 'MF', 5: 'MF', 6: 'MF', 7: 'MF', 8: 'MF', 9: 'FW', 10: 'FW', 11: 'FW', 12: 'FW'}
@@ -9,71 +12,32 @@ MIN_GROUP = {'GK': 2, 'DF': 6, 'MF': 6, 'FW': 3}
 WANT_POS = [1, 1, 2, 3, 4, 5, 5, 8, 9, 10, 12, 12]   # tezine po poziciji za kupnju (vanjski igraci)
 
 
-def _club_name(d, idx):
-    o = 84 + 1680 * idx
-    return bytes(d[o:o + 48]).split(b'\0')[0].decode('utf-8', 'replace')
+def ai_world(clubs, my_idx=0):
+    """Admission rule for the AI transfer world, independent of any save format.
 
-
-def national_like(save):
-    """Skup indeksa zapisa koji su reprezentacije/posebne momcadi: skoro svi njihovi igraci su u jos jednom zapisu."""
-    d = save.d
-    recs = {}
-    n = 0
-    import mlsave
-    lim, nat = mlsave.club_layout(d)   # pc256: granica i reprezentacije iz club_layout (60 MB: klubovi i iznad 750)
-    while 84 + 1680 * (n + 1) <= len(d) and n < lim:
-        o = 84 + 1680 * n
-        L = save._squad_len(o)
-        if n in nat:   # reprezentacije se ne broje: inace su veliki klubovi (Atletico, Arsenal) 'duplikati' i ispadnu iz AI svijeta
-            n += 1
+    `clubs` maps a club id -> dict(idx, name, players=[dict(pid, pos, ovr, age)],
+    strength, size). The managed club is excluded (its moves are the user's), and a
+    record must look like a real senior squad: a printable name of 3+ characters,
+    16..40 players and at least 11 rated ones. Returns a private copy, so planning
+    never mutates the caller's world.
+    """
+    out = {}
+    for n, c in (clubs or {}).items():
+        if n == my_idx:
             continue
-        if 0 < L <= 40:
-            recs[n] = [struct.unpack_from('<I', d, o + save.PAIR_OFF + 8 * i + 4)[0] for i in range(L)]
-        n += 1
-    cnt = {}
-    for ids in recs.values():
-        for pid in set(ids):
-            cnt[pid] = cnt.get(pid, 0) + 1
-    out = set()
-    for n, ids in recs.items():
-        dup = sum(1 for pid in ids if cnt[pid] > 1)
-        if dup >= 0.6 * len(ids):
-            out.add(n)
-    # reprezentacije su jedan neprekinut blok na kraju: sve od prve prepoznate nadalje (slabe reprezentacije imaju malo duplikata)
-    hi = [n for n in out if n >= 500 and n < 750]
-    if hi and lim <= 750:
-        out |= set(range(min(hi), 750))
-    out |= set(nat)
+        nm = str(c.get('name') or '')
+        pl = [dict(p) for p in (c.get('players') or [])]
+        if len(nm) < 3 or not nm.isprintable() or not 16 <= len(pl) <= 40:
+            continue
+        top = sorted((p.get('ovr') or 0 for p in pl), reverse=True)[:14]
+        top = [v for v in top if v]
+        if len(top) < 11:
+            continue
+        d = dict(c)
+        d.update(idx=n, name=nm, players=pl, size=len(pl),
+                 strength=c.get('strength') or (sum(top) / len(top)))
+        out[n] = d
     return out
-
-
-def load_clubs(save, rat, pos_of, my_idx):
-    d = save.d
-    clubs = {}
-    skip = national_like(save)
-    n = 0
-    import mlsave
-    _lim = mlsave.club_layout(d)[0]   # pc256
-    while 84 + 1680 * (n + 1) <= len(d) and n < _lim:
-        o = 84 + 1680 * n
-        nm = bytes(d[o:o + 48]).split(b'\0')[0]
-        try:
-            nm = nm.decode('utf-8')
-        except UnicodeDecodeError:
-            n += 1
-            continue
-        L = save._squad_len(o)
-        if n != my_idx and n not in skip and len(nm) >= 3 and nm.isprintable() and 16 <= L <= 40:
-            pl = []
-            for i in range(L):
-                pid = struct.unpack_from('<I', d, o + save.PAIR_OFF + 8 * i + 4)[0]
-                ov, ag = rat(pid)
-                pl.append(dict(pid=pid, pos=pos_of.get(pid, 5), ovr=ov, age=ag))
-            top = sorted((p['ovr'] for p in pl if p['ovr']), reverse=True)[:14]
-            if len(top) >= 11:
-                clubs[n] = dict(idx=n, name=nm, players=pl, strength=sum(top) / len(top), size=L)
-        n += 1
-    return clubs
 
 
 def build_listings(clubs, seed, val_of=None):
@@ -139,10 +103,11 @@ SAL_RESERVE = 0.06
 BUDGET_FRAC = 0.18   # virtualni transfer budzet kluba u prozoru = udio vrijednosti momcadi (top 25 igraca)
 
 
-def plan(save, rat, pos_of, names, my_idx, seed=1, scale=1.0, protect_pids=(), val_of=None, wage_of=None, listed=None, bmod=None):
+def plan(clubs, names, my_idx, seed=1, scale=1.0, protect_pids=(), val_of=None, wage_of=None, listed=None, bmod=None,
+         budget_of=None):
     """val_of(pid, ovr, age) -> trzisna vrijednost u EUR; ako je zadan, klubovi imaju virtualne budzete i potezi nose cijenu (fee)."""
     rnd = random.Random(seed)
-    clubs = load_clubs(save, rat, pos_of, my_idx)
+    clubs = ai_world(clubs, my_idx)
     vals = {}
     budget = {}
     if val_of:
@@ -152,13 +117,13 @@ def plan(save, rat, pos_of, names, my_idx, seed=1, scale=1.0, protect_pids=(), v
             top = sorted((p['val'] for p in c['players']), reverse=True)[:25]
             c['value'] = sum(top)
             budget[c['idx']] = c['value'] * (BUDGET_FRAC * scale + 0.01)
-            try:  # pravi pocetni transfer budzet kluba iz igre (club+1600, u jedinicama od 100 EUR)
-                import struct as _st
-                b0 = _st.unpack_from('<I', save.d, 84 + 1680 * c['idx'] + 1600)[0]
-                if 0 < b0 < 0xFFFFFFFF:
-                    budget[c['idx']] = b0 * 100 * scale
-            except Exception:
-                pass
+            if budget_of:   # the club's real starting transfer budget, in EUR
+                try:
+                    b0 = budget_of(c['idx'])
+                except Exception:
+                    b0 = None
+                if b0 and b0 > 0:
+                    budget[c['idx']] = b0 * scale
         for k, f in (bmod or {}).items():   # stanje kluba iz proslih rokova / preuzimanje / kriza
             if k in budget:
                 budget[k] *= f
@@ -348,7 +313,7 @@ def _ident_manual():
 
 
 def club_identities(clubs):
-    """{idx: 'big'|'academy'|'experience'|'normal'} za klubove iz load_clubs (s 'value' i 'players')."""
+    """{idx: 'big'|'academy'|'experience'|'normal'} for clubs from ai_world (with 'value' and 'players')."""
     man = _ident_manual()
     vals = sorted((c.get('value', 0) for c in clubs.values()), reverse=True)
     if not vals:
@@ -384,8 +349,8 @@ def ident_ok(kind, p, base):
     return True
 
 
-def plan_v2(save, rat, pos_of, names, my_idx, seed=1, scale=1.0, protect_pids=(), val_of=None, wage_of=None, listed=None, bmod=None,
-            window='S', memory=None, owners=None, reg=None, inj=None, past=None):
+def plan_v2(clubs, names, my_idx, seed=1, scale=1.0, protect_pids=(), val_of=None, wage_of=None, listed=None, bmod=None,
+            window='S', memory=None, owners=None, reg=None, inj=None, past=None, budget_of=None, formation_of=None):
     """Isti izlaz kao plan(); dodatno: m['why'] (starter/depth/replace/wish/group/release), m['repl'] (ime igraca kojeg zamjenjuje),
     m['after'] (pid prodaje koja je pokrenula zamjenu), m['group'] (vlasnicka grupa). stats['wish'] = zelje za sljedeci rok."""
     rnd = random.Random('v2|%s|%s' % (seed, window))
@@ -409,7 +374,7 @@ def plan_v2(save, rat, pos_of, names, my_idx, seed=1, scale=1.0, protect_pids=()
         if ci in h.get('back', ()):
             return 'back'
         return None
-    clubs = load_clubs(save, rat, pos_of, my_idx)
+    clubs = ai_world(clubs, my_idx)
     budget = {}
     for c in clubs.values():
         for p in c['players']:
@@ -418,12 +383,13 @@ def plan_v2(save, rat, pos_of, names, my_idx, seed=1, scale=1.0, protect_pids=()
         top = sorted((p['val'] for p in c['players']), reverse=True)[:25]
         c['value'] = sum(top)
         budget[c['idx']] = c['value'] * (BUDGET_FRAC * scale + 0.01)
-        try:
-            b0 = struct.unpack_from('<I', save.d, 84 + 1680 * c['idx'] + 1600)[0]
-            if 0 < b0 < 0xFFFFFFFF:
-                budget[c['idx']] = b0 * 100 * max(scale, 0.35)
-        except Exception:
-            pass
+        if budget_of:
+            try:
+                b0 = budget_of(c['idx'])
+            except Exception:
+                b0 = None
+            if b0 and b0 > 0:
+                budget[c['idx']] = b0 * max(scale, 0.35)
     if window == 'W':
         for k in budget:
             budget[k] *= 0.5
@@ -531,7 +497,7 @@ def plan_v2(save, rat, pos_of, names, my_idx, seed=1, scale=1.0, protect_pids=()
         if r is None:
             r = dict(IDEAL)
             try:
-                _lab, roles = save.club_formation(ci)
+                _lab, roles = formation_of(ci) if formation_of else (None, None)
                 if _lab and roles and len(roles) == 10:
                     cnt = {}
                     for x in roles:

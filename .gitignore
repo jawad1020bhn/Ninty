@@ -7,5 +7,12 @@ __pycache__/
 # (holds this machine's PES 2017 save-folder path).
 config.json
 _dev_work/
+autotransfer.json
+work/
+data/crests/
+data/_kitmiss.log
+
+# FC 27 engine careers: runtime state, one JSON per career (about 1.2 MB each).
+data/saves/
 
 .DS_Store

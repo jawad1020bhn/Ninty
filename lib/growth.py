@@ -65,9 +65,9 @@ def read_live(dump_path, pids):
     return out
 
 
-# ---------------------------------------------------------------- FM -> PES
-# Tablica pretvorbe: FM atribut -> {PES atribut: udio}. Popisi atributa po treningu preuzeti iz FM26 (training.fmf).
-FM2PES = {
+# ------------------------------------------------------------- FM -> AB25
+# Conversion table: FM attribute -> {legacy attribute: share}. Training groups from FM26 (training.fmf).
+FM2AB = {
     'Finishing': {'Finishing': 1}, 'Crossing': {'LoftedPass': .6, 'Curl': .4}, 'Dribbling': {'Dribbling': 1},
     'First Touch': {'BallControl': 1}, 'Passing': {'LowPass': .6, 'LoftedPass': .4}, 'Technique': {'BallControl': .5, 'TightPossession': .5},
     'Long Shots': {'Finishing': .4, 'Curl': .3, 'KickingPower': .3}, 'Heading': {'Heading': 1}, 'Composure': {'TightPossession': .5, 'Finishing': .5},
@@ -126,7 +126,7 @@ def _build_plans():
             pri, sec = FM_SESS[sn]
             for lst, k in ((pri, 1.0), (sec, 0.15)):
                 for fa in lst:
-                    for pa, sh in FM2PES.get(fa, {}).items():
+                    for pa, sh in FM2AB.get(fa, {}).items():
                         w[pa] = w.get(pa, 0) + k * sh
         for a, m in PLAN_BOOST.get(pk, {}).items():
             if a in w: w[a] *= m
