@@ -34,7 +34,26 @@ Engine-facing reference data (static; the engine's own save holds season state):
   prev_pos.json   {tid: {prev, prevLeague}}  last season's finishing position
   ea_attrs.json   {ab: [34 EA field names], p: {pid: [34 raw values]}}
   ea_positions.json {enum, slotCompat, p: {pid: [EA slot ids, best first]}}
-  national_teams.json {teamid: {name, gender, ovr, colors, squad}}
+  national_teams.json {teamid: {name, gender, ovr, colors, squad, nation}}
+
+Career logic tables (static rules and history, still not season state):
+  teamsheets.json {tid: {captain, penalty, freeKick, ...}}  ids, null if unset
+  ovr_weights.json {positions: {eaPos: [[attrId, pct]]}, categories, stars}
+                  EA's own per-position rating weights (sum 100). attrId is EA's
+                  INTERNAL enum, NOT ea_attrs() field order, and is unresolved:
+                  do not index attributes with it. stars() is rating-based and
+                  safe. See ovr_weights.json attrIdSpace.
+  coefficients.json {clubs: {tid: {points, years[5]}}, nations: {cid: ...}}
+  calendar.json   {windows: [{open: {month, day}, close: {...}}]}  no year
+  ownership.json  {tid: {group, seniority, siblings[]}}  multi-club groups
+  league_groups.json {tid: groupId}  MLS conferences
+  comp_venues.json {compid: [{stadium, final}]}  neutral/final venues
+  prev_stats.json {p: {pid: [[comp, apps, goals, assists, Y, R, cleanSheets]]}}
+  referees.json   {refs: {id: {name, cards, fouls, ...}}, leagues: {lid: [id]}}
+  regen_names.json {first/last/common: [[name, poolId, gender]]}
+  regen_templates.json {youth[], regen[]}  attribute templates by posGroup/age
+  playstyles.json {id: {name, requires: [[attrId, minValue]]}}
+                  attrId is the same unresolved EA enum - raw reference only
 
 Position granularity: formations and players share EA's 28-id enum but not its
 granularity. A formation slot is side-specific (4 RCB, 6 LCB, 9 RDM, 24 RS);
@@ -142,6 +161,106 @@ def nations():
 
 def nats():
     return _load('nats.json', {}) or {}
+
+
+def teamsheet(tid):
+    """Captain and set-piece takers for a club (player ids, None if unset)."""
+    return (_load('teamsheets.json', {}) or {}).get(str(int(tid))) or {}
+
+
+def ovr_weights():
+    """Raw per-position rating weights. The attribute ids are EA's internal
+    enum, NOT ea_attrs() field order, and could not be resolved - so no
+    rating_in_pos() helper is offered. Use stars() for a safe derived value."""
+    return _load('ovr_weights.json', {}) or {}
+
+
+def stars(ovr):
+    """EA's 0..5 star band for a rating (0.5 steps), from starratingboundaries."""
+    try:
+        v = int(ovr)
+    except (TypeError, ValueError):
+        return 0
+    for b in ovr_weights().get('stars', []) or []:
+        if b.get('from', 0) <= v <= b.get('to', 0):
+            return b.get('stars', 0)
+    return 0
+
+
+def coefficients(tid=None, nation=None):
+    """5-year coefficient scores. No args -> the whole table."""
+    c = _load('coefficients.json', {}) or {}
+    if tid is not None:
+        return (c.get('clubs') or {}).get(str(int(tid))) or {}
+    if nation is not None:
+        return (c.get('nations') or {}).get(str(int(nation))) or {}
+    return c
+
+
+def transfer_windows():
+    """Open/close as {month, day}. Deliberately year-less: the engine's save
+    owns the season, and the template's absolute dates are a 2008 placeholder."""
+    return (_load('calendar.json', {}) or {}).get('windows', []) or []
+
+
+def in_transfer_window(month, day):
+    v = int(month) * 100 + int(day)
+    for w in transfer_windows():
+        o, c = w.get('open') or {}, w.get('close') or {}
+        if not o or not c:
+            continue
+        a, b = o['month'] * 100 + o['day'], c['month'] * 100 + c['day']
+        if (a <= v <= b) if a <= b else (v >= a or v <= b):
+            return True
+    return False
+
+
+def ownership(tid):
+    """Multi-club ownership group for a club, or {}."""
+    return (_load('ownership.json', {}) or {}).get(str(int(tid))) or {}
+
+
+def same_owner(a, b):
+    """True when two clubs share an ownership group (transfer usually blocked)."""
+    if int(a) == int(b):
+        return True
+    return int(b) in (ownership(a).get('siblings') or [])
+
+
+def league_group(tid):
+    return (_load('league_groups.json', {}) or {}).get(str(int(tid)))
+
+
+def comp_venues(compid):
+    return (_load('comp_venues.json', {}) or {}).get(str(int(compid))) or []
+
+
+def prev_stats(pid):
+    """Last season's real per-competition stats for a player."""
+    return (_load('prev_stats.json', {}) or {}).get('p', {}).get(str(int(pid))) or []
+
+
+def referees(lid=None):
+    r = _load('referees.json', {}) or {}
+    if lid is None:
+        return r.get('refs', {}) or {}
+    return [r.get('refs', {}).get(str(i)) for i in (r.get('leagues', {}).get(str(int(lid))) or [])]
+
+
+def regen_names():
+    return _load('regen_names.json', {}) or {}
+
+
+def regen_templates():
+    return _load('regen_templates.json', {}) or {}
+
+
+def playstyles():
+    """PlayStyle unlock thresholds, raw. `requires` ids use EA's internal
+    attribute enum (unresolved - see ovr_weights()), so they are deliberately
+    not evaluated against a player's attributes here. This is also NOT a decode
+    of traits.json: no defensible trait-bit mapping exists in the template."""
+    return _load('playstyles.json', {}) or {}
 
 
 def potential():
@@ -376,6 +495,7 @@ def player(pid):
         shirt=shirt(pid, tid), role=role(pid, tid),
         traits=traits().get(k) or {}, loan=loan_of(pid),
         eaAttrs=ea_attrs(pid), eaPositions=ea_positions(pid),
+        stars=stars(r[0]), prevStats=prev_stats(pid),
         nationalTeams=[national_team(t) or {'id': t} for t in (ct.get('natPos') or [])],
     )
 
@@ -438,6 +558,11 @@ def summary():
         rivalPairs=sum(len(v) for v in rivals().values()) // 2,
         nationalTeams=len(national_teams()),
         cappedPlayers=sum(len(t.get('squad') or []) for t in national_teams().values()),
+        teamsheets=len(_load('teamsheets.json', {}) or {}),
+        referees=len(referees()), coefficients=len(coefficients().get('clubs') or {}),
+        prevStatPlayers=len((_load('prev_stats.json', {}) or {}).get('p', {}) or {}),
+        regenNames={k: len(v) for k, v in regen_names().items()},
+        transferWindows=transfer_windows(),
         contracted=sum(1 for ps in sq.values() for _ in ps),
         freeAgents=len(players()) - sum(len(ps) for ps in sq.values()),
         source=m.get('source', ''), upstream=m.get('upstream', ''),

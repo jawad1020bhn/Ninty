@@ -20055,7 +20055,36 @@ class H(BaseHTTPRequestHandler):
                                            formations=fc27db.club_formations(_tid),
                                            rivals=fc27db.club_rivals(_tid),
                                            xi=fc27db.starting_xi(_tid),
-                                           prevPos=fc27db.prev_pos().get(str(_tid)) or {}))
+                                           prevPos=fc27db.prev_pos().get(str(_tid)) or {},
+                                           teamsheet=fc27db.teamsheet(_tid),
+                                           coefficient=fc27db.coefficients(tid=_tid),
+                                           ownership=fc27db.ownership(_tid),
+                                           group=fc27db.league_group(_tid)))
+            if u.path == '/api/fc27/calendar':
+                _q = parse_qs(u.query)
+                _mo, _dy = _qint(_q, 'month'), _qint(_q, 'day')
+                _out = dict(ok=True, windows=fc27db.transfer_windows(),
+                            note='month/day only; the engine save owns the season year')
+                if _mo and _dy:
+                    _out.update(month=_mo, day=_dy, open=fc27db.in_transfer_window(_mo, _dy))
+                return self.send(200, _out)
+            if u.path == '/api/fc27/referees':
+                _lid = _qint(parse_qs(u.query), 'league')
+                if _lid:
+                    _rs = [_r for _r in fc27db.referees(_lid) if _r]
+                    return self.send(200, dict(ok=True, league=_lid, referees=_rs))
+                return self.send(200, dict(ok=True, referees=fc27db.referees()))
+            if u.path == '/api/fc27/regen':
+                _n = fc27db.regen_names()
+                _t = fc27db.regen_templates()
+                return self.send(200, dict(ok=True,
+                                           names={_k: len(_v) for _k, _v in _n.items()},
+                                           pools=sorted({r[1] for _v in _n.values() for r in _v}),
+                                           templates={_k: len(_t.get(_k) or [])
+                                                      for _k in ('youth', 'regen')},
+                                           youthAgeUnit=_t.get('youthAgeUnit'),
+                                           regenAgeUnit=_t.get('regenAgeUnit'),
+                                           note='pool ids are language/region groups, not nation ids'))
             if u.path == '/api/fc27/cups':
                 _w = parse_qs(u.query).get('women', [''])[0]
                 _out = []

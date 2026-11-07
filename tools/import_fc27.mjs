@@ -153,12 +153,29 @@ const main = await readTemplateDatabase({
     // engine-facing reference tables (venues, staff, kit numbers, XI, rivalries,
     // formations, loans, cup fields). Verified present in the FC 27 template.
     'stadiums', 'teamstadiumlinks', 'manager', 'playerloans', 'rivals', 'formations',
-    'competition', 'competitionseeds'],
+    'competition', 'competitionseeds',
+    // career logic (r16). This reader takes an explicit allowlist: a table that
+    // is not named here silently arrives as undefined, so every new extraction
+    // must be added to this list as well as read below.
+    'default_teamsheets', 'attributeprefpositionformula', 'attributecategorymap',
+    'starratingboundaries', 'clubcoefficients', 'nationcoefficients',
+    'career_calendar', 'multiclubownership', 'mls_group_structure',
+    'competitionstadiumlinks', 'prevcompetitionstats', 'referee', 'leaguerefereelinks',
+    'career_firstnames', 'career_lastnames', 'career_commonnames',
+    'career_youthplayerposattributes', 'career_regenplayerattributes',
+    'playstyle_attribute_requirement', 'teamnationlinks'],
 });
 const T = Object.fromEntries(main.databases.flatMap(d => d.tables).map(t => [t.name, t.records]));
 for (const k of ['players', 'playernames', 'teams', 'teamplayerlinks', 'leagues', 'leagueteamlinks', 'nations']) {
   if (!T[k]) { console.error('missing table: ' + k); process.exit(1); }
   console.log('  ' + k.padEnd(18) + T[k].length);
+}
+
+// Guard: an absent table would otherwise be written out as an empty file.
+for (const k of ['default_teamsheets', 'attributeprefpositionformula', 'clubcoefficients',
+  'career_calendar', 'prevcompetitionstats', 'referee', 'career_firstnames',
+  'career_regenplayerattributes', 'playstyle_attribute_requirement', 'teamnationlinks']) {
+  if (!T[k] || !T[k].length) { console.error('missing/empty table: ' + k); process.exit(1); }
 }
 
 // Cup/trophy display names are not columns: they live in the localization
@@ -536,6 +553,196 @@ for (const l of (T.leagueteamlinks || [])) {
   };
 }
 
+/* ------------------------------------------------- r16: engine tables ---
+ * Found by sweeping all 268 upstream tables for non-empty ones the importer
+ * did not read. Of 215 non-empty tables, most are presentation-only (skins,
+ * crowds, kits, vanity, audio) and stay out. These carry career logic.
+ */
+
+// Captain + set-piece takers. 717/717 clubs, every taker verified in-squad.
+const teamsheets = {};
+for (const r of (T.default_teamsheets || [])) {
+  if (!CLUB_IDS.has(r.teamid)) continue;
+  const pick = f => (r[f] > 0 && pidKnown.has(r[f]) ? r[f] : null);
+  teamsheets[String(r.teamid)] = {
+    captain: pick('captainid'),
+    penalty: pick('penaltytakerid'),
+    freeKick: pick('freekicktakerid'),
+    leftFreeKick: pick('leftfreekicktakerid'),
+    rightFreeKick: pick('rightfreekicktakerid'),
+    leftCorner: pick('leftcornerkicktakerid'),
+    rightCorner: pick('rightcornerkicktakerid'),
+    longKick: pick('longkicktakerid'),
+  };
+}
+
+// EA's own per-position rating weights (percentages sum to 100 per position).
+// WARNING: `attribute` here is EA's INTERNAL attribute enum, which is NOT the
+// players-table field order used by ea_attrs.json. Assuming identity puts only
+// 29% of players top in their own position (van Dijk rated higher at ST than
+// CB). An unconstrained fit reached just 48% and still made impossible
+// assignments - a GK formula weighting freekickaccuracy while gkkicking sat
+// outside it - and attributecategorymap contradicts it (ids 29..33 are the five
+// GK fields, all weight 0). Five ids (3,9,17,27,28) appear in no formula at all
+// and cannot be identified. So the ids are shipped RAW and UNMAPPED: do not
+// index ea_attrs with them. Kept because the weights themselves are real.
+const ovrWeights = {};
+for (const r of (T.attributeprefpositionformula || [])) {
+  (ovrWeights[String(r.position)] ||= []).push([r.attribute, r.percentage]);
+}
+for (const v of Object.values(ovrWeights)) v.sort((x, y) => y[1] - x[1]);
+const attrCategories = (T.attributecategorymap || [])
+  .slice().sort((a, b) => a.attribute - b.attribute)
+  .map(r => ({ attr: r.attribute, category: r.category, gkCategory: r.gkcategory,
+               weight: Math.round(r.weight * 1000) / 1000 }));
+const starBounds = (T.starratingboundaries || [])
+  .slice().sort((a, b) => a.starratingfrom - b.starratingfrom)
+  .map(r => ({ stars: r.stars, from: r.starratingfrom, to: r.starratingto }));
+
+// UEFA-style coefficients: 5 yearly scores + total, for seeding/reputation.
+const clubCoeff = {};
+for (const r of (T.clubcoefficients || [])) {
+  if (!CLUB_IDS.has(r.teamid)) continue;
+  clubCoeff[String(r.teamid)] = {
+    points: r.points, years: [r.year1, r.year2, r.year3, r.year4, r.year5],
+  };
+}
+const nationCoeff = {};
+for (const r of (T.nationcoefficients || [])) {
+  nationCoeff[String(r.countryid)] = {
+    points: r.points, years: [r.year1, r.year2, r.year3, r.year4, r.year5],
+  };
+}
+
+// Transfer windows as MMDD (701 = 1 Jul, 831 = 31 Aug, 101/131 = January).
+// The absolute dates in this table are a 2008 placeholder - do NOT use them.
+const cal = (T.career_calendar || [])[0] || {};
+const mmdd = v => (v > 0 ? { month: Math.floor(v / 100), day: v % 100 } : null);
+const calendar = {
+  windows: [
+    { open: mmdd(cal.transferwindowstart1), close: mmdd(cal.transferwindowend1) },
+    { open: mmdd(cal.transferwindowstart2), close: mmdd(cal.transferwindowend2) },
+  ].filter(x => x.open && x.close),
+  note: 'month/day only; the template absolute dates are a 2008 placeholder',
+};
+
+// Multi-club ownership: blocks transfers between clubs in the same group.
+const ownGroups = new Map();
+for (const r of (T.multiclubownership || [])) {
+  if (!CLUB_IDS.has(r.teamid)) continue;
+  if (!ownGroups.has(r.multiclubid)) ownGroups.set(r.multiclubid, []);
+  ownGroups.get(r.multiclubid).push({ tid: r.teamid, seniority: r.seniority });
+}
+const ownership = {};
+for (const [gid, arr] of ownGroups) {
+  if (arr.length < 2) continue;
+  arr.sort((a, b) => a.seniority - b.seniority);
+  for (const c of arr) {
+    ownership[String(c.tid)] = {
+      group: gid, seniority: c.seniority,
+      siblings: arr.filter(x => x.tid !== c.tid).map(x => x.tid),
+    };
+  }
+}
+
+// MLS conference split (the only league upstream ships a group structure for).
+const leagueGroups = {};
+for (const r of (T.mls_group_structure || [])) {
+  if (!CLUB_IDS.has(r.teamid)) continue;
+  leagueGroups[String(r.teamid)] = r.groupid;
+}
+
+// Neutral/final venues per competition.
+const compVenues = {};
+for (const r of (T.competitionstadiumlinks || [])) {
+  const k = String(r.competitionid);
+  (compVenues[k] ||= []).push({ stadium: r.stadiumid, final: !!r.iscupfinal });
+}
+
+// Last season's per-competition player stats - real history to seed the first
+// season's awards/reputation. Keyed pid -> rows (a player can appear in several
+// competitions, and a few pid/comp pairs repeat upstream, so keep them all).
+const prevStats = {};
+for (const r of (T.prevcompetitionstats || [])) {
+  if (!pidKnown.has(r.playerid)) continue;
+  (prevStats[String(r.playerid)] ||= []).push([
+    r.competitionid, r.appearances, r.goals, r.assists,
+    r.yellowcards, r.redcards, r.cleansheets,
+  ]);
+}
+
+// Referees: strictness feeds card/foul rates in match simulation.
+const referees = {};
+for (const r of (T.referee || [])) {
+  referees[String(r.refereeid)] = {
+    name: [r.firstname, r.surname].filter(Boolean).join(' '),
+    nation: r.nationalitycode, league: r.leagueid,
+    cards: r.cardstrictness, fouls: r.foulstrictness, real: !!r.isreal,
+  };
+}
+const leagueRefs = {};
+for (const r of (T.leaguerefereelinks || [])) {
+  (leagueRefs[String(r.leagueid)] ||= []).push(r.refereeid);
+}
+
+// Regen/youth name pools. groupid is a language/region pool, NOT a nation id
+// (no upstream table maps the two), so it is kept as an opaque pool id.
+const nameOf = id => NAME.get(id) || '';
+const regenNames = { first: [], last: [], common: [] };
+for (const r of (T.career_firstnames || [])) {
+  const n = nameOf(r.firstname);
+  if (n) regenNames.first.push([n, r.groupid, r.gender]);
+}
+for (const r of (T.career_lastnames || [])) {
+  const n = nameOf(r.lastname);
+  if (n) regenNames.last.push([n, r.groupid, r.gender]);
+}
+for (const r of (T.career_commonnames || [])) {
+  const n = [nameOf(r.firstname), nameOf(r.lastname)].filter(Boolean).join(' ');
+  if (n) regenNames.common.push([n, r.groupid, r.gender]);
+}
+
+// Attribute templates for generated players, by position group and age.
+// Youth ages are months (140..176); regen ages are years (16..21).
+const tplRow = r => {
+  const o = { posGroup: r.playerposgroup, age: r.age };
+  for (const f of EA_ATTRS) if (r[f] != null) o[f] = r[f];
+  if (r.overall != null) o.overall = r.overall;
+  if (r.potential != null) o.potential = r.potential;
+  return o;
+};
+const regenTemplates = {
+  youthAgeUnit: 'months', regenAgeUnit: 'years',
+  youth: (T.career_youthplayerposattributes || []).map(tplRow),
+  regen: (T.career_regenplayerattributes || []).map(tplRow),
+};
+
+// PlayStyle unlock thresholds. `attributeid` uses the same unresolved EA
+// internal enum as ovr_weights.json, so these are shipped raw too. Names come from
+// localization (txt_signature_playstyle_N); only the signature subset is
+// named upstream. NOTE: players.trait1/trait2 could NOT be mapped to these ids
+// (tested every bit against every requirement set: best F1 0.32), so traits
+// stay raw and this table is offered as thresholds only, not a decode.
+const playstyleNames = {};
+for (let i = 0; i < 64; i++) {
+  const v = LOC.get('txt_signature_playstyle_' + i);
+  if (v) playstyleNames[i] = v;
+}
+const playstyles = {};
+for (const r of (T.playstyle_attribute_requirement || [])) {
+  const k = String(r.playstyleid);
+  (playstyles[k] ||= { name: playstyleNames[k] || '', requires: [] }).requires
+    .push([r.attributeid, r.value]);
+}
+
+// National team -> nation id (teamnationlinks), so intl squads can be tied to
+// the nation whose players they draw from.
+const TNATION = new Map((T.teamnationlinks || []).map(r => [r.teamid, r.nationid]));
+for (const [tid, t] of Object.entries(natTeams)) {
+  const n = TNATION.get(Number(tid));
+  if (n != null) t.nation = n;
+}
+
 /* ------------------------------------------------------------------ write */
 mkdirSync(OUT, { recursive: true });
 const w = (f, o) => writeFileSync(join(OUT, f), JSON.stringify(o), 'utf8');
@@ -565,6 +772,21 @@ w('ea_positions.json', { enum: EA_POS, slotCompat, p: eaPos });
 w('national_teams.json', natTeams);
 w('cups.json', cups);
 w('prev_pos.json', prevPos);
+w('teamsheets.json', teamsheets);
+w('ovr_weights.json', {
+  attrIdSpace: 'EA internal attribute enum - NOT ea_attrs.json field order; unresolved, do not index ea_attrs with these ids',
+  positions: ovrWeights, categories: attrCategories, stars: starBounds,
+});
+w('coefficients.json', { clubs: clubCoeff, nations: nationCoeff });
+w('calendar.json', calendar);
+w('ownership.json', ownership);
+w('league_groups.json', leagueGroups);
+w('comp_venues.json', compVenues);
+w('prev_stats.json', { f: 'comp,apps,goals,assists,yellow,red,cleanSheets', p: prevStats });
+w('referees.json', { refs: referees, leagues: leagueRefs });
+w('regen_names.json', regenNames);
+w('regen_templates.json', regenTemplates);
+w('playstyles.json', playstyles);
 w('fc27_meta.json', {
   source: 'eafc-db-kit (MIT) bundled FC 27 main template',
   upstream: 'https://github.com/ViniMacacari/eafc-db-kit',
@@ -586,6 +808,19 @@ w('fc27_meta.json', {
   eaPositionsNote: 'ea_positions.json holds raw EA slot ids in preference order; formations.json uses the same enum but side-specific slots. Use its slotCompat map to collapse a formation slot to the coarse id a player can hold. positions.json/playpos.json are the lossy PES 13-slot projection.',
   slotCompat: SLOT_COMPAT,
   nationalTeams: Object.keys(natTeams).length,
+  teamsheets: Object.keys(teamsheets).length,
+  ovrWeightPositions: Object.keys(ovrWeights).length,
+  clubCoefficients: Object.keys(clubCoeff).length,
+  nationCoefficients: Object.keys(nationCoeff).length,
+  ownershipGroups: new Set(Object.values(ownership).map(o => o.group)).size,
+  referees: Object.keys(referees).length,
+  prevStatPlayers: Object.keys(prevStats).length,
+  regenNames: { first: regenNames.first.length, last: regenNames.last.length, common: regenNames.common.length },
+  regenTemplates: { youth: regenTemplates.youth.length, regen: regenTemplates.regen.length },
+  playstyles: Object.keys(playstyles).length,
+  attrIdSpaceNote: 'ovr_weights.json and playstyles.json reference EA\'s internal attribute enum, which is NOT the ea_attrs.json field order and could not be resolved (identity mapping tops only 29% of players in their own position; best fit 48% with impossible assignments). Ids are shipped raw and unmapped; the star bands in ovr_weights.json are rating-based and safe to use.',
+  traitsNote: 'trait1/trait2 remain RAW: no defensible mapping to playstyle ids was found (best F1 0.32 across every bit/requirement pairing), so playstyles.json ships unlock thresholds only',
+  calendarNote: 'transfer windows are month/day; template absolute dates are a 2008 placeholder and are not shipped',
   eaAttrsNote: 'raw EA values, lossless; the PES 25 in ratings.json are a lossy projection kept for the existing algorithms',
   pesProjectionDrops: ['crossing', 'volleys', 'reactions', 'longshots', 'interceptions',
     'vision', 'penalties', 'composure', 'slidingtackle', 'agility (blended into TightPossession)'],
@@ -647,5 +882,19 @@ const liv = formations['9'];
 if (liv) console.log('  Liverpool formation: %s (id %d)', liv[0].name, liv[0].id);
 const anfield = clubs['9'] && clubs['9'].stadium;
 if (anfield) console.log('  Liverpool stadium: %s (%s seats)', stadiums[String(anfield)].name, stadiums[String(anfield)].capacity);
+console.log('\ncareer logic tables (r16):');
+console.log('  teamsheets %d clubs (captain + 7 set-piece takers)', Object.keys(teamsheets).length);
+console.log('  ovr weights %d positions | %d star bands', Object.keys(ovrWeights).length, starBounds.length);
+console.log('  coefficients %d clubs / %d nations | ownership %d clubs in %d groups',
+  Object.keys(clubCoeff).length, Object.keys(nationCoeff).length, Object.keys(ownership).length,
+  new Set(Object.values(ownership).map(o => o.group)).size);
+console.log('  windows %s | referees %d | prev stats %d players',
+  calendar.windows.map(x => `${x.open.month}/${x.open.day}-${x.close.month}/${x.close.day}`).join(', '),
+  Object.keys(referees).length, Object.keys(prevStats).length);
+console.log('  regen names %d first / %d last / %d common | templates %d youth + %d regen',
+  regenNames.first.length, regenNames.last.length, regenNames.common.length,
+  regenTemplates.youth.length, regenTemplates.regen.length);
+console.log('  playstyles %d (%d named) - thresholds only, traits stay raw',
+  Object.keys(playstyles).length, Object.values(playstyles).filter(p => p.name).length);
 console.log('\nleagues:');
 for (const [id, l] of Object.entries(leagues)) console.log('  %s %s (%s, L%d) %d teams', id.padStart(4), l.name.padEnd(28), l.countryName.padEnd(16), l.level, l.teams.length);

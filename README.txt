@@ -63,6 +63,48 @@ data, not season state, so these tables are extracted too:
                      capped players.  Kept separate from clubs.json so club
                      competitions never pick up a national side.
 
+CAREER LOGIC TABLES
+Found by sweeping all 268 upstream tables for non-empty ones the importer was
+not reading.  215 are non-empty; most are presentation-only (skins, crowds,
+kits, vanity, audio) and stay out.  These twelve carry career logic:
+
+    teamsheets.json  captain + 7 set-piece takers for all 717 clubs.  Every
+                     taker verified to be in that club's own squad.
+    coefficients.json  175 clubs / 27 nations, 5 yearly scores + total, for
+                     European seeding and reputation.
+    calendar.json    transfer windows as month/day (1 Jul-31 Aug, 1-31 Jan).
+                     Year-less on purpose: the engine's save owns the season.
+    ownership.json   93 clubs in 33 multi-club groups - blocks transfers
+                     between siblings (e.g. Arsenal / Colorado Rapids).
+    league_groups.json  MLS conference split (30 clubs).
+    comp_venues.json neutral and cup-final venues per competition.
+    prev_stats.json  last season's real per-competition stats for 3,929
+                     players (apps, goals, assists, cards, clean sheets).
+    referees.json    363 officials with card/foul strictness, linked to 53
+                     leagues - feeds discipline rates in match simulation.
+    regen_names.json 11,744 first / 9,358 last / 481 common names for youth
+                     and regen generation, in 105 language/region pools.
+    regen_templates.json  attribute templates by position group and age
+                     (72 youth, 66 regen).  Youth ages are MONTHS, regen YEARS.
+    ovr_weights.json EA's per-position rating weights + the 0..5 star bands.
+                     See the warning below about the attribute ids.
+    playstyles.json  36 PlayStyle unlock thresholds (26 named).
+
+ATTRIBUTE IDS THAT ARE NOT WHAT THEY LOOK LIKE
+    ovr_weights.json and playstyles.json reference EA's INTERNAL attribute
+    enum, which is NOT the field order in ea_attrs.json.  Treating them as the
+    same space puts only 29% of players top in their own position (van Dijk
+    rated higher at ST than at CB).  An unconstrained fit reached just 48% and
+    still produced impossible assignments - a keeper formula weighting
+    freekickaccuracy while gkkicking sat outside it - and attributecategorymap
+    contradicts it.  Five ids appear in no formula at all.  So the ids ship RAW
+    and UNMAPPED, and no rating_in_pos() helper is offered: do not index
+    ea_attrs.json with them.  The star bands are rating-based and safe
+    (fc27.stars(ovr)).  regen_templates.json is keyed by FIELD NAME, so it is
+    unaffected.
+    traits.json is likewise still raw: every trait bit was tested against every
+    PlayStyle requirement set and the best F1 was 0.32, so no decode is invented.
+
 TWO ATTRIBUTE SETS - USE THE RAW ONE FOR SIMULATION
     ratings.json carries the 25 PES attributes the existing algorithms read.
     That is a LOSSY projection of EA's data: it has no slot for crossing,
@@ -106,7 +148,8 @@ Read API (no save required):
     /api/fc27/leagues?women=0   league list
     /api/fc27/league?id=13      one league + its clubs
     /api/fc27/club?id=9         club, squad, stadium, manager, formations,
-                                rivals, starting XI, last season's position
+                                rivals, starting XI, last season's position,
+                                captain/set pieces, coefficient, ownership
     /api/fc27/player?id=203376  one player incl. shirt, role, traits, loan
     /api/fc27/search?q=mbappe   accent-insensitive search
     /api/fc27/cups?women=0      cup list
@@ -115,6 +158,9 @@ Read API (no save required):
                                 slotCompat map
     /api/fc27/national          national teams (?women=0|1)
     /api/fc27/national?id=1318  one national team + its squad, best first
+    /api/fc27/calendar          transfer windows (?month=&day= -> open bool)
+    /api/fc27/referees          officials (?league=13 for one league)
+    /api/fc27/regen             name-pool and template counts for generation
 
 TWO ID COLLISIONS THAT HAD TO BE FIXED (not cosmetic)
     FC 27 reuses small competition ids for DIFFERENT leagues: 17 is Ligue 2
@@ -231,6 +277,14 @@ BUILD HISTORY
    formation slots were side-specific while players carried coarse ids (now
    bridged by slotCompat, 7,887/7,887 starters fit), and 69 national-team ids
    in contract.natPos resolved nowhere (now national_teams.json).
+14. r16: COMPLETENESS SWEEP.  All 268 upstream tables were checked for
+   non-empty data the importer was skipping; 12 career-logic tables were added
+   (captain/set pieces, coefficients, transfer windows, multi-club ownership,
+   cup venues, last-season stats, referees, regen name pools and templates,
+   rating weights, PlayStyle thresholds).  The importer now FAILS LOUDLY if an
+   allowlisted table is missing - it previously wrote empty files in silence.
+   Two id spaces proved undecodable and are shipped raw with warnings rather
+   than guessed at (attribute enum, trait bits).
    The separate engine with its own save is still the next piece of work.
 WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------

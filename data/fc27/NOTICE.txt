@@ -110,6 +110,27 @@ Data notes
   `natPos` references these ids; without the table those 69 ids resolved in
   neither clubs.json nor the legacy teamids map. They are deliberately kept out
   of clubs.json so club competitions cannot draw a national side.
+- Career-logic tables added in r16 after sweeping all 268 upstream tables:
+  `default_teamsheets` (captain + 7 set-piece takers, 717/717 clubs, every taker
+  verified in-squad), `clubcoefficients`/`nationcoefficients`, `career_calendar`,
+  `multiclubownership`, `mls_group_structure`, `competitionstadiumlinks`,
+  `prevcompetitionstats`, `referee`/`leaguerefereelinks`, the career name pools
+  and regen/youth attribute templates, `attributeprefpositionformula`,
+  `attributecategorymap`, `starratingboundaries`, `playstyle_attribute_requirement`.
+  The remaining non-empty tables are presentation-only (skins, crowds, kits,
+  vanity, audio) and are deliberately not extracted.
+- `ovr_weights.json` and `playstyles.json` reference EA's INTERNAL attribute
+  enum, NOT the `ea_attrs.json` field order. This was tested, not assumed: the
+  identity mapping ranks only 29% of players highest in their own position, and
+  an unconstrained fit reached 48% with impossible assignments (a GK formula
+  weighting freekickaccuracy while gkkicking sat outside it), contradicted by
+  attributecategorymap. Five ids appear in no formula. The ids are therefore
+  shipped raw and unmapped, with no rating-in-position helper. The star bands
+  are rating-based and safe. `regen_templates.json` is keyed by field name.
+- `career_calendar`'s absolute dates are a 2008 placeholder; only the month/day
+  transfer windows are shipped. Youth template ages are months (140..176),
+  regen ages are years (16..21). Regen name `groupid` is a language/region pool,
+  not a nation id - no upstream table maps the two.
 - Season state (points, fixtures, results, budgets, form, injuries) is NOT
   extracted: the game engine owns it in its own save. The template's standings
   are half-populated and would seed a career with contradictory numbers.
