@@ -163,7 +163,11 @@ const main = await readTemplateDatabase({
     'competitionstadiumlinks', 'prevcompetitionstats', 'referee', 'leaguerefereelinks',
     'career_firstnames', 'career_lastnames', 'career_commonnames',
     'career_youthplayerposattributes', 'career_regenplayerattributes',
-    'playstyle_attribute_requirement', 'teamnationlinks'],
+    'playstyle_attribute_requirement', 'teamnationlinks',
+    // r17: a second pass over the tables r16 had dismissed as presentation
+    // found these carry real career logic after all.
+    'player_grudgelove', 'previousteam', 'teamcounterparts', 'bigmatchups',
+    'career_createplayerattributes', 'MatchIntensity', 'BigAttendance', 'NoAttendance'],
 });
 const T = Object.fromEntries(main.databases.flatMap(d => d.tables).map(t => [t.name, t.records]));
 for (const k of ['players', 'playernames', 'teams', 'teamplayerlinks', 'leagues', 'leagueteamlinks', 'nations']) {
@@ -743,6 +747,113 @@ for (const [tid, t] of Object.entries(natTeams)) {
   if (n != null) t.nation = n;
 }
 
+/* ------------------------------------------------- r17: second-pass audit ---
+ * r16 called the remaining non-empty tables "presentation-only". Re-checking
+ * them individually showed that was too sweeping: these carry career logic.
+ * Still excluded, with reasons verified rather than assumed:
+ *   agents (29)      - every row is "Agent Test N"; 0 real names.
+ *   sponsors (392)   - names are texture asset keys (dynamic_01,
+ *                      Tottenham_Hotelscom), no contract/value fields.
+ *   competitionmatchups (450) - a partial pot draw for the 4 UEFA cups, not a
+ *                      fixture list; the draw is season state the engine owns.
+ *   cm_* / level_caps - Pro Clubs archetype XP, not manager career.
+ *   height_weight_impact, createplayerpositiontemplates, turfattributesmap -
+ *                      further unresolved attribute id spaces (the latter uses
+ *                      ids 75..111, outside the 34-field range entirely).
+ *   positionbonus, rankweight - every value is 0.
+ */
+
+// Player -> club emotional ties. Feeds transfer willingness (a player with a
+// strong tie to a rival is a harder sell). 303 rows, all players known; the
+// club ids include 5 national teams, which resolve via national_teams.json.
+const affinities = {};
+for (const r of (T.player_grudgelove || [])) {
+  if (!pidKnown.has(r.playerid)) continue;
+  (affinities[String(r.playerid)] ||= []).push([r.emotional_teamid, r.level_of_emotion]);
+}
+for (const v of Object.values(affinities)) v.sort((a, b) => b[1] - a[1]);
+
+// Former club - verified none of these players is still at that club.
+const formerClubs = {};
+for (const r of (T.previousteam || [])) {
+  if (!pidKnown.has(r.playerid) || !(r.previousteamid > 0)) continue;
+  formerClubs[String(r.playerid)] = r.previousteamid;
+}
+
+// Men's <-> women's side of the same club (64 pairs, all real clubs).
+const counterparts = {};
+for (const r of (T.teamcounterparts || [])) {
+  const m = String(r.maleteamid), f = String(r.femaleteamid);
+  if (!CLUB_IDS.has(r.maleteamid) || !CLUB_IDS.has(r.femaleteamid)) continue;
+  counterparts[m] = r.femaleteamid;
+  counterparts[f] = r.maleteamid;
+}
+
+// Marquee fixtures. Only 7 of 38 overlap rivals.json, so this is genuinely
+// extra signal. Upstream is not symmetric (2/38 reversed), so normalise.
+const bigSet = new Set();
+const bigMatches = [];
+for (const r of (T.bigmatchups || [])) {
+  if (!CLUB_IDS.has(r.teamid1) || !CLUB_IDS.has(r.teamid2)) continue;
+  const a = Math.min(r.teamid1, r.teamid2), b = Math.max(r.teamid1, r.teamid2);
+  const k = a + ':' + b;
+  if (bigSet.has(k)) continue;
+  bigSet.add(k);
+  bigMatches.push([a, b]);
+}
+bigMatches.sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+
+// Match tuning: intensity by score difference x minute bucket, and the
+// attendance-emotion bands for big matches vs no crowd.
+const buckets = [15, 30, 45, 60, 75, 90, 120];
+const matchTuning = {
+  intensityMinutes: buckets,
+  intensity: (T.MatchIntensity || []).slice().sort((a, b) => a.scorediff - b.scorediff)
+    .map(r => ({ scoreDiff: r.scorediff, byMinute: buckets.map(m => r['time' + m]) })),
+  attendance: {
+    big: (T.BigAttendance || []).slice().sort((a, b) => a.emotion - b.emotion)
+      .map(r => ({ emotion: r.emotion, min: r.min, max: r.max })),
+    none: (T.NoAttendance || []).slice().sort((a, b) => a.emotion - b.emotion)
+      .map(r => ({ emotion: r.emotion, min: r.min, max: r.max })),
+  },
+};
+
+// Create-player attribute templates by position group, age range and OVR band.
+// Keyed by FIELD NAME (safe), unlike the unresolved enum tables.
+regenTemplates.create = (T.career_createplayerattributes || []).map(r => {
+  const o = tplRow(r);
+  o.ageMin = r.agemin; o.ageMax = r.agemax;
+  o.overallMin = r.overallmin; o.overallMax = r.overallmax;
+  delete o.age;
+  return o;
+});
+
+// Some shipped rows reference teams outside the 717-club universe: the
+// CONMEBOL Libertadores/Sudamericana sides (Flamengo, Corinthians, Penarol...).
+// They appear in affinities and former_clubs, and as cup seeds. Rather than
+// drop real history or leave dangling ids, collect every referenced id that
+// resolves to neither clubs.json nor national_teams.json and ship its name.
+// Computed from the emitted structures, so new references are covered too.
+const externalTeams = {};
+const noteRef = id => {
+  if (!(id > 0)) return;
+  const k = String(id);
+  if (clubs[k] || natTeams[k] || externalTeams[k]) return;
+  const t = TEAM.get(id);
+  if (!t) return;
+  const lid = TLEAGUE.get(id);
+  externalTeams[k] = { name: t.teamname || '', competition: lid || 0,
+                       competitionName: lid ? compName(lid) : '' };
+};
+for (const v of Object.values(affinities)) for (const [t] of v) noteRef(t);
+for (const t of Object.values(formerClubs)) noteRef(t);
+for (const v of Object.values(ownership)) for (const t of v.siblings) noteRef(t);
+for (const v of Object.values(rivals)) for (const r of v) noteRef(r[0]);
+for (const l of loans) { noteRef(l.from); noteRef(l.to); }
+for (const c of Object.values(cups)) for (const t of (c.teams || [])) noteRef(t);
+for (const [a, b] of bigMatches) { noteRef(a); noteRef(b); }
+for (const t of Object.values(counterparts)) noteRef(t);
+
 /* ------------------------------------------------------------------ write */
 mkdirSync(OUT, { recursive: true });
 const w = (f, o) => writeFileSync(join(OUT, f), JSON.stringify(o), 'utf8');
@@ -787,6 +898,12 @@ w('referees.json', { refs: referees, leagues: leagueRefs });
 w('regen_names.json', regenNames);
 w('regen_templates.json', regenTemplates);
 w('playstyles.json', playstyles);
+w('affinities.json', affinities);
+w('former_clubs.json', formerClubs);
+w('counterparts.json', counterparts);
+w('big_matches.json', bigMatches);
+w('match_tuning.json', matchTuning);
+w('external_teams.json', externalTeams);
 w('fc27_meta.json', {
   source: 'eafc-db-kit (MIT) bundled FC 27 main template',
   upstream: 'https://github.com/ViniMacacari/eafc-db-kit',
@@ -818,6 +935,23 @@ w('fc27_meta.json', {
   regenNames: { first: regenNames.first.length, last: regenNames.last.length, common: regenNames.common.length },
   regenTemplates: { youth: regenTemplates.youth.length, regen: regenTemplates.regen.length },
   playstyles: Object.keys(playstyles).length,
+  affinityPlayers: Object.keys(affinities).length,
+  formerClubs: Object.keys(formerClubs).length,
+  counterpartClubs: Object.keys(counterparts).length,
+  bigMatches: bigMatches.length,
+  createTemplates: regenTemplates.create.length,
+  externalTeams: Object.keys(externalTeams).length,
+  externalTeamsNote: 'team ids referenced by shipped rows but outside clubs.json/national_teams.json (CONMEBOL sides). Names are shipped so no reference dangles; they are not playable clubs in this database.',
+  affinityNote: 'level_of_emotion is shipped raw; upstream does not document the scale. Observed: Iniesta->Barcelona 7, Iniesta->Athletic Club 1, Buffon->Juventus 6, consistent with low=grudge / high=affection, but that reading is inferred, not confirmed.',
+  stillExcluded: {
+    agents: 'all 29 rows are "Agent Test N" placeholders',
+    sponsors: 'names are texture asset keys, no contract or value fields',
+    competitionmatchups: 'partial UEFA pot draw, not fixtures; a draw is engine season state',
+    cmTables: 'Pro Clubs archetype XP, not manager career',
+    heightWeightImpact: 'unresolved attribute id space',
+    createplayerpositiontemplates: 'attribute ids 75..111, outside the 34-field range',
+    positionBonus: 'every value is 0',
+  },
   attrIdSpaceNote: 'ovr_weights.json and playstyles.json reference EA\'s internal attribute enum, which is NOT the ea_attrs.json field order and could not be resolved (identity mapping tops only 29% of players in their own position; best fit 48% with impossible assignments). Ids are shipped raw and unmapped; the star bands in ovr_weights.json are rating-based and safe to use.',
   traitsNote: 'trait1/trait2 remain RAW: no defensible mapping to playstyle ids was found (best F1 0.32 across every bit/requirement pairing), so playstyles.json ships unlock thresholds only',
   calendarNote: 'transfer windows are month/day; template absolute dates are a 2008 placeholder and are not shipped',
@@ -896,5 +1030,11 @@ console.log('  regen names %d first / %d last / %d common | templates %d youth +
   regenTemplates.youth.length, regenTemplates.regen.length);
 console.log('  playstyles %d (%d named) - thresholds only, traits stay raw',
   Object.keys(playstyles).length, Object.values(playstyles).filter(p => p.name).length);
+console.log('\nsecond-pass career tables (r17):');
+console.log('  affinities %d players | former clubs %d | counterparts %d clubs',
+  Object.keys(affinities).length, Object.keys(formerClubs).length, Object.keys(counterparts).length);
+console.log('  big matches %d pairs | create templates %d | intensity rows %d',
+  bigMatches.length, regenTemplates.create.length, matchTuning.intensity.length);
+console.log('  external teams %d (referenced but outside the club universe)', Object.keys(externalTeams).length);
 console.log('\nleagues:');
 for (const [id, l] of Object.entries(leagues)) console.log('  %s %s (%s, L%d) %d teams', id.padStart(4), l.name.padEnd(28), l.countryName.padEnd(16), l.level, l.teams.length);

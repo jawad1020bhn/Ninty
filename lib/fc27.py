@@ -54,6 +54,14 @@ Career logic tables (static rules and history, still not season state):
   regen_templates.json {youth[], regen[]}  attribute templates by posGroup/age
   playstyles.json {id: {name, requires: [[attrId, minValue]]}}
                   attrId is the same unresolved EA enum - raw reference only
+  affinities.json {pid: [[teamid, emotion]]}  strongest first; scale inferred
+  former_clubs.json {pid: teamid}  verified not the player's current club
+  counterparts.json {tid: otherTid}  men's <-> women's side, symmetric
+  big_matches.json [[tidA, tidB]]  normalised marquee fixtures
+  match_tuning.json {intensityMinutes, intensity, attendance}
+  external_teams.json {tid: {name, competition, competitionName}}
+                  teams referenced by the data but outside clubs.json (the
+                  CONMEBOL sides). Resolve names via team_name().
 
 Position granularity: formations and players share EA's 28-id enum but not its
 granularity. A formation slot is side-specific (4 RCB, 6 LCB, 9 RDM, 24 RS);
@@ -261,6 +269,87 @@ def playstyles():
     not evaluated against a player's attributes here. This is also NOT a decode
     of traits.json: no defensible trait-bit mapping exists in the template."""
     return _load('playstyles.json', {}) or {}
+
+
+def affinities(pid):
+    """Clubs a player has an emotional tie to, strongest first: [[tid, level]].
+
+    level_of_emotion is raw. Upstream does not document the scale; observed
+    values (Iniesta -> Barcelona 7, -> Athletic Club 1) suggest low = grudge and
+    high = affection, but that reading is inferred, not confirmed.
+    """
+    return (_load('affinities.json', {}) or {}).get(str(int(pid))) or []
+
+
+def former_club(pid):
+    """The player's previous club id, or None."""
+    return (_load('former_clubs.json', {}) or {}).get(str(int(pid)))
+
+
+def counterpart(tid):
+    """The men's/women's counterpart of a club, or None."""
+    return (_load('counterparts.json', {}) or {}).get(str(int(tid)))
+
+
+def big_matches():
+    return _load('big_matches.json', []) or []
+
+
+def is_big_match(a, b):
+    x, y = sorted((int(a), int(b)))
+    return any(p[0] == x and p[1] == y for p in big_matches())
+
+
+def match_tuning():
+    """Intensity by score difference x minute bucket, plus attendance bands."""
+    return _load('match_tuning.json', {}) or {}
+
+
+def match_intensity(score_diff, minute):
+    """EA's intensity modifier for a score state at a minute, or None.
+
+    Clamps the score difference to the shipped -4..4 range and picks the
+    nearest listed minute bucket at or above `minute`.
+    """
+    t = match_tuning()
+    rows = t.get('intensity') or []
+    if not rows:
+        return None
+    try:
+        d, m = int(score_diff), int(minute)
+    except (TypeError, ValueError):
+        return None
+    lo, hi = rows[0]['scoreDiff'], rows[-1]['scoreDiff']
+    d = max(lo, min(hi, d))
+    row = next((r for r in rows if r['scoreDiff'] == d), None)
+    if not row:
+        return None
+    mins = t.get('intensityMinutes') or []
+    idx = next((i for i, v in enumerate(mins) if m <= v), len(mins) - 1)
+    vals = row.get('byMinute') or []
+    return vals[idx] if 0 <= idx < len(vals) else None
+
+
+def external_teams():
+    return _load('external_teams.json', {}) or {}
+
+
+def team_name(tid):
+    """Name of any team id: club, national team, or external (CONMEBOL) side.
+
+    Every team id referenced by the shipped data resolves through this.
+    """
+    k = str(int(tid))
+    c = clubs().get(k)
+    if c:
+        return c.get('name') or ''
+    n = national_teams().get(k)
+    if n:
+        return n.get('name') or ''
+    e = external_teams().get(k)
+    if e:
+        return e.get('name') or ''
+    return ''
 
 
 def potential():
@@ -496,6 +585,8 @@ def player(pid):
         traits=traits().get(k) or {}, loan=loan_of(pid),
         eaAttrs=ea_attrs(pid), eaPositions=ea_positions(pid),
         stars=stars(r[0]), prevStats=prev_stats(pid),
+        affinities=[dict(id=t, name=team_name(t), level=lv) for t, lv in affinities(pid)],
+        formerClub=(lambda f: dict(id=f, name=team_name(f)) if f else None)(former_club(pid)),
         nationalTeams=[national_team(t) or {'id': t} for t in (ct.get('natPos') or [])],
     )
 
@@ -563,6 +654,9 @@ def summary():
         prevStatPlayers=len((_load('prev_stats.json', {}) or {}).get('p', {}) or {}),
         regenNames={k: len(v) for k, v in regen_names().items()},
         transferWindows=transfer_windows(),
+        bigMatches=len(big_matches()), externalTeams=len(external_teams()),
+        affinityPlayers=len(_load('affinities.json', {}) or {}),
+        counterparts=len(_load('counterparts.json', {}) or {}),
         contracted=sum(1 for ps in sq.values() for _ in ps),
         freeAgents=len(players()) - sum(len(ps) for ps in sq.values()),
         source=m.get('source', ''), upstream=m.get('upstream', ''),

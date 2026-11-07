@@ -90,6 +90,42 @@ kits, vanity, audio) and stay out.  These twelve carry career logic:
                      See the warning below about the attribute ids.
     playstyles.json  36 PlayStyle unlock thresholds (26 named).
 
+SECOND PASS - "presentation-only" WAS TOO SWEEPING
+    r16 dismissed the remaining non-empty tables as presentation.  Checking
+    them one by one showed several carry career logic, now extracted too:
+
+    affinities.json  216 players' emotional ties to clubs, strongest first.
+                     Iniesta -> Barcelona 7, -> Athletic Club 1.  The scale is
+                     NOT documented upstream; low=grudge/high=affection is an
+                     inference and is labelled as such in the metadata.
+    former_clubs.json  200 players' previous club (verified none is still there).
+    counterparts.json  128 clubs paired men's <-> women's (64 pairs, symmetric).
+    big_matches.json 33 marquee fixtures; only 7 of 38 upstream rows overlapped
+                     rivals.json, so this is genuinely extra signal.
+    match_tuning.json  intensity by score difference (-4..4) x minute bucket
+                     (15/30/45/60/75/90/120), plus attendance emotion bands.
+    external_teams.json  8 CONMEBOL clubs (Flamengo, Corinthians, Penarol...)
+                     referenced by the data but outside the 717-club universe.
+    regen_templates.json  also gained 149 create-player templates by position
+                     group, age range and OVR band.
+
+    A sweep of EVERY team id referenced anywhere in the shipped data (730
+    distinct) found 8 that resolved to nothing.  external_teams.json ships
+    their names, and fc27.team_name(tid) resolves clubs, national teams and
+    these externals alike.  There are now zero dangling team references.
+
+    Still excluded, each verified rather than assumed:
+      agents (29)         every row is "Agent Test N" - no real names.
+      sponsors (392)      names are texture asset keys (dynamic_01,
+                          Tottenham_Hotelscom); no contract or value fields.
+      competitionmatchups (450)  a partial UEFA pot draw, not a fixture list;
+                          drawing the schedule is engine season state.
+      cm_* / level_caps   Pro Clubs archetype XP, not manager career.
+      height_weight_impact, createplayerpositiontemplates, turfattributesmap
+                          further unresolved attribute id spaces (the second
+                          uses ids 75..111, outside the 34-field range).
+      positionbonus, rankweight   every value is 0.
+
 ATTRIBUTE IDS THAT ARE NOT WHAT THEY LOOK LIKE
     ovr_weights.json and playstyles.json reference EA's INTERNAL attribute
     enum, which is NOT the field order in ea_attrs.json.  Treating them as the
@@ -161,6 +197,8 @@ Read API (no save required):
     /api/fc27/calendar          transfer windows (?month=&day= -> open bool)
     /api/fc27/referees          officials (?league=13 for one league)
     /api/fc27/regen             name-pool and template counts for generation
+    /api/fc27/matches           marquee fixtures (?a=&b= -> big/derby/owner)
+    /api/fc27/tuning            match intensity + attendance (?diff=&minute=)
 
 TWO ID COLLISIONS THAT HAD TO BE FIXED (not cosmetic)
     FC 27 reuses small competition ids for DIFFERENT leagues: 17 is Ligue 2
@@ -285,6 +323,12 @@ BUILD HISTORY
    allowlisted table is missing - it previously wrote empty files in silence.
    Two id spaces proved undecodable and are shipped raw with warnings rather
    than guessed at (attribute enum, trait bits).
+15. r17: SECOND-PASS AUDIT.  r16's "the rest is presentation-only" was checked
+   table by table and found too sweeping: player affinities, former clubs,
+   men's/women's counterparts, marquee fixtures, match intensity/attendance
+   tuning and create-player templates were all real and are now extracted.
+   A full reference sweep found 8 dangling team ids (CONMEBOL sides); it now
+   ships external_teams.json + team_name(), leaving zero dangling references.
    The separate engine with its own save is still the next piece of work.
 WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------

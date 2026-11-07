@@ -20059,7 +20059,31 @@ class H(BaseHTTPRequestHandler):
                                            teamsheet=fc27db.teamsheet(_tid),
                                            coefficient=fc27db.coefficients(tid=_tid),
                                            ownership=fc27db.ownership(_tid),
-                                           group=fc27db.league_group(_tid)))
+                                           group=fc27db.league_group(_tid),
+                                           counterpart=fc27db.counterpart(_tid)))
+            if u.path == '/api/fc27/matches':
+                _q = parse_qs(u.query)
+                _a, _b = _qint(_q, 'a'), _qint(_q, 'b')
+                if _a and _b:
+                    return self.send(200, dict(ok=True, a=_a, b=_b,
+                                               aName=fc27db.team_name(_a), bName=fc27db.team_name(_b),
+                                               big=fc27db.is_big_match(_a, _b),
+                                               derby=any(r['id'] == _b for r in fc27db.club_rivals(_a)),
+                                               sameOwner=fc27db.same_owner(_a, _b)))
+                _ms = [dict(a=_x, b=_y, aName=fc27db.team_name(_x), bName=fc27db.team_name(_y))
+                       for _x, _y in fc27db.big_matches()]
+                return self.send(200, dict(ok=True, matches=_ms))
+            if u.path == '/api/fc27/tuning':
+                _q = parse_qs(u.query)
+                _d, _m = _q.get('diff', [''])[0], _qint(_q, 'minute')
+                _out = dict(ok=True, tuning=fc27db.match_tuning())
+                if _d != '' and _m:
+                    try:
+                        _out.update(scoreDiff=int(_d), minute=_m,
+                                    intensity=fc27db.match_intensity(int(_d), _m))
+                    except ValueError:
+                        return self.send(400, dict(ok=False, error='diff must be an integer'))
+                return self.send(200, _out)
             if u.path == '/api/fc27/calendar':
                 _q = parse_qs(u.query)
                 _mo, _dy = _qint(_q, 'month'), _qint(_q, 'day')
@@ -20081,7 +20105,7 @@ class H(BaseHTTPRequestHandler):
                                            names={_k: len(_v) for _k, _v in _n.items()},
                                            pools=sorted({r[1] for _v in _n.values() for r in _v}),
                                            templates={_k: len(_t.get(_k) or [])
-                                                      for _k in ('youth', 'regen')},
+                                                      for _k in ('youth', 'regen', 'create')},
                                            youthAgeUnit=_t.get('youthAgeUnit'),
                                            regenAgeUnit=_t.get('regenAgeUnit'),
                                            note='pool ids are language/region groups, not nation ids'))
