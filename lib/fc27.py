@@ -33,6 +33,15 @@ Engine-facing reference data (static; the engine's own save holds season state):
   cups.json       {compid: {name, kind, country, importance, teams, groups, ...}}
   prev_pos.json   {tid: {prev, prevLeague}}  last season's finishing position
   ea_attrs.json   {ab: [34 EA field names], p: {pid: [34 raw values]}}
+  ea_positions.json {enum, slotCompat, p: {pid: [EA slot ids, best first]}}
+  national_teams.json {teamid: {name, gender, ovr, colors, squad}}
+
+Position granularity: formations and players share EA's 28-id enum but not its
+granularity. A formation slot is side-specific (4 RCB, 6 LCB, 9 RDM, 24 RS);
+a player only ever carries the coarse central id (5 CB, 10 CDM, 25 ST). Use
+slot_compat() to compare them - fits_slot() does it for you. Comparing raw ids
+directly leaves 1998 of 7887 designated starters unable to fill their own
+club's formation; with the map, all 7887 fit.
 
 About the two attribute sets: ratings.json carries the 25 PES attributes the
 existing algorithms read, which is a LOSSY projection of EA's data - it has no
@@ -163,6 +172,33 @@ def ea_attrs(pid=None):
         return tbl
     row = tbl.get(str(int(pid)))
     return dict(zip(ea_ab(), row)) if row else {}
+
+
+def ea_positions(pid=None):
+    """Raw EA position ids, most preferred first. None -> the whole table."""
+    tbl = (_load('ea_positions.json', {}) or {}).get('p', {}) or {}
+    return tbl if pid is None else (tbl.get(str(int(pid))) or [])
+
+
+def slot_compat():
+    """{formation slot id -> the coarse EA id a player can hold}."""
+    raw = (_load('ea_positions.json', {}) or {}).get('slotCompat', {}) or {}
+    return {int(k): int(v) for k, v in raw.items()}
+
+
+def fits_slot(pid, slot):
+    """Can this player fill a formation slot? Compares in the coarse space."""
+    cm = slot_compat()
+    want = cm.get(int(slot), int(slot))
+    return any(cm.get(p, p) == want for p in ea_positions(pid))
+
+
+def national_teams():
+    return _load('national_teams.json', {}) or {}
+
+
+def national_team(tid):
+    return national_teams().get(str(int(tid)))
 
 
 def stadiums():
@@ -339,7 +375,8 @@ def player(pid):
         release=ct.get('release', 0), gender=ct.get('gender', 0),
         shirt=shirt(pid, tid), role=role(pid, tid),
         traits=traits().get(k) or {}, loan=loan_of(pid),
-        eaAttrs=ea_attrs(pid),
+        eaAttrs=ea_attrs(pid), eaPositions=ea_positions(pid),
+        nationalTeams=[national_team(t) or {'id': t} for t in (ct.get('natPos') or [])],
     )
 
 
@@ -399,6 +436,8 @@ def summary():
         stadiums=len(stadiums()), managers=len(managers()), cups=len(cups()),
         loans=len(loans()), formations=sum(len(v) for v in formations().values()),
         rivalPairs=sum(len(v) for v in rivals().values()) // 2,
+        nationalTeams=len(national_teams()),
+        cappedPlayers=sum(len(t.get('squad') or []) for t in national_teams().values()),
         contracted=sum(1 for ps in sq.values() for _ in ps),
         freeAgents=len(players()) - sum(len(ps) for ps in sq.values()),
         source=m.get('source', ''), upstream=m.get('upstream', ''),

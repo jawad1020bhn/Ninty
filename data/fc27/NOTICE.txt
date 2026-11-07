@@ -98,6 +98,18 @@ Data notes
   data", not "unknown country", and is not guessed at.
 - `trait1`/`trait2` are stored as raw bitflags. Their individual bit meanings
   are not documented in the template, so no interpretation is invented.
+- Positions come in two granularities of the SAME 28-id enum. formations.json
+  slots are side-specific (4 RCB, 6 LCB, 9 RDM, 24 RS) while
+  players.preferredpositionN only ever holds the coarse central id (5 CB,
+  10 CDM, 25 ST); only 12 of the 28 ids appear on any player. ea_positions.json
+  therefore ships a `slotCompat` map collapsing a slot to the id a player can
+  hold. Verified: raw-id comparison matches 5,889 of 7,887 designated starters;
+  through the map it matches 7,887 of 7,887.
+- National teams are extracted into national_teams.json (69 teams, 1,740
+  capped players) from the international leagues 78 / 2136. contract.json's
+  `natPos` references these ids; without the table those 69 ids resolved in
+  neither clubs.json nor the legacy teamids map. They are deliberately kept out
+  of clubs.json so club competitions cannot draw a national side.
 - Season state (points, fixtures, results, budgets, form, injuries) is NOT
   extracted: the game engine owns it in its own save. The template's standings
   are half-populated and would seed a career with contradictory numbers.

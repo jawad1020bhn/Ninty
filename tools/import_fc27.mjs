@@ -109,6 +109,21 @@ const EA_ATTRS = ['crossing', 'finishing', 'headingaccuracy', 'shortpassing', 'v
   'penalties', 'composure', 'defensiveawareness', 'standingtackle', 'slidingtackle',
   'gkdiving', 'gkhandling', 'gkkicking', 'gkreflexes', 'gkpositioning'];
 
+// Formations and players use the SAME 28-id enum but at different granularity.
+// formations.positionN is side-specific (4 RCB, 6 LCB, 9 RDM, 24 RS...), while
+// players.preferredpositionN only ever carries the coarse central id (5 CB,
+// 10 CDM, 25 ST...). Verified: players use just 12 of the 28 ids, and 10 slot
+// ids used by formations never appear on any player. Comparing them directly
+// leaves 1998 of 7887 designated starters unable to fill their own club's
+// formation. This map collapses a slot to the id a player can actually hold;
+// with it, coverage is 7887/7887.
+const SLOT_COMPAT = {
+  1: 5, 2: 3, 4: 5, 6: 5, 8: 7, 9: 10, 11: 10, 13: 14, 15: 14,
+  17: 18, 19: 18, 20: 23, 21: 25, 22: 27, 24: 25, 26: 25,
+};
+const slotCompat = {};
+for (let i = 0; i < 28; i++) slotCompat[i] = SLOT_COMPAT[i] != null ? SLOT_COMPAT[i] : i;
+
 // leagues that are NOT real club competitions
 const SPECIAL = new Set([111, 382, 383, 2000, 2028, 2092, 2240, 2255, 2260, 2261, 2262, 2263]);
 const REST = new Set([76, 2226]);
@@ -216,6 +231,7 @@ function pickClub(pid) {
 /* --------------------------------------------------------------- transform */
 const players = [], ratings = {}, positions = {}, playpos = {}, nats = {}, pot = {}, dob = {}, extra = {};
 const eaAttrs = {};   // raw EA attribute values, EA_ATTRS order
+const eaPos = {};     // raw EA preferred positions, most preferred first
 const squads = new Map();
 let noClub = 0, noName = 0, women = 0;
 
@@ -243,6 +259,13 @@ for (const p of T.players) {
 
   // Raw EA values, unclamped and unblended, in EA_ATTRS order.
   eaAttrs[String(pid)] = EA_ATTRS.map(k => Number(p[k]) || 0);
+
+  // formations.json slots are EA position ids (4 = RCB, 11 = LDM, 25 = ST...).
+  // The PES 13-slot projection collapses those (RCB/LCB/CB -> CB), so matching a
+  // player to a formation slot needs the raw list, in preference order.
+  eaPos[String(pid)] = [1, 2, 3, 4, 5, 6, 7]
+    .map(i => p['preferredposition' + i])
+    .filter(v => v != null && v >= 0);
 
   const pp = new Array(13).fill(0);
   for (let i = 1; i <= 7; i++) {
@@ -325,14 +348,39 @@ const squadObj = {};
 for (const [tid, ps] of squads) if (teamids[String(tid)]) squadObj[String(tid)] = ps.sort((a, b) => a - b);
 
 /* ------------------------------------------- engine-facing reference data */
+const CLUB_IDS = new Set(Object.keys(clubs).map(Number));
+const pidKnown = new Set(players.map(r => r[0]));
+
+// National teams. contract.json's natPos points at these ids, but they are not
+// clubs and were deliberately excluded from clubs.json, which left those
+// references dangling. Ship them in their own table so they resolve.
+const natTeams = {};
+const natSquads = new Map();
+for (const l of (T.teamplayerlinks || [])) {
+  if (kindOf(TLEAGUE.get(l.teamid)) !== 'intl') continue;
+  if (!natSquads.has(l.teamid)) natSquads.set(l.teamid, []);
+  if (pidKnown.has(l.playerid)) natSquads.get(l.teamid).push(l.playerid);
+}
+for (const l of (T.leagueteamlinks || [])) {
+  const lg = LEAGUE.get(l.leagueid);
+  if (!lg || !lg.isinternationalleague) continue;
+  const t = TEAM.get(l.teamid);
+  if (!t) continue;
+  natTeams[String(l.teamid)] = {
+    name: String(t.teamname || ''), gender: Number(t.gender) || 0,
+    ovr: Number(t.matchdayoverallrating) || 0,
+    league: Number(l.leagueid) || 0,
+    colors: [hex(t.teamcolor1r, t.teamcolor1g, t.teamcolor1b),
+      hex(t.teamcolor2r, t.teamcolor2g, t.teamcolor2b)],
+    squad: (natSquads.get(l.teamid) || []).sort((a, b) => a - b),
+  };
+}
+
 /* STATIC reference only. Season state (points, fixtures, results, budgets,
    form, injuries) is deliberately NOT extracted: the engine owns that and will
    keep it in its own save. The template's partial standings are not a played
    season (points are non-zero for only 295/870 clubs), so importing them would
    seed a career with contradictory numbers. */
-const CLUB_IDS = new Set(Object.keys(clubs).map(Number));
-const pidKnown = new Set(players.map(r => r[0]));
-
 // Venues: teams.teamstadiumcapacity is just a number. The name, city, country
 // and pitch dimensions live in stadiums + teamstadiumlinks (870/870 resolve).
 const STADIUM = new Map((T.stadiums || []).map(s => [s.stadiumid, s]));
@@ -513,6 +561,8 @@ w('formations.json', formations);
 w('loans.json', loans);
 w('traits.json', traits);
 w('ea_attrs.json', { ab: EA_ATTRS, p: eaAttrs });
+w('ea_positions.json', { enum: EA_POS, slotCompat, p: eaPos });
+w('national_teams.json', natTeams);
 w('cups.json', cups);
 w('prev_pos.json', prevPos);
 w('fc27_meta.json', {
@@ -533,6 +583,9 @@ w('fc27_meta.json', {
   skipped: { noName, noClub, womenPlayers: women },
   posn: POSN, ab: AB, abSource: AB_SRC, eaPos: EA_POS,
   eaAttrs: EA_ATTRS,
+  eaPositionsNote: 'ea_positions.json holds raw EA slot ids in preference order; formations.json uses the same enum but side-specific slots. Use its slotCompat map to collapse a formation slot to the coarse id a player can hold. positions.json/playpos.json are the lossy PES 13-slot projection.',
+  slotCompat: SLOT_COMPAT,
+  nationalTeams: Object.keys(natTeams).length,
   eaAttrsNote: 'raw EA values, lossless; the PES 25 in ratings.json are a lossy projection kept for the existing algorithms',
   pesProjectionDrops: ['crossing', 'volleys', 'reactions', 'longshots', 'interceptions',
     'vision', 'penalties', 'composure', 'slidingtackle', 'agility (blended into TightPossession)'],
@@ -561,6 +614,21 @@ console.log('\nlargest squads:', sizes.slice(0, 5).map(x => x.join('=')).join(',
 console.log('smallest squads:', sizes.slice(-5).map(x => x.join('=')).join(', '));
 console.log('  ea attrs   %d players x %d raw EA attributes (%d dropped by the PES-25 projection)',
   Object.keys(eaAttrs).length, EA_ATTRS.length, 10);
+console.log('  ea pos     %d players | national teams %d (%d capped players)',
+  Object.keys(eaPos).length, Object.keys(natTeams).length,
+  Object.values(natTeams).reduce((n, t) => n + t.squad.length, 0));
+{
+  let ok = 0, tot = 0;
+  for (const [tid, fs] of Object.entries(formations)) {
+    const slots = new Set(fs[0].pos.map(s => slotCompat[s]));
+    for (const [pid, v] of Object.entries(squadMeta[tid] || {})) {
+      if (v[1] !== 0) continue;
+      tot++;
+      if ((eaPos[pid] || []).some(p => slots.has(slotCompat[p]))) ok++;
+    }
+  }
+  console.log('  slot fit   %d/%d designated starters match a slot of their club formation', ok, tot);
+}
 console.log('\nengine reference data:');
 console.log('  stadiums   %d (%d/%d clubs linked)', Object.keys(stadiums).length,
   Object.values(clubs).filter(c => c.stadium != null).length, Object.keys(clubs).length);

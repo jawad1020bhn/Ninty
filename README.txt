@@ -57,6 +57,11 @@ data, not season state, so these tables are extracted too:
     prev_pos.json    last season's finishing position per club, for reputation
                      and board expectations.
     ea_attrs.json    EA's 34 attributes per player, RAW and lossless.
+    ea_positions.json  EA position ids per player, best first, plus the
+                     slotCompat map (see POSITIONS below).
+    national_teams.json  69 national teams (51 men, 18 women) with 1,740
+                     capped players.  Kept separate from clubs.json so club
+                     competitions never pick up a national side.
 
 TWO ATTRIBUTE SETS - USE THE RAW ONE FOR SIMULATION
     ratings.json carries the 25 PES attributes the existing algorithms read.
@@ -69,6 +74,23 @@ TWO ATTRIBUTE SETS - USE THE RAW ONE FOR SIMULATION
     ea_attrs.json keeps all 34 EA values unblended for the engine; the PES 25
     stay so market/growth/valuation keep working unchanged.
     /api/fc27/attrs returns both schemas and lists what the projection drops.
+
+POSITIONS - TWO GRANULARITIES, ONE ENUM
+    formations.json and ea_positions.json share EA's 28-id enum, but NOT its
+    granularity.  A formation slot is side-specific (4 RCB, 6 LCB, 9 RDM,
+    24 RS); a player only ever carries the coarse central id (5 CB, 10 CDM,
+    25 ST) - just 12 of the 28 ids appear on any player.  Comparing the raw ids
+    directly leaves 1,998 of the 7,887 designated starters unable to fill their
+    own club's formation.  ea_positions.json ships a slotCompat map that
+    collapses a slot to the id a player can hold; with it all 7,887 fit.
+
+        fc27.fits_slot(pid, slot)      does the comparison for you
+        fc27.slot_compat()            the 28-entry map
+        /api/fc27/attrs               returns slotCompat + the id->name enum
+
+    positions.json / playpos.json remain the lossy PES 13-slot projection the
+    old lineup code reads.  Do NOT match formation slots against those: PES
+    collapses RCB/LCB/CB into one CB and cannot express the side at all.
 
 DELIBERATELY NOT EXTRACTED - the engine owns this
     points, fixtures, results, budgets, form, injuries, league tables.
@@ -89,7 +111,10 @@ Read API (no save required):
     /api/fc27/search?q=mbappe   accent-insensitive search
     /api/fc27/cups?women=0      cup list
     /api/fc27/loans?club=9      loans in/out for a club
-    /api/fc27/attrs             EA-34 and PES-25 attribute schemas
+    /api/fc27/attrs             EA-34 / PES-25 schemas + position enum +
+                                slotCompat map
+    /api/fc27/national          national teams (?women=0|1)
+    /api/fc27/national?id=1318  one national team + its squad, best first
 
 TWO ID COLLISIONS THAT HAD TO BE FIXED (not cosmetic)
     FC 27 reuses small competition ids for DIFFERENT leagues: 17 is Ligue 2
@@ -116,7 +141,8 @@ SCOPE OF THIS STEP
     save) before they show anything; the /api/fc27 routes above work standalone.
     Overall rating is EA's own value, used directly (dbimport.USE_GAME_OVR),
     not recomputed from attributes.  For simulation read ea_attrs.json (raw,
-    lossless) rather than the lossy PES-25 projection in ratings.json.
+    lossless) rather than the lossy PES-25 projection in ratings.json, and
+    match formation slots through slotCompat rather than by raw id.
 
 LICENSING - IMPORTANT
     eafc-db-kit's MIT licence covers the KIT'S CODE, not EA's football data.
@@ -193,6 +219,19 @@ BUILD HISTORY
    harvester are gone, ready for a new logo system to be built.  See
    LOGO IMPORTERS REMOVED below for exactly what was deleted and what
    was deliberately kept.
+13. r12-r15: FC 27 DATABASE.  PES is no longer a dependency: the game reads
+   FC 27 only (21,623 players, 717 clubs, 41 leagues, 69 national teams) via
+   tools/import_fc27.mjs -> data/fc27/ and lib/fc27.py.  The AI/transfer
+   algorithms and the UI were kept, not rebranded.
+   r13 added the engine reference tables (stadiums, managers, formations,
+   rivals, loans, traits, cups, shirt numbers/squad roles, previous position).
+   r14 fixed a LOSSY projection: the PES-25 attribute set silently dropped 9
+   EA attributes, so ea_attrs.json now ships all 34 raw.
+   r15 fixed two integration bugs found by auditing coordinate spaces:
+   formation slots were side-specific while players carried coarse ids (now
+   bridged by slotCompat, 7,887/7,887 starters fit), and 69 national-team ids
+   in contract.natPos resolved nowhere (now national_teams.json).
+   The separate engine with its own save is still the next piece of work.
 WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------
   club                Birmingham City FC

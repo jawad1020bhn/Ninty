@@ -20007,7 +20007,28 @@ class H(BaseHTTPRequestHandler):
                 _m = fc27db.meta()
                 return self.send(200, dict(ok=True, ea=fc27db.ea_ab(),
                                            pes=_m.get('ab', []), pesSource=_m.get('abSource', []),
-                                           dropped=_m.get('pesProjectionDrops', [])))
+                                           dropped=_m.get('pesProjectionDrops', []),
+                                           posn=fc27db.POSN, eaPosEnum=_m.get('eaPos', {}),
+                                           slotCompat=fc27db.slot_compat()))
+            if u.path == '/api/fc27/national':
+                _q = parse_qs(u.query)
+                _tid = _qint(_q, 'id')
+                if _tid:
+                    _t = fc27db.national_team(_tid)
+                    if not _t:
+                        return self.send(404, dict(ok=False, error='No national team %d' % _tid))
+                    _sq = [fc27db.player(_p) for _p in (_t.get('squad') or [])]
+                    _sq = [_p for _p in _sq if _p]
+                    _sq.sort(key=lambda x: -(x['ovr'] or 0))
+                    return self.send(200, dict(ok=True, id=_tid, team=_t, squad=_sq))
+                _w = _q.get('women', [''])[0]
+                _out = []
+                for _k, _v in sorted(fc27db.national_teams().items(), key=lambda kv: int(kv[0])):
+                    if _w in ('0', '1') and int(_v.get('gender') or 0) != int(_w):
+                        continue
+                    _out.append(dict(id=int(_k), **{k: v for k, v in _v.items() if k != 'squad'},
+                                     players=len(_v.get('squad') or [])))
+                return self.send(200, dict(ok=True, teams=_out))
             if u.path == '/api/fc27/leagues':
                 _q = parse_qs(u.query)
                 _w = _q.get('women', [''])[0]
