@@ -9,7 +9,7 @@ Upstream repo is MIT for its code/curcation only. The artwork is the trademark a
 These files are NOT covered by this project's licence and are NOT
 committed to the repository. They are a local, personal-install cache.
 
-874 files, 938 mapped ids. Mapping (id -> upstream file):
+872 files, 929 mapped ids. Mapping (id -> upstream file):
 
   clu 1    Arsenal                            crests/england/Arsenal.svg
   clu 2    Aston Villa                        crests/england/Aston_Villa.svg
@@ -35,7 +35,6 @@ committed to the repository. They are a local, personal-install cache.
   clu 27   Hansa Rostock                      crests/germany/Hansa_Rostock.svg
   clu 28   Hamburger SV                       crests/germany/Hamburger_SV.svg
   clu 29   1. FC Kaiserslautern               crests/germany/FC_Kaiserslautern.svg
-  clu 31   1. FC Köln                         crests/germany/SC_Köln-Brück_07.svg
   clu 32   Bayer 04 Leverkusen                crests/germany/Bayer_Leverkusen.svg
   clu 34   FC Schalke 04                      crests/germany/Schalke_04.svg
   clu 36   VfB Stuttgart                      crests/germany/VfB_Stuttgart.svg
@@ -151,7 +150,7 @@ committed to the repository. They are a local, personal-install cache.
   clu 327  Beşiktaş                           crests/turkey/Beşiktaş.svg
   clu 347  Lecce                              crests/italy/Lecce.svg
   clu 361  Stevenage                          crests/england/Stevenage.svg
-  clu 378  Stade Brestois 29                  crests/france/AS_Brest.svg
+  clu 378  Stade Brestois 29                  crests/france/Brest.svg
   clu 379  Stade de Reims                     crests/france/Stade_de_Reims.svg
   clu 393  PAOK                               crests/greece/PAOK.svg
   clu 417  Molde FK                           crests/norway/Molde.svg
@@ -404,8 +403,8 @@ committed to the repository. They are a local, personal-install cache.
   clu 101047 Dynamo Kyiv                        crests/ukraine/Dynamo_Kyiv.svg
   clu 101059 Shakhtar Donetsk                   crests/ukraine/Shakhtar.svg
   clu 101083 Estudiantes de La Plata            crests/argentina/Estudiantes_de_La_Plata.svg
-  clu 101084 Gimnasia y Esgrima La Plata        crests/argentina/Gimnasia_y_Esgrima.svg
-  clu 101085 Racing Club de Avellaneda          crests/argentina/Racing.svg
+  clu 101084 Gimnasia y Esgrima La Plata        crests/argentina/Gimnasia_LP.svg
+  clu 101085 Racing Club de Avellaneda          crests/argentina/Racing_Club.svg
   clu 101088 Vélez Sarsfield                    crests/argentina/Vélez_Sarsfield.svg
   clu 101100 Atlético Nacional                  crests/colombia/Atlético_Nacional.svg
   clu 101112 Vancouver Whitecaps                crests/usa/Vancouver_Whitecaps_FC.svg
@@ -444,10 +443,6 @@ committed to the repository. They are a local, personal-install cache.
   clu 110636 Fortuna Düsseldorf                 crests/germany/Fortuna_Düsseldorf.svg
   clu 110645 Viktoria Köln                      crests/germany/FC_Viktoria_Köln.svg
   clu 110678 TSV Havelse                        crests/germany/TSV_Havelse.svg
-  clu 110685 TSG 1899 Hoffenheim II             crests/germany/Hoffenheim.svg
-  clu 110697 VfB Stuttgart II                   crests/germany/VfB_Stuttgart.svg
-  clu 110711 Real Sociedad B                    crests/spain/Real_Sociedad.svg
-  clu 110716 RC Celta Fortuna                   crests/spain/Celta.svg
   clu 110724 KV Mechelen                        crests/belgium/KV_Mechelen.svg
   clu 110738 Pisa                               crests/italy/Pisa.svg
   clu 110745 Jagiellonia Białystok              crests/poland/Jagiellonia_Białystok.svg
@@ -518,7 +513,7 @@ committed to the repository. They are a local, personal-install cache.
   clu 111768 Beijing Guoan                      crests/china/Beijing_Guoan.svg
   clu 111774 Tianjin Jinmen Tiger               crests/china/Tianjin_Jinmen_Tiger.svg
   clu 111779 Henan FC                           crests/china/Henan_Songshan_Longmen.svg
-  clu 111811 Monza                              crests/italy/AC_Monza.svg
+  clu 111811 Monza                              crests/italy/Monza.svg
   clu 111817 Paris FC                           crests/france/Paris_FC.svg
   clu 111822 Wolfsberger AC                     crests/austria/Wolfsberg.svg
   clu 111928 San Jose Earthquakes               crests/usa/San_Jose_Earthquakes.svg
@@ -572,7 +567,6 @@ committed to the repository. They are a local, personal-install cache.
   clu 113037 Al Riyadh                          crests/saudi-arabia/Al_Riyadh.svg
   clu 113040 NorthEast United                   crests/india/NorthEast_United_FC.svg
   clu 113044 Barracas Central                   crests/argentina/Barracas_Central.svg
-  clu 113050 Gimnasia y Esgrima de Mendoza      crests/argentina/Gimnasia_y_Esgrima.svg
   clu 113057 Al Fayha                           crests/saudi-arabia/Al_Fayha.svg
   clu 113058 Abha Club                          crests/saudi-arabia/Abha.svg
   clu 113134 FC Juárez                          crests/mexico/FC_Juarez.svg
@@ -619,7 +613,6 @@ committed to the repository. They are a local, personal-install cache.
   clu 115998 VfL Wolfsburg                      crests/germany/Wolfsburg.svg
   clu 115999 TSG 1899 Hoffenheim                crests/germany/Hoffenheim.svg
   clu 116002 SC Freiburg                        crests/germany/Freiburg.svg
-  clu 116003 1. FC Köln                         crests/germany/SC_Köln-Brück_07.svg
   clu 116004 Werder Bremen                      crests/germany/Werder_Bremen.svg
   clu 116009 Arsenal                            crests/england/Arsenal.svg
   clu 116010 Chelsea                            crests/england/Chelsea.svg
@@ -657,7 +650,6 @@ committed to the repository. They are a local, personal-install cache.
   clu 116328 Athletic Club de Bilbao            crests/spain/Athletic_Club_Bilbao.svg
   clu 116329 Deportivo Alavés                   crests/spain/Deportivo_Alavés.svg
   clu 116331 SD Eibar                           crests/spain/Eibar.svg
-  clu 116332 Costa Adeje Tenerife               crests/spain/Tenerife.svg
   clu 116336 Real Sociedad                      crests/spain/Real_Sociedad.svg
   clu 116337 Sevilla FC                         crests/spain/Sevilla.svg
   clu 116339 Valencia CF                        crests/spain/Valencia.svg
@@ -686,7 +678,7 @@ committed to the repository. They are a local, personal-install cache.
   clu 131488 Qingdao West Coast FC              crests/china/Qingdao_West_Coast.svg
   clu 131491 KFUM-Kameratene Oslo               crests/norway/KFUM.svg
   clu 131531 Yunnan Yukun                       crests/china/Yunnan_Yukun.svg
-  clu 131681 Milano FC                          crests/italy/Club_Milano.svg
+  clu 131681 Milano FC                          crests/italy/Milan.svg
   clu 131682 Lombardia FC                       crests/italy/Inter.svg
   clu 131720 RC Deportivo                       crests/spain/Deportivo_La_Coruña.svg
   clu 131724 RC Strasbourg                      crests/france/AS_Strasbourg.svg
@@ -705,7 +697,6 @@ committed to the repository. They are a local, personal-install cache.
   clu 132588 RC Lens                            crests/france/RC_Lens.svg
   clu 132589 1. FC Union Berlin                 crests/germany/Union_Berlin.svg
   clu 132680 US Boulogne                        crests/france/Boulogne.svg
-  clu 132681 United Tigers SC                   crests/india/United_SC.svg
   clu 132697 Boston Legacy FC                   crests/usa/Boston_Legacy_FC.svg
   clu 132698 Denver Summit FC                   crests/usa/Denver_Summit_FC.svg
   clu 132784 Chongqing Tonglianglong F.C.       crests/china/Chongqing_Tonglianglong.svg

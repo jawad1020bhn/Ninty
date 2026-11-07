@@ -623,12 +623,15 @@ BUILD HISTORY
    live differential vs r22: zero regressions.  See the section below.
 22. r24: GRAPHICS.  Established that FC 27 ships no artwork, then added crests
    and portraits in three degrading layers so nothing renders broken.  A pinned,
-   country-scoped importer resolves 709/717 clubs, 32/41 leagues and 197/219
+   country-scoped importer resolves 700/717 clubs, 32/41 leagues and 197/219
    nations; generated shields cover the rest and the whole of a fresh clone.
    Portraits are restricted to freely-licensed Commons images behind separate
-   licence and identity gates, off by default.  Three new routes.  175 new
-   checks, mutation-tested 24/24 after two weak checks were strengthened.  The
-   artwork is git-ignored because this repository is public.  See GRAPHICS below.
+   licence and identity gates, off by default.  Three new routes.  195 new
+   checks, mutation-tested 29/29 after five weak checks were strengthened.
+   Auditing every non-exact match found nine WRONG crests (a Serie D namesake
+   for AC Milan, reserve sides inheriting their parent, two clubs on one file);
+   coverage was deliberately cut from 709 to 700 to refuse them.  The artwork is
+   git-ignored because this repository is public.  See GRAPHICS below.
 
 REMOVING THE PES BACKEND (r23)
 ------------------------------
@@ -758,14 +761,16 @@ reproducible.  Matching is confined to each club's own country folder, because
 an unscoped token match happily pairs Leverkusen with "Leverstock Green" and
 Wolfsberger with Austria's "Wolfsberg".  Coverage measured against this database:
 
-    clubs    709 / 717  (98.9%)   561 exact, 52 token, 71 alias, 24 global, 1 parent
+    clubs    700 / 717  (97.6%)   551 exact, 85 alias, 40 token, 23 global, 1 parent
     leagues   32 / 41
     nations  197 / 219
-    874 unique files, about 33 MB
+    872 unique files, about 33 MB
 
-The 8 unmatched clubs are genuinely absent or ambiguous upstream and get
-generated shields.  61 crests are legitimately shared by more than one club
-(a women's side and its parent), so the manifest records 938 ids over 874 files.
+The 17 unmapped clubs get generated shields: 8 have no upstream file at all and
+9 are deliberately REFUSED because the only candidate was a different club (see
+the audit below).  Only 2 files are shared by differently-named clubs, both a
+men's/women's pair of the same club, so the manifest records 929 ids over 872
+files.
 
 Two matching problems are worth knowing about.  EA ships unlicensed clubs under
 invented names - "Lombardia FC" is Inter and "Bergamo Calcio" is Atalanta - which
@@ -796,15 +801,50 @@ PORTRAITS
     new module is the only portrait path.
 
 VERIFYING GRAPHICS
-    python3 tools/verify_graphics.py                    # 175 checks, under 1 second
-    python3 tools/verify_graphics.py --http http://127.0.0.1:8765   # 196 with a server
-    python3 tools/mutate_graphics.py                    # 24 mutants, about 8 seconds
+    python3 tools/verify_graphics.py                    # 195 checks, under 1 second
+    python3 tools/verify_graphics.py --http http://127.0.0.1:8765   # 216 with a server
+    python3 tools/mutate_graphics.py                    # 29 mutants, about 9 seconds
 
 The portrait gates are tested against synthetic Commons payloads, not the live
 API: the licence and identity decisions are pure functions, so they are verified
 exhaustively offline.  THE LIVE NETWORK PATH IS NOT EXERCISED by these checks.
 
-Mutation-tested 24/24.  Two weak checks were found and fixed during this step.
+THE CREST AUDIT - WHY COVERAGE WENT DOWN
+    The first import resolved 709 clubs.  Auditing every one of the 76 non-exact
+    matches by eye found that some were WRONG, which is worse than having no
+    crest, so coverage was deliberately reduced to 700 to remove them:
+
+      Milano FC        -> Club_Milano.svg   a small Serie D side, not AC Milan.
+                         Stripping stopwords collapses "Milano FC" and "Club
+                         Milano" to the same key.  Now aliased to Milan.svg.
+      1. FC Koln       -> SC_Koln-Bru...    1. FC Koln has NO file upstream; the
+                         token matcher picked the only Koln file that STARTS
+                         with the token.  Now refused.
+      Real Sociedad B  -> Real_Sociedad.svg reserve side inheriting its parent.
+      Hoffenheim II    -> Hoffenheim.svg    ditto.
+      VfB Stuttgart II -> VfB_Stuttgart.svg ditto.
+      RC Celta Fortuna -> Celta.svg         ditto (Celta's B team).
+      Gimnasia La Plata AND Gimnasia Mendoza -> the SAME file.  At most one can
+                         be right.  La Plata now resolves to Gimnasia_LP.svg;
+                         Mendoza is refused.
+      Costa Adeje Tenerife -> Tenerife.svg  an independent women's club, not CD
+                         Tenerife's side.  Now refused.
+      United Tigers SC -> United_SC.svg     a different club (India).  Refused.
+
+    Four guards now prevent these classes of error, and each is tested in
+    isolation because they overlap on the real data (every reserve side that
+    trips the reserve guard is also blocklisted, so removing one guard alone
+    changes nothing observable):
+      * an explicit hand-checked ALIAS outranks every automatic match;
+      * a stopword-stripped key is only registered when ONE file produces it;
+      * a reserve suffix (B, II, III, U21, Fortuna, Castilla...) must appear on
+        both sides or the match is refused;
+      * if two DIFFERENT club names claim one file, the fuzzy claim is dropped.
+
+    A BLOCK list records the refused names with the reason, so a later
+    "improvement" to the matcher cannot quietly reinstate a wrong crest.
+
+Mutation-tested 29/29.  Five weak checks were found and fixed during this step.
 The traversal guard was only tested with paths ending in .py/.exe, which the
 extension allowlist already rejected on its own, so removing the guard changed
 nothing; it is now tested with ../../secret.svg and against a real file outside
@@ -812,12 +852,20 @@ the cache.  And the importer was only checked by reading the committed manifest,
 which is a static file, so breaking the importer was invisible; the verifier now
 RUNS it against a synthetic tarball where two clubs share one crest.
 
-That second check guards a real bug found while building this: keying the
+The other three survivors were the reserve guard, the ambiguous-stripped-key
+guard and the shared-crest post-pass.  All three are redundant on the real data,
+so each is now exercised with a synthetic database or fixture that trips it
+alone.  One of those tests was itself wrong at first: it asserted that "Racing"
+and "Racing Club" collide on a stripped key, but 'Racing' has no stopwords so
+('racing',) is its legitimate PRECISE key.  The fixture now checks its own
+premise before asserting the guard.
+
+That importer check guards a real bug found while building this: keying the
 manifest by filename silently dropped 64 clubs whose crest was already present.
 
     Totals: verify_fc27 64 + verify_engine 131 + verify_backend 102
-            + verify_graphics 175 = 472 checks passing.
-    Mutation: mutate_backend 22/22, mutate_graphics 24/24.
+            + verify_graphics 195 = 492 checks passing.
+    Mutation: mutate_backend 22/22, mutate_graphics 29/29.
 
 WHAT IS STILL NOT BUILT
     * a UI on top of /api/engine/* (the old one is inert, by choice).  The
@@ -828,8 +876,9 @@ WHAT IS STILL NOT BUILT
     * morale
     Rollover auto-renews expiring contracts until negotiation exists.
 
-    Graphics limitations worth knowing: 8 clubs have no upstream crest and show
-    a generated shield; 9 leagues and 22 nations likewise.  Portrait coverage is
+    Graphics limitations worth knowing: 17 clubs show a generated shield (8
+    absent upstream, 9 refused as wrong-club matches); 9 leagues and 22 nations
+    likewise.  Portrait coverage is
     unmeasured - the live Commons path has never been exercised from this
     environment, so expect most of the 21,623 players (and the 265 unnamed
     managers) to show a generated avatar even with faces_web enabled.

@@ -122,7 +122,6 @@ ALIAS = {
     'istanbul basaksehir fk': 'Basaksehir',
     'rc deportivo': 'Deportivo La Coruna',
     'real betis balompie': 'Real Betis',
-    'costa adeje tenerife': 'Tenerife',
     # Verified against the upstream file list, not guessed from similarity.
     'lombardia fc': 'Inter',                   # upstream calls Inter just "Inter"
     'ol lyonnes': 'Olympique Lyonnais',        # Lyon women, rebranded 2025
@@ -155,7 +154,32 @@ ALIAS = {
     'roma': 'AS Roma',
     'wellington phoenix': 'Wellington Phoenix FC',
     'auckland fc': 'Auckland FC',
+    # Found by auditing every non-exact match, not by similarity.
+    'milano fc': 'Milan',                      # EA placeholder for AC Milan.
+    #   Stripping stopwords collapses "Milano FC" and "Club Milano" to the same
+    #   key, and Club Milano is a small Serie D side, not AC Milan.
+    'gimnasia y esgrima la plata': 'Gimnasia LP',
+    'racing club de avellaneda': 'Racing Club',
+    'montpellier hsc': 'Montpellier',
+    'rc celta de vigo': 'Celta',
 }
+
+# Clubs that must NOT be matched at all. Each was proposed by the token/global
+# matcher and checked upstream: the candidate is a DIFFERENT club, or the real
+# club has no file. A wrong crest is worse than a generated shield.
+BLOCK = {
+    '1. fc koln',            # only Koln files are Viktoria/Fortuna/Bruu... none is 1. FC Koln
+    'united tigers sc',      # proposed india/United_SC.svg, a different club
+    'gimnasia y esgrima de mendoza',   # plain "Gimnasia y Esgrima" is ambiguous
+    'costa adeje tenerife',  # independent women's club, NOT CD Tenerife's side
+    'real sociedad b', 'tsg 1899 hoffenheim ii', 'vfb stuttgart ii',
+    'rc celta fortuna',      # reserve sides must not inherit the parent crest
+}
+
+# A reserve/second team. If the FC 27 name carries one of these and the upstream
+# file does not, the match is refused: it is the parent's crest, not theirs.
+RESERVE_RE = re.compile(
+    r'(?:\s(?:B|II|III|IV|U-?\d\d|Reserves?|Youth|Juniors?|Castilla|Fortuna))$', re.I)
 
 # FC 27 files some clubs under "Rest of World", and puts New Zealand clubs in the
 # Australian league, so the club's own country field points at the wrong folder
@@ -256,9 +280,17 @@ def download(dest):
 
 
 def build_index(tf):
-    """folder -> {normalized name: member}, plus a flat name index."""
+    """folder -> {normalized name: member}, plus a flat name index.
+
+    The stopword-stripped key is LOSSY: "Milano FC" and "Club Milano" both
+    collapse to ('milano',). Registering whichever came first in the tarball
+    silently handed AC Milan's placeholder a Serie D club's crest. A stripped
+    key is therefore only registered when exactly one file produces it; the
+    precise (unstripped) key is always registered.
+    """
     per = collections.defaultdict(dict)
     flat = collections.defaultdict(list)
+    stripped = collections.defaultdict(lambda: collections.defaultdict(list))
     root = None
     for m in tf.getmembers():
         if not m.isfile() or not m.name.lower().endswith('.svg'):
@@ -270,9 +302,13 @@ def build_index(tf):
             continue
         folder, fname = parts[2], parts[-1]
         nm = fname.rsplit('.', 1)[0].replace('_', ' ')
-        per[folder].setdefault(key(nm), m)
         per[folder].setdefault(key(nm, stop=False), m)
+        stripped[folder][key(nm)].append(m)
         flat[key(nm)].append(m)
+    for folder, d in stripped.items():
+        for ks, ms in d.items():
+            if len({m.name for m in ms}) == 1:
+                per[folder].setdefault(ks, ms[0])
     return per, flat, root
 
 
@@ -306,28 +342,44 @@ def match_club(row, folder, per, flat):
     across all 229 folders.
     """
     name = row.get('name', '')
+    if fold(name) in BLOCK:
+        return None, 'blocked'
     scope = per.get(folder) if folder else None
     k, kfull = key(name), key(name, stop=False)
-    if scope:
-        for kk in (k, kfull):
-            if kk in scope:
-                return scope[kk], 'exact'
-    else:
-        for kk in (k, kfull):
-            if kk in flat and len(flat[kk]) == 1:
-                return flat[kk][0], 'global'
+
+    def acceptable(m, how):
+        """A reserve side must not inherit its parent's crest."""
+        if RESERVE_RE.search(name):
+            upstream = m.name.split('/')[-1].rsplit('.', 1)[0].replace('_', ' ')
+            if not RESERVE_RE.search(upstream):
+                return None, 'reserve'
+        return m, how
+
+    # An explicit, hand-checked alias outranks EVERY automatic match. "Milano
+    # FC" is EA's placeholder for AC Milan, but it also strips to the same key
+    # as "Club Milano", a real Serie D side; consulting the exact key first
+    # handed it the wrong crest even with the alias present.
     al = ALIAS.get(fold(name))
     if al:
-        for kk in (key(al), key(al, stop=False)):
+        for kk in (key(al, stop=False), key(al)):
             if scope and kk in scope:
-                return scope[kk], 'alias'
-            if kk in flat and len(flat[kk]) == 1:
-                return flat[kk][0], 'alias'
+                return acceptable(scope[kk], 'alias')
+            if kk in flat and len({m.name for m in flat[kk]}) == 1:
+                return acceptable(flat[kk][0], 'alias')
+    # Precise key before the lossy stripped key.
+    if scope:
+        for kk in (kfull, k):
+            if kk in scope:
+                return acceptable(scope[kk], 'exact')
+    else:
+        for kk in (kfull, k):
+            if kk in flat and len({m.name for m in flat[kk]}) == 1:
+                return acceptable(flat[kk][0], 'global')
     if scope and k:
         cand = {m.name: m for kk, m in scope.items()
                 if kk and kk[0] == k[0] and (set(kk) <= set(k) or set(k) <= set(kk))}
         if len(cand) == 1:
-            return next(iter(cand.values())), 'token'
+            return acceptable(next(iter(cand.values())), 'token')
         if len(cand) > 1:
             return None, 'ambiguous'
     return None, 'miss'
@@ -348,6 +400,7 @@ def run(tarball, dry):
     # real league and "Rest of World"), and keying the manifest by filename
     # silently dropped 64 of them.
     members = {}
+    member_by_name = {}
     entries = []
     how_c = collections.Counter()
     unresolved = []
@@ -363,10 +416,31 @@ def run(tarball, dry):
                     how = 'parent'
         how_c[how] += 1
         if m is not None:
-            members[m.name] = m
+            member_by_name[m.name] = m
             entries.append(('clubs', str(tid), row['name'], how, m.name))
         else:
             unresolved.append((row['name'], how))
+
+    # Defence in depth. Several FC 27 ids legitimately share one crest (a
+    # women's side and its parent, or the same club listed twice), but two
+    # DIFFERENT club names on one file means at most one can be right. Drop the
+    # fuzzy claim and keep the exact/aliased one; if both are fuzzy, drop both.
+    # This is what caught Gimnasia La Plata and Gimnasia de Mendoza silently
+    # sharing a single crest.
+    names_by_member = collections.defaultdict(set)
+    for _kind, _id, _nm, _how, _mem in entries:
+        names_by_member[_mem].add(_nm)
+    kept = []
+    for kind, ident, nm, how, mem in entries:
+        if len(names_by_member[mem]) > 1 and how in ('token', 'global'):
+            how_c[how] -= 1
+            how_c['shared-conflict'] += 1
+            unresolved.append((nm, 'shared-conflict'))
+            continue
+        kept.append((kind, ident, nm, how, mem))
+    entries = kept
+    for _kind, _ident, _nm, _how, mem in entries:
+        members[mem] = member_by_name[mem]
 
     # National team marks are "<Country> National Team" in the country folder.
     nat_picks = {}

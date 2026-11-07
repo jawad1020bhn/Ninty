@@ -516,13 +516,26 @@ def section_importer_exercised():
     if len(ids) < 2:
         return
 
+    # A synthetic upstream containing the exact traps found by auditing every
+    # non-exact match against the real collection.
+    upstream = [
+        'england/Liverpool_FC.svg',          # two FC 27 ids share one crest
+        'italy/Milan.svg',                   # AC Milan's real file
+        'italy/Club_Milano.svg',             # Serie D side; strips to the same key
+        'germany/SC_Köln-Brück_07.svg',      # NOT 1. FC Köln, which has no file
+        'germany/Hoffenheim.svg',            # parent of Hoffenheim II
+        'spain/Real_Sociedad.svg',           # parent of Real Sociedad B
+        'argentina/Gimnasia_LP.svg',         # La Plata
+        'argentina/Gimnasia_y_Esgrima.svg',  # ambiguous between two clubs
+    ]
     svg = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"/>'
     with tempfile.TemporaryDirectory() as td:
         tb = os.path.join(td, 'synthetic.tar.gz')
         with tarfile.open(tb, 'w:gz') as tf:
-            ti = tarfile.TarInfo('football-logos-synthetic/logos/england/Liverpool_FC.svg')
-            ti.size = len(svg)
-            tf.addfile(ti, _io.BytesIO(svg))
+            for rel in upstream:
+                ti = tarfile.TarInfo('football-logos-synthetic/logos/' + rel)
+                ti.size = len(svg)
+                tf.addfile(ti, _io.BytesIO(svg))
         out = os.path.join(td, 'out')
         ig.OUT_DIR = out
         ig.CREST_DIR = os.path.join(out, 'crests')
@@ -549,20 +562,164 @@ def section_importer_exercised():
         ents = sum(len(m.get(k) or {}) for k in ('clubs', 'leagues', 'nations'))
         check('importer run: entities counts every mapped id', cov.get('entities') == ents,
               '%s vs %d' % (cov.get('entities'), ents))
-        check('importer run: one unique file extracted', cov.get('files') == 1, str(cov.get('files')))
         check('importer run: extracted bytes match upstream',
               os.path.isfile(os.path.join(out, 'crests', 'england', 'Liverpool_FC.svg'))
               and open(os.path.join(out, 'crests', 'england', 'Liverpool_FC.svg'), 'rb').read() == svg)
+
+        def files_for(name):
+            return {e['file'].split('/')[-1] for i, e in got.items()
+                    if clubs[i]['name'] == name}
+
+        def mapped(name):
+            return any(clubs[i]['name'] == name for i in got)
+
+        # An explicit alias must outrank a lossy automatic key match.
+        check('importer run: EA placeholder gets the right club, not a namesake',
+              files_for('Milano FC') == {'Milan.svg'}, str(files_for('Milano FC')))
+        check('importer run: the namesake is not handed the placeholder',
+              'Club_Milano.svg' not in {e['file'].split('/')[-1] for e in got.values()})
+        # A club with no upstream file must stay unmapped, not grab a namesake.
+        check('importer run: a club absent upstream is not given a namesake crest',
+              not mapped('1. FC Köln'), str(files_for('1. FC Köln')))
+        # Reserve sides must not inherit the parent's crest.
+        for parent, reserve in (('Real Sociedad', 'Real Sociedad B'),
+                                ('TSG 1899 Hoffenheim', 'TSG 1899 Hoffenheim II')):
+            check('importer run: %s keeps its crest' % parent, mapped(parent))
+            check('importer run: %s does not inherit it' % reserve, not mapped(reserve),
+                  str(files_for(reserve)))
+        # Two different clubs must not share one crest.
+        check('importer run: La Plata resolves to its own file',
+              files_for('Gimnasia y Esgrima La Plata') == {'Gimnasia_LP.svg'},
+              str(files_for('Gimnasia y Esgrima La Plata')))
+        check('importer run: the ambiguous namesake is refused',
+              not mapped('Gimnasia y Esgrima de Mendoza'))
+        claimed = {}
+        for i, e in got.items():
+            claimed.setdefault(e['file'], set()).add(clubs[i]['name'])
+        check('importer run: no file claimed by two different club names',
+              all(len(v) == 1 for v in claimed.values()),
+              str({f: sorted(v) for f, v in claimed.items() if len(v) > 1}))
         check('importer run: writes attribution',
               os.path.isfile(os.path.join(out, 'ATTRIBUTION.txt')))
         check('importer run: attribution names the licence caveat',
               'trademark' in open(os.path.join(out, 'ATTRIBUTION.txt'),
                                   encoding='utf-8').read().lower())
         # Unmatched clubs must not appear, and must still render via fallback.
-        check('importer run: unmatched clubs are absent from the manifest',
-              len(got) == len(ids), '%d vs %d' % (len(got), len(ids)))
+        supplied = {r.split('/')[-1] for r in upstream}
+        check('importer run: every mapped file was actually supplied upstream',
+              all(e['file'].split('/')[-1] in supplied for e in got.values()),
+              str({e['file'] for e in got.values()} - supplied))
+        check('importer run: every mapped id is a real FC 27 club',
+              all(i in clubs for i in got))
         b, mt, src = G.crest('clubs', '241', 'FC Barcelona', None, out)
         check('importer run: unmatched club falls back to generated', src == 'generated')
+
+
+def section_matcher_guards():
+    """Test the matcher's guards DIRECTLY, with synthetic inputs.
+
+    These guards overlap on the real data: every reserve side that would trip
+    RESERVE_RE is also in BLOCK, and every shared-crest case is now aliased or
+    blocked. So removing one guard changes nothing observable through the real
+    fixture, and a mutation survives. Each guard is exercised here in isolation
+    so it is genuinely covered.
+    """
+    import contextlib
+    import importlib.util
+    import io as _io
+    import tarfile
+
+    spec = importlib.util.spec_from_file_location(
+        '_ig_guards', os.path.join(HERE, 'tools', 'import_graphics.py'))
+    ig = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(ig)
+    except Exception as e:
+        check('matcher guards: module loads', False, str(e))
+        return
+
+    def tar_with(rels):
+        fh = _io.BytesIO()
+        with tarfile.open(fileobj=fh, mode='w:gz') as tf:
+            for rel in rels:
+                body = b'<svg xmlns="http://www.w3.org/2000/svg"/>'
+                ti = tarfile.TarInfo('root/logos/' + rel)
+                ti.size = len(body)
+                tf.addfile(ti, _io.BytesIO(body))
+        fh.seek(0)
+        return tarfile.open(fileobj=fh, mode='r:gz')
+
+    # --- reserve guard, on a name that is NOT in BLOCK ---------------------
+    tf = tar_with(['england/Test_United.svg'])
+    per, flat, _ = ig.build_index(tf)
+    m, how = ig.match_club({'name': 'Test United'}, 'england', per, flat)
+    check('reserve guard: the parent club matches', m is not None, how)
+    m2, how2 = ig.match_club({'name': 'Test United II'}, 'england', per, flat)
+    check('reserve guard: a II side does not inherit the parent crest',
+          m2 is None and how2 == 'reserve', '%r %s' % (m2, how2))
+    m3, how3 = ig.match_club({'name': 'Test United B'}, 'england', per, flat)
+    check('reserve guard: a B side does not inherit it either',
+          m3 is None and how3 == 'reserve', '%r %s' % (m3, how3))
+    check('reserve guard: this name is not merely blocklisted',
+          ig.fold('Test United II') not in ig.BLOCK)
+
+    # --- ambiguous stripped key -------------------------------------------
+    # "Club Milano" and "Milano FC" both strip to ('milano',), and NEITHER has
+    # that as its precise key, so the collision is purely a stripping artefact.
+    # (Using "Racing"/"Racing Club" would not test this: 'Racing' has no
+    # stopwords, so ('racing',) is its legitimate precise key.)
+    tf2 = tar_with(['italy/Club_Milano.svg', 'italy/Milano_FC.svg'])
+    per2, flat2, _ = ig.build_index(tf2)
+    scope = per2['italy']
+    ks = ig.key('Milano')
+    check('stripped key: fixture really collides only after stripping',
+          ig.key('Club Milano') == ks == ig.key('Milano FC')
+          and ig.key('Club Milano', stop=False) != ks
+          and ig.key('Milano FC', stop=False) != ks, 'fixture premise wrong')
+    check('stripped key: an ambiguous stripped key is not registered',
+          ks not in scope, 'key %r -> %r' % (ks, scope.get(ks)))
+    check('stripped key: precise keys are still registered',
+          ig.key('Club Milano', stop=False) in scope
+          and ig.key('Milano FC', stop=False) in scope)
+    tf3 = tar_with(['italy/Club_Milano.svg'])
+    per3, _f3, _ = ig.build_index(tf3)
+    check('stripped key: an unambiguous stripped key IS registered',
+          ig.key('Milano') in per3['italy'])
+
+    # --- shared-crest post-pass, with a synthetic database ----------------
+    # Two DIFFERENT clubs that both fuzzy-match one file, neither blocked nor
+    # aliased. The post-pass must refuse both rather than pick one.
+    orig_load = ig.load_db
+    with tempfile.TemporaryDirectory() as td:
+        tb = os.path.join(td, 's.tar.gz')
+        with tarfile.open(tb, 'w:gz') as tfw:
+            body = b'<svg xmlns="http://www.w3.org/2000/svg"/>'
+            ti = tarfile.TarInfo('root/logos/england/Alpha.svg')
+            ti.size = len(body)
+            tfw.addfile(ti, _io.BytesIO(body))
+        synthetic = (
+            {'1': {'name': 'Alpha City', 'country': 1},
+             '2': {'name': 'Alpha Town', 'country': 1}},
+            {}, {'1': {'name': 'England', 'iso': 'GB'}},
+        )
+        try:
+            ig.load_db = lambda: synthetic
+            ig.OUT_DIR = os.path.join(td, 'out')
+            ig.CREST_DIR = os.path.join(td, 'out', 'crests')
+            with contextlib.redirect_stdout(_io.StringIO()):
+                ig.run(tb, False)
+        except Exception as e:
+            check('shared crest: importer runs on a synthetic database', False, repr(e))
+            return
+        finally:
+            ig.load_db = orig_load
+        with open(os.path.join(td, 'out', 'manifest.json'), encoding='utf-8') as f:
+            mm = json.load(f)
+        got = mm.get('clubs') or {}
+        check('shared crest: two different clubs cannot both claim one file',
+              len(got) == 0, 'mapped %r' % got)
+        check('shared crest: the conflict is reported, not silently dropped',
+              (mm.get('coverage') or {}).get('entities') == 0)
 
 
 def section_http(base):
@@ -631,6 +788,7 @@ def main():
     section_faces_cache()
     section_importer_and_manifest()
     section_importer_exercised()
+    section_matcher_guards()
     if a.http:
         section_http(a.http.rstrip('/'))
     print()
