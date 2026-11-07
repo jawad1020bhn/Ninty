@@ -96,12 +96,14 @@ COVERAGE - EVERY UPSTREAM TABLE IS ACCOUNTED FOR
 
         43  read and extracted (+ the localization bundle)
         53  empty upstream - nothing to extract
-        46  inspected individually and excluded, each with its reason
-       126  triaged by family only (appearance, audio, other modes, geometry)
+        78  inspected individually and excluded, each with its reason
+        94  triaged by family AND field-scanned (appearance, audio, other modes)
 
-    The last group is labelled honestly: those were judged by name and field
-    list, NOT row by row.  r16 had called that whole remainder "presentation"
-    and r17 proved that wrong, so the distinction is kept visible.
+    The last group is labelled honestly: those were judged by name and by a
+    scan of their FIELDS for football logic, not row by row.  r16 had called
+    that whole remainder "presentation" and r17 proved that wrong, so the
+    distinction is kept visible.  The field scan now reports 0 tables with an
+    unexplained logic field.
 
     Regenerate it with:
         node tools/audit_fc27_coverage.mjs --kit /tmp/kit/package
@@ -110,6 +112,19 @@ COVERAGE - EVERY UPSTREAM TABLE IS ACCOUNTED FOR
     what the importer does.  The tool exits non-zero if a table is unaccounted
     for or unclassified - a new upstream table fails the audit instead of being
     silently ignored.
+
+    The same field scan was pointed at the players table itself and found three
+    career fields that had never been read, now extracted:
+      joinedClub      date the player joined his current club (same 1582 epoch
+                      as birthdate).  van Dijk 2018-01-01, Messi 2023-07-16,
+                      Mbappe 2024-07-01.  fc27.years_at_club(pid) gives tenure
+                      against the database snapshot, for homegrown/loyalty rules.
+      growthProfile   raw 1..6 career-stage id.  Upstream does not name the
+                      curves, so no label is invented; observed: profile 6 is
+                      young with headroom (mean age 24.4, +9.4 potential),
+                      profile 4 is a near-peak veteran (30.0, +1.4).
+      icon1/icon2     Icon/Hero bitflags in traits.json (327 / 30 players), raw
+                      like trait1/trait2.
 
 SECOND PASS - "presentation-only" WAS TOO SWEEPING
     r16 dismissed the remaining non-empty tables as presentation.  Checking
@@ -355,6 +370,11 @@ BUILD HISTORY
    53 empty, 46 excluded with reasons, 126 triaged by family).  It derives the
    read list from the importer and fails on any unclassified table, so a new
    upstream table cannot be silently skipped.
+17. r19: FIELD-LEVEL SCAN.  Scanning fields (not table names) for football
+   logic closed the last gap: 30 more tables were inspected and classified, and
+   the scan of the players table itself found three unread career fields
+   (playerjointeamdate, growthprofile, icontrait1/2), now extracted.  The audit
+   reports 0 tables with an unexplained logic field.
    The separate engine with its own save is still the next piece of work.
 WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------

@@ -155,6 +155,20 @@ Data notes
   `createplayerpositiontemplates` / `turfattributesmap` (further unresolved
   attribute id spaces; the second uses ids 75..111), and `positionbonus` /
   `rankweight` (every value is 0).
+- r19 field-scanned the players table for career quantities the importer had
+  never read and added three: `playerjointeamdate` -> contract.joinedClub (ISO
+  date, same 1582-10-14 epoch as birthdate; verified van Dijk 2018-01-01, Messi
+  2023-07-16, Mbappe 2024-07-01), `growthprofile` -> contract.growthProfile, and
+  `icontrait1`/`icontrait2` -> traits.icon1/icon2 (327 / 30 players, raw bits).
+- growthProfile is a raw 1..6 id. Upstream does not name the curves, so none is
+  invented; the observed correlation is recorded instead (profile 6 mean age
+  24.4 with +9.4 potential headroom, profile 4 mean age 30.0 with +1.4).
+- The same field scan was run over every table COVERAGE.txt had only triaged by
+  name. 30 more were inspected and excluded with reasons; notably cmplayers /
+  smplayers / trainingteamplayers hold ids outside the roster, but they are
+  retired legends, story-mode characters (Alex Hunter) and training dummies, so
+  excluding them is correct. ucc maps players to celebration animations only.
+  The audit now reports zero tables with an unexplained football-logic field.
 - Season state (points, fixtures, results, budgets, form, injuries) is NOT
   extracted: the game engine owns it in its own save. The template's standings
   are half-populated and would seed a career with contradictory numbers.

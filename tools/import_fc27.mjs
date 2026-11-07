@@ -321,6 +321,16 @@ for (const p of T.players) {
     release: Number(p.releaseclause) || 0, intRep: Number(p.internationalrep) || 0,
     gender: Number(p.gender) || 0,
     natPos: (linksBy.get(pid) || []).filter(l => kindOf(TLEAGUE.get(l.teamid)) === 'intl').map(l => l.teamid),
+    // r19: found by field-scanning the players table for career quantities the
+    // importer had never read. joinedClub uses the same 1582 epoch as birthdate
+    // and decodes correctly (van Dijk 2018-01-01, Messi 2023-07-16, Mbappe
+    // 2024-07-01). Feeds squad tenure / homegrown / loyalty logic.
+    joinedClub: dobOf(Number(p.playerjointeamdate) || 0),
+    // growthprofile is 1..6 and tracks career stage: profile 6 averages age
+    // 24.7 with +9.4 potential headroom, profile 4 age 30.6 with +1.4. Upstream
+    // does not name the curves, so the id is shipped raw for the engine's
+    // growth model rather than being mapped to an invented label.
+    growthProfile: Number(p.growthprofile) || 0,
   };
 }
 players.sort((a, b) => a[0] - b[0]);
@@ -503,6 +513,9 @@ for (const p of T.players) {
     t1: Number(p.trait1) >>> 0, t2: Number(p.trait2) >>> 0,
     retiring: Number(p.isretiring) || 0,
     smLikelihood: Number(p.skillmoveslikelihood) || 0,
+    // Icon/Hero bitflags, separate from trait1/trait2 (327 and 30 players).
+    // Raw for the same reason: the bit meanings are not documented upstream.
+    icon1: Number(p.icontrait1) >>> 0, icon2: Number(p.icontrait2) >>> 0,
   };
 }
 
@@ -941,6 +954,10 @@ w('fc27_meta.json', {
   bigMatches: bigMatches.length,
   createTemplates: regenTemplates.create.length,
   externalTeams: Object.keys(externalTeams).length,
+  joinedClubDates: Object.values(extra).filter(e => e.joinedClub).length,
+  growthProfiles: [...new Set(Object.values(extra).map(e => e.growthProfile))].sort(),
+  growthProfileNote: 'raw 1..6 career-stage id; upstream does not name the curves. Observed: profile 6 mean age 24.7 / +9.4 potential headroom, profile 4 mean age 30.6 / +1.4.',
+  iconTraits: 'icontrait1/icontrait2 shipped raw in traits.json (327 / 30 players); bit meanings undocumented',
   externalTeamsNote: 'team ids referenced by shipped rows but outside clubs.json/national_teams.json (CONMEBOL sides). Names are shipped so no reference dangles; they are not playable clubs in this database.',
   affinityNote: 'level_of_emotion is shipped raw; upstream does not document the scale. Observed: Iniesta->Barcelona 7, Iniesta->Athletic Club 1, Buffon->Juventus 6, consistent with low=grudge / high=affection, but that reading is inferred, not confirmed.',
   stillExcluded: {
@@ -1036,5 +1053,9 @@ console.log('  affinities %d players | former clubs %d | counterparts %d clubs',
 console.log('  big matches %d pairs | create templates %d | intensity rows %d',
   bigMatches.length, regenTemplates.create.length, matchTuning.intensity.length);
 console.log('  external teams %d (referenced but outside the club universe)', Object.keys(externalTeams).length);
+console.log('  joined-club dates %d | growth profiles %s | icon traits %d/%d',
+  Object.values(extra).filter(e => e.joinedClub).length,
+  [...new Set(Object.values(extra).map(e => e.growthProfile))].sort().join(','),
+  Object.values(traits).filter(t => t.icon1).length, Object.values(traits).filter(t => t.icon2).length);
 console.log('\nleagues:');
 for (const [id, l] of Object.entries(leagues)) console.log('  %s %s (%s, L%d) %d teams', id.padStart(4), l.name.padEnd(28), l.countryName.padEnd(16), l.level, l.teams.length);

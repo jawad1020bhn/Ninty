@@ -101,6 +101,38 @@ const probed = {
   dbversion: 'schema metadata',
   ftue_presets: 'first-run tutorial preset',
   playernamemap: 'commentary audio id -> player id; only 42/106 ids are in the roster',
+  cmplayers: 'Pro Clubs squads; the 75 ids outside our roster are retired legends (Kanu, Aimar, Quaresma)',
+  smplayers: 'story-mode squads; 572 outside roster incl. the fictional Alex Hunter',
+  smteams: 'story-mode teams (8 rows)',
+  trainingteamplayers: '16 training dummies with concatenated placeholder names',
+  trainingteamplayerlinks: 'links to those 16 training dummies',
+  trainingteamplayernames: 'name ids for the training dummies',
+  matchscenarios: '4 scripted preset matches (tutorial/play-now), not a schedule',
+  gp_ucc: 'gameplay celebration animation ids',
+  playervoicemap: 'commentary voice assignment, 20 rows',
+  mascot: 'team mascot assets',
+  adboardlogicexceptions: 'ad-board rendering rules keyed by competition',
+  adboardconsoleoverrides: 'ad-board texture swaps per console',
+  competitionballs: 'ball asset per competition stage',
+  competitionbadges: 'badge asset per competition',
+  competitionkits: 'kit rendering per competition',
+  competitionrefereekits: 'referee kit asset per competition',
+  slc_competition_overrides: 'seasonal outfit overrides per competition',
+  clubcustomization_kit: 'cosmetic kit unlocks',
+  clubcustomization_facilitycards: 'cosmetic facility card unlocks (starrating is art tier)',
+  kitrewardsmapping: 'cosmetic kit rewards',
+  teamkithudvalues: 'kit colour values for the HUD',
+  tifo: 'crowd banner assets per team',
+  customcoloredsmoke: 'crowd smoke colour per team',
+  crowdbodies: 'crowd body assets tinted per team',
+  highresasset: 'high-res head/appearance assets',
+  audionation: 'commentary audio per nation',
+  deactivatedstories: 'disabled commentary story ids',
+  ssfstadiums: 'small-sided (Volta) venue walls',
+  createplayerpresets: 'appearance presets for the player creator',
+  crowdoldsystem: 'crowd prop flags (coffee/grill/phone are props, not fees)',
+  slc: 'sideline character appearance; seasonalhair/seasonaloutfit are clothing',
+  ucc: 'player -> celebration animation id + probability; purely cosmetic',
   career_calendar: 'EXTRACTED as calendar.json (windows only)',
 };
 delete probed.career_createplayerattributes; delete probed.MatchIntensity;
@@ -113,6 +145,18 @@ const families = [
   ['other game modes (Pro Clubs / Volta / training)', /^(cm|cmplayers|smplayers|smteams|wt|main_world|gameplay_site|activity_config|kickabout|createplayer|createplayerviews|trainingteam|matchscenarios|skillmeter|rankweight|mls_group)/],
   ['pitch geometry / renderer tactics', /^(formationoffsets|playerpositionzones|fieldposition|mentalities|defaultteamdata|default_mentalities|ssfformations|ssfstadiums|turfsquadtypemap)/],
 ];
+// Field-level scan of everything still unclassified. Name-based triage is what
+// failed in r16, so this checks FIELDS for football logic (entity references and
+// career quantities) rather than trusting the table name. Cosmetic field names
+// are filtered out because e.g. crowdhairs.age and tifo.teamid are not logic.
+const SIG = /playerid|teamid|leagueid|competitionid|nationid|contract|wage|salary|value|budget|\bfee|morale|fitness|injur|suspend|transfer|loan|growth|potential|overall|rating|points|standing|fixture|season|scout|youth|retire|birthdate/i;
+const COSMETIC = /^(head|hair|skin|face|eye|brow|lip|ear|nose|chin|jaw|cheek|temple|neck|fl_|fa_|ca_|bs_|mu_|body|cloth|shoe|sock|jersey|shorts|kit|texture|mesh|asset|outfit|tint|colour|color|tattoo|accessor|crowd|tifo|banner|smoke|net|seat|line|ball|boot|glove|celebr|emote|mascot|audio|commentary|video|render|light|camera)/i;
+const scanned = rest.filter(k => !Object.keys(probed).includes(k) && !/^cm_/.test(k));
+const flagged = [];
+for (const k of scanned) {
+  const logic = Object.keys(T[k][0]).filter(f => SIG.test(f) && !COSMETIC.test(f));
+  if (logic.length) flagged.push([k, logic]);
+}
 const assigned = new Set([...Object.keys(probed), ...cm]);
 const fam = {};
 for (const [label, re] of families) {
@@ -161,8 +205,17 @@ for (const k of probedRest) out.push(`   ${k.padEnd(34)} ${String(T[k].length).p
 out.push('');
 out.push(`4. NOT INDIVIDUALLY PROBED - classified by family (${rest.length - probedRest.length} tables)`);
 out.push('-'.repeat(60));
-out.push('   These were triaged by name and field list, NOT row-by-row. They are');
-out.push('   presentation assets, audio, other game modes, or renderer geometry.');
+out.push('   Triaged by name AND by a field-level scan for football logic (entity');
+out.push('   references, contract/wage/growth/fitness quantities), not row-by-row.');
+out.push('   Cosmetic field names are excluded from that scan, so crowdhairs.age');
+out.push('   and tifo.teamid do not count as logic.');
+out.push('');
+out.push(`   Field scan: ${scanned.length} tables checked, ${flagged.length} still flag a logic field.`);
+if (flagged.length) {
+  out.push('   Flagged for a future look (asset tables keyed by an entity id):');
+  for (const [k, f] of flagged) out.push(`     ${k.padEnd(32)} ${f.join(', ').slice(0, 90)}`);
+}
+out.push('');
 out.push('   If the engine later needs one, it is a small importer addition.');
 for (const [label, arr] of Object.entries(fam)) {
   if (!arr.length) continue;

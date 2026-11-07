@@ -19,7 +19,12 @@ Files (see data/fc27/fc27_meta.json for the exact field mapping):
   nats.json       {pid: nationid}
   potential.json  {pid: potential}
   birthdays.json  {pid: 'YYYY-MM-DD'}
-  contract.json   {pid: {value, contract, release, intRep, gender, natPos}}
+  contract.json   {pid: {value, contract, release, intRep, gender, natPos,
+                         joinedClub, growthProfile}}
+                  joinedClub is an ISO date (same 1582 epoch as birthdate).
+                  growthProfile is a raw 1..6 career-stage id; upstream does not
+                  name the curves. Observed: 6 = young with headroom (mean age
+                  24.4, +9.4 potential), 4 = near-peak veteran (30.0, +1.4).
 
 Engine-facing reference data (static; the engine's own save holds season state):
   stadiums.json   {stadiumid: {name, capacity, city, country, pitch, ...}}
@@ -29,7 +34,8 @@ Engine-facing reference data (static; the engine's own save holds season state):
   rivals.json     {tid: [[otherTid, intensity, type], ...]} strongest first
   formations.json {tid: [{id, name, pos[11], role[11], xy[11], attack, lines}]}
   loans.json      [{pid, from, fromName, to, end, toBuy, futureOption}]
-  traits.json     {pid: {t1, t2, retiring, smLikelihood}}  t1/t2 are raw bitflags
+  traits.json     {pid: {t1, t2, retiring, smLikelihood, icon1, icon2}}
+                  t1/t2 and icon1/icon2 are raw bitflags (meanings undocumented)
   cups.json       {compid: {name, kind, country, importance, teams, groups, ...}}
   prev_pos.json   {tid: {prev, prevLeague}}  last season's finishing position
   ea_attrs.json   {ab: [34 EA field names], p: {pid: [34 raw values]}}
@@ -279,6 +285,27 @@ def affinities(pid):
     high = affection, but that reading is inferred, not confirmed.
     """
     return (_load('affinities.json', {}) or {}).get(str(int(pid))) or []
+
+
+def years_at_club(pid, as_of=None):
+    """Whole years since the player joined his current club, or None.
+
+    Uses the shipped joinedClub date. as_of defaults to the database's asOf
+    snapshot, NOT today, so the value is stable for a given database.
+    """
+    d = (contracts().get(str(int(pid))) or {}).get('joinedClub') or ''
+    if not d:
+        return None
+    ref = as_of or (meta().get('asOf') or '')
+    try:
+        y, m, dd = (int(x) for x in d.split('-'))
+        ry, rm, rd = (int(x) for x in ref.split('-'))
+    except (ValueError, AttributeError):
+        return None
+    n = ry - y
+    if (rm, rd) < (m, dd):
+        n -= 1
+    return max(0, n)
 
 
 def former_club(pid):
@@ -581,10 +608,12 @@ def player(pid):
         nation=nat.get('name', ''), nationIso=nat.get('iso', ''),
         wage=ct.get('value', 0), contractUntil=ct.get('contract', 0),
         release=ct.get('release', 0), gender=ct.get('gender', 0),
+        joinedClub=ct.get('joinedClub', ''), growthProfile=ct.get('growthProfile', 0),
         shirt=shirt(pid, tid), role=role(pid, tid),
         traits=traits().get(k) or {}, loan=loan_of(pid),
         eaAttrs=ea_attrs(pid), eaPositions=ea_positions(pid),
         stars=stars(r[0]), prevStats=prev_stats(pid),
+        yearsAtClub=years_at_club(pid),
         affinities=[dict(id=t, name=team_name(t), level=lv) for t, lv in affinities(pid)],
         formerClub=(lambda f: dict(id=f, name=team_name(f)) if f else None)(former_club(pid)),
         nationalTeams=[national_team(t) or {'id': t} for t in (ct.get('natPos') or [])],

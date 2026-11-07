@@ -73,21 +73,36 @@ importer exits non-zero if any allowlisted table is missing or empty.
    Consequence: match results, schedules, tables, budgets and market value
    genuinely do not exist upstream - the engine must generate and own them.
 
-3. INSPECTED INDIVIDUALLY AND EXCLUDED (46 tables)
+3. INSPECTED INDIVIDUALLY AND EXCLUDED (78 tables)
 ------------------------------------------------------------
+   adboardconsoleoverrides               12  ad-board texture swaps per console
+   adboardlogicexceptions                88  ad-board rendering rules keyed by competition
    agents                                29  all 29 rows are "Agent Test N" placeholders; no real names
    archetypes                            15  Pro Clubs archetype definitions
    associatedplayers                     15  archetype ids (Pro Clubs), 15 rows
    associateplayerspec                   45  Pro Clubs specializations
    attribute_strengths                  442  attribute id space unresolved
+   audionation                          219  commentary audio per nation
    broadcastleague                      870  broadcast presentation grouping
    career_birthingpool                11460  appearance assets for generated players (head/hair/skin codes)
    career_youth_skins                 11460  appearance assets for youth players
+   clubcustomization_facilitycards      102  cosmetic facility card unlocks (starrating is art tier)
+   clubcustomization_kit                110  cosmetic kit unlocks
    clubcustomization_stadium              3  cosmetic stadium unlocks
+   cmplayers                            245  Pro Clubs squads; the 75 ids outside our roster are retired legends (Kanu, Aimar, Quaresma)
+   competitionbadges                    252  badge asset per competition
+   competitionballs                     368  ball asset per competition stage
+   competitionkits                     1029  kit rendering per competition
    competitionmatchups                  450  partial UEFA pot draw (4 cups), not a fixture list; a draw is engine season state
+   competitionrefereekits               136  referee kit asset per competition
    competitionsponsorlinks              805  links competitions to texture assets; no financial terms
    createplayerpositiontemplates        407  attribute ids 75..111, outside the 34-field range
+   createplayerpresets                  225  appearance presets for the player creator
+   crowdbodies                           64  crowd body assets tinted per team
+   crowdoldsystem                        84  crowd prop flags (coffee/grill/phone are props, not fees)
+   customcoloredsmoke                     3  crowd smoke colour per team
    dbversion                              1  schema metadata
+   deactivatedstories                    11  disabled commentary story ids
    default_mentalities                  870  pitch offset arrays (renderer)
    defaultteamdata                      870  pitch offset arrays (renderer)
    factory_teams                          1  1 default team row
@@ -95,9 +110,14 @@ importer exits non-zero if any allowlisted table is missing or empty.
    fifaGameSettings                     451  engine/renderer settings, not football data
    formationoffsets                      33  pitch offsets; formations.json already carries per-slot xy
    ftue_presets                           1  first-run tutorial preset
+   gp_ucc                                26  gameplay celebration animation ids
    height_weight_impact                 216  attribute id space unresolved
    height_weight_impact_range            26  attribute id space unresolved (ids up to 100+)
+   highresasset                        1740  high-res head/appearance assets
+   kitrewardsmapping                     28  cosmetic kit rewards
    level_caps                            60  Pro Clubs archetype level caps
+   mascot                                36  team mascot assets
+   matchscenarios                         4  4 scripted preset matches (tutorial/play-now), not a schedule
    mentalities                         4001  pitch offset arrays (renderer tactical shapes)
    perks                                 65  Pro Clubs perks
    playerbodyrestrictions                 1  1 row
@@ -105,6 +125,7 @@ importer exits non-zero if any allowlisted table is missing or empty.
    playerpositionzones                   30  pitch geometry for the renderer
    playerpronouns                         1  1 row
    playersockoverride                     4  4 cosmetic rows
+   playervoicemap                        20  commentary voice assignment, 20 rows
    playstyles                            36  id/type columns only (type is empty); thresholds come from playstyle_attribute_requirement
    positionbonus                          4  every value is 0
    rankweight                             6  every value is 0
@@ -112,33 +133,49 @@ importer exits non-zero if any allowlisted table is missing or empty.
    signature_perks                       30  Pro Clubs
    signature_playstyles                  30  Pro Clubs archetype unlock order
    signatureabilitymap                    5  Pro Clubs / gameplay
+   slc                                  136  sideline character appearance; seasonalhair/seasonaloutfit are clothing
+   slc_competition_overrides             18  seasonal outfit overrides per competition
+   smplayers                            817  story-mode squads; 572 outside roster incl. the fictional Alex Hunter
+   smteams                                8  story-mode teams (8 rows)
    specialization_attr_strengths       1530  Pro Clubs specialization, attribute ids unresolved
    specialization_map                    45  Pro Clubs spec -> archetype
    specialization_perks                  45  Pro Clubs
    sponsors                             392  names are texture asset keys (dynamic_01, Tottenham_Hotelscom); no contract/value fields
+   ssfstadiums                           13  small-sided (Volta) venue walls
+   teamkithudvalues                     100  kit colour values for the HUD
    teamsheetanalysis                   2014  recorded positions per player, superseded by teamplayerlinks role
    teamsheets                           802  802 user-saved sheets, mostly empty names; default_teamsheets is the authoritative one
    teamsponsorlinks                     956  links teams to those texture assets; no financial terms
+   tifo                                 705  crowd banner assets per team
+   trainingteamplayerlinks               16  links to those 16 training dummies
+   trainingteamplayernames               33  name ids for the training dummies
+   trainingteamplayers                   16  16 training dummies with concatenated placeholder names
    turfattributesmap                    184  attribute id space unresolved
+   ucc                                 1106  player -> celebration animation id + probability; purely cosmetic
    version                                1  schema metadata
 
-4. NOT INDIVIDUALLY PROBED - classified by family (126 tables)
+4. NOT INDIVIDUALLY PROBED - classified by family (94 tables)
 ------------------------------------------------------------
-   These were triaged by name and field list, NOT row-by-row. They are
-   presentation assets, audio, other game modes, or renderer geometry.
+   Triaged by name AND by a field-level scan for football logic (entity
+   references, contract/wage/growth/fitness quantities), not row-by-row.
+   Cosmetic field names are excluded from that scan, so crowdhairs.age
+   and tifo.teamid do not count as logic.
+
+   Field scan: 87 tables checked, 0 still flag a logic field.
+
    If the engine later needs one, it is a small importer addition.
 
-   appearance / rendering assets (89):
-     CustomizableAnthemChant, CustomizableChantPackage, CustomizableGoalMusic, CustomizableTeamName, accessories, adboardconsoleoverrides, adboardlogicexceptions, bannerplayers, basehead_fat, basehead_flesh, basehead_skeletal, brandpartnerassets, brandpartners, brandtypes, celebrations, clubcustomization_asset, clubcustomization_bundle, clubcustomization_cardeffects, clubcustomization_facilitycards, clubcustomization_kit, clubcustomization_tifo, clubcustomization_trophy, competitionbadges, competitionballs, competitionkits, competitionrefereekits, crowdaccessories, crowdbodies, crowdhairs, crowdheads, crowdoldsystem, crowdprops, crowdregion, crowdregionlrc, crowdtints, customcoloredsmoke, dynamicimages, emotelink, footwear, genericmascot, goalcelebrationlink, goalkeepergloves, gp_ucc, highres_fat, highres_flesh, highres_skeletal, highres_skins, highresasset, kitcoloroverrides, kitrewardsmapping, linecolor, lowresasset, mascot, modeadboardlinks, netpattern, outfitarrangements, outfithairlinks, playerboots, presentationmodesettings, preset_fat, preset_flesh, preset_skeletal, preset_skins, seatcolor, shoecolors, skins, slc, slc_competition_overrides, slc_fat, slc_flesh, slc_skeletal, slc_skins, spa, spa_fat, spa_flesh, spa_skeletal, spa_skins, stadiumcolor, tattoo, teamballs, teamkithudvalues, teamkits, tifo, ucc, vanitystoreitemlink, videos, vipplayers, wardrobecloset, wardrobeexclusions
+   appearance / rendering assets (69):
+     CustomizableAnthemChant, CustomizableChantPackage, CustomizableGoalMusic, CustomizableTeamName, accessories, bannerplayers, basehead_fat, basehead_flesh, basehead_skeletal, brandpartnerassets, brandpartners, brandtypes, celebrations, clubcustomization_asset, clubcustomization_bundle, clubcustomization_cardeffects, clubcustomization_tifo, clubcustomization_trophy, crowdaccessories, crowdhairs, crowdheads, crowdprops, crowdregion, crowdregionlrc, crowdtints, dynamicimages, emotelink, footwear, genericmascot, goalcelebrationlink, goalkeepergloves, highres_fat, highres_flesh, highres_skeletal, highres_skins, kitcoloroverrides, linecolor, lowresasset, modeadboardlinks, netpattern, outfitarrangements, outfithairlinks, playerboots, presentationmodesettings, preset_fat, preset_flesh, preset_skeletal, preset_skins, seatcolor, shoecolors, skins, slc_fat, slc_flesh, slc_skeletal, slc_skins, spa, spa_fat, spa_flesh, spa_skeletal, spa_skins, stadiumcolor, tattoo, teamballs, teamkits, vanitystoreitemlink, videos, vipplayers, wardrobecloset, wardrobeexclusions
 
-   audio / commentary (10):
-     AudioDeactivatedStories, SMPlayerCallLang, audionation, audiostadium, clubcommentarynames, commentarynames, deactivatedstories, playercalls, playervoicemap, womendeactivatedstories
+   audio / commentary (7):
+     AudioDeactivatedStories, SMPlayerCallLang, audiostadium, clubcommentarynames, commentarynames, playercalls, womendeactivatedstories
 
-   other game modes (Pro Clubs / Volta / training) (17):
-     activity_config, cmplayers, createplayerpresets, createplayerpresets_link, createplayerviews, gameplay_site_config, kickabout_tests_gameplay_sites, main_world_gameplay_sites, matchscenarios, skillmeterchargecondition, smplayers, smteams, trainingteamplayerlinks, trainingteamplayernames, trainingteamplayers, wtlocations, wtregions
+   other game modes (Pro Clubs / Volta / training) (9):
+     activity_config, createplayerpresets_link, createplayerviews, gameplay_site_config, kickabout_tests_gameplay_sites, main_world_gameplay_sites, skillmeterchargecondition, wtlocations, wtregions
 
-   pitch geometry / renderer tactics (3):
-     ssfformations, ssfstadiums, turfsquadtypemap
+   pitch geometry / renderer tactics (2):
+     ssfformations, turfsquadtypemap
 
    Pro Clubs progression curves (7):
      cm_attr_upgrade_cost_curve_map, cm_attribute_upgrade_cost, cm_level_curve, cm_level_curve_progress, cm_min_max_attributes, cm_role_synergies, cm_specialization_attribute_req
