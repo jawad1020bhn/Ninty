@@ -190,6 +190,41 @@ def main():
           0 <= src.find('REAL_TEAM_NAME.get(r.assetid)') < src.find('const TEAM = new Map'),
           'rename must precede every teamname read')
 
+    # The same class of problem in the competitions: EA's internal name for the
+    # French women's top flight is a descriptor, not the competition's name.
+    # Proven by membership - these are the real 12 clubs of the division,
+    # including 2026 entrants Toulouse and US Saint-Malo.
+    lg = L('leagues')
+    comps = L('comps')
+    fr = lg.get('2218', {})
+    check('real name: French women\'s top flight is Première Ligue',
+          fr.get('name') == 'Première Ligue', str(fr.get('name')))
+    check('real name: comps agrees for Première Ligue',
+          comps.get('2218', {}).get('name') == 'Première Ligue'
+          and comps.get('2218', {}).get('name_en') == 'Première Ligue',
+          str(comps.get('2218')))
+    fr_names = {clubs[str(t)]['name'] for t in fr.get('teams', []) if str(t) in clubs}
+    check('real name: Première Ligue is proven by its members, not guessed',
+          {'OL Lyonnes', 'Paris Saint-Germain', 'Toulouse FC',
+           'US Saint-Malo'} <= fr_names and len(fr_names) == 12,
+          '%d teams, missing %s' % (len(fr_names), sorted(
+              {'OL Lyonnes', 'Paris Saint-Germain', 'Toulouse FC',
+               'US Saint-Malo'} - fr_names)))
+    check('real name: it is the French WOMEN\'S first tier',
+          fr.get('women') == 1 and fr.get('level') == 1
+          and fr.get('countryName') == 'France', str(fr)[:120])
+    # 'raw' is the audit trail of what EA actually shipped; it must NOT be
+    # rewritten, or the reason for the override becomes unverifiable.
+    check('real name: raw still records EA\'s original descriptor',
+          fr.get('raw') == "France 1 Women's League (1)", str(fr.get('raw')))
+    check('real name: importer declares and applies REAL_LEAGUE_NAME',
+          'const REAL_LEAGUE_NAME = new Map([' in src
+          and "[2218, 'Première Ligue']" in src
+          and 'REAL_LEAGUE_NAME.get(l.leagueid) || cleanLeague(l)' in src)
+    # The men's Ligue 1 must keep its own name - the override is id-scoped.
+    check('real name: men\'s Ligue 1 is untouched',
+          lg.get('16', {}).get('name') == 'Ligue 1', str(lg.get('16', {}).get('name')))
+
     # ------------------------------------------------------------- coordinates
     compat = {int(k): int(v) for k, v in ep['slotCompat'].items()}
     check('slotCompat covers all 28 EA ids', set(compat) == set(range(28)))

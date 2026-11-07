@@ -386,10 +386,23 @@ for (const t of T.teams) {
     women: lg ? Number(lg.iswomencompetition) || 0 : 0,
   };
 }
+// Same problem as the clubs, one instance: EA's internal name for the French
+// women's top flight is the descriptor "France 1 Women's League", which is not
+// what the competition is called. It is the Première Ligue (Arkema Première
+// Ligue with the title sponsor), rebranded from D1 Arkema for 2024-25 and fully
+// licensed in FC 27. Identity is proven by the 12 linked teams, which match the
+// real division including 2026 entrants Toulouse and US Saint-Malo.
+// Unsponsored form, to match how every other league is named here (Premier
+// League, not Barclays Premier League; Serie A, not Serie A Enilive).
+// Keyed by stable league id. Applied AFTER cleanLeague so that helper still
+// sees EA's raw string, and 'raw' below continues to record what EA shipped.
+const REAL_LEAGUE_NAME = new Map([
+  [2218, 'Première Ligue'],
+]);
 for (const l of T.leagues) {
   const kind = kindOf(l.leagueid);
   if (kind !== 'league' && kind !== 'rest') continue;
-  const nm = cleanLeague(l);
+  const nm = REAL_LEAGUE_NAME.get(l.leagueid) || cleanLeague(l);
   const teams = T.leagueteamlinks.filter(x => x.leagueid === l.leagueid).map(x => x.teamid)
     .filter(id => teamids[String(id)]).sort((a, b) => a - b);
   leagues[String(l.leagueid)] = {

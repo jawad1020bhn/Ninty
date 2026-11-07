@@ -272,14 +272,15 @@ VERIFYING THE DATABASE
     There is no test suite in this repo, so the database ships with its own
     checker.  Run it after any regeneration:
 
-        python3 tools/verify_fc27.py            # 85 checks, about half a second
+        python3 tools/verify_fc27.py            # 92 checks, about half a second
         python3 tools/verify_fc27.py --verbose   # list every check
-        python3 tools/mutate_fc27.py            # 13 mutants, about 8 seconds
+        python3 tools/mutate_fc27.py            # 19 mutants, about 12 seconds
 
     Stdlib only; no server, no save, no Node.  It exits non-zero on any failure
     and checks six things: identity (every per-player table covers exactly the
-    roster), real names (the three unlicensed Serie A clubs carry their real
-    names, proven by squad membership - see REAL CLUB NAMES below),
+    roster), real names (the three unlicensed Serie A clubs and the French
+    women's top flight carry their real names, proven by squad and league
+    membership - see REAL CLUB NAMES below),
     coordinates (all 7,887 designated starters fit their club's
     formation through slotCompat), references (zero dangling team/stadium/
     referee ids across all 730 referenced team ids), raw id spaces (the
@@ -302,7 +303,9 @@ REAL CLUB NAMES (r25)
 EA does not hold the licence for three Serie A clubs, so it ships them under
 invented names.  This database now carries the REAL names, in the data itself -
 not as a display-layer patch, so the API, the engine, saves, search and the
-crest resolver all see the same name:
+crest resolver all see the same name.  One competition name is fixed the same
+way, and the generic stadium names are deliberately NOT touched; both are
+explained below:
 
     id 131681   Milano FC       ->  AC Milan
     id 131682   Lombardia FC    ->  Inter
@@ -353,8 +356,38 @@ WHERE THE RENAME LIVES
     by the placeholder string.
 
     The committed JSON was patched at string level and diffed leaf by leaf:
-    exactly 18 name values changed (3 clubs + 3 teamids + 12 loan rows), with
-    no id, key, ordering, numeric or formatting drift.
+    exactly 21 name values changed (3 clubs + 3 teamids + 12 loan rows + 3
+    league/comps fields), with no id, key, ordering, numeric or formatting
+    drift.
+
+ALSO A COMPETITION NAME
+    The same class of problem appears once in the competitions.  EA's internal
+    name for the French women's top flight is the descriptor "France 1 Women's
+    League", which is not what the competition is called:
+
+        id 2218   France 1 Women's League  ->  Premiere Ligue
+
+    It is the Premiere Ligue (Arkema Premiere Ligue with the title sponsor),
+    rebranded from D1 Arkema for 2024-25 and fully licensed in FC 27.  Identity
+    is proven by its 12 linked clubs, which match the real division including
+    2026 entrants Toulouse and US Saint-Malo.  The unsponsored form is used for
+    consistency with every other league here (Premier League, not Barclays
+    Premier League).  REAL_LEAGUE_NAME is keyed by league id and applied after
+    cleanLeague, so the 'raw' field still records EA's original string as the
+    audit trail.  Men's Ligue 1 keeps its own name and its own crest: league
+    matching uses exact keys only, with no token fallback, so the women's
+    competition cannot inherit Ligue_1.svg.
+
+WHY THE STADIUMS WERE NOT RENAMED
+    40 stadium names carry EA's "_" generic marker, and the three renamed clubs
+    play in them (AC Milan and Inter in _Waldstadion, Atalanta in _Stadio
+    Classico).  These are NOT per-club placeholders - they are SHARED generic
+    arenas.  _Waldstadion is the listed ground for 28 different clubs, _Stadion
+    Neder for 58, _Town Park for 52.  Calling _Waldstadion "San Siro" would
+    mislabel 26 other clubs, so the whole class is deliberately left alone.
+    Only one "_" stadium belongs to a single club, and there is no evidence in
+    the shipped data naming the real venue it stands in for.  Real venue names
+    remain available through lib/venues.py where that data has them.
 
     Side effects checked: lib/venues.py and lib/clubcolors.py are name-keyed.
     Neither name resolves a venue before or after, so no venue regression.
@@ -710,9 +743,11 @@ BUILD HISTORY
    is PROVEN by the shipped squad (FIFPRO licenses the players even when the
    club is unlicensed), and the rename is applied at the importer's single
    choke point keyed by stable asset id, so a re-import cannot revert it.
-   Exactly 18 name leaves changed across clubs/teamids/loans; no id, key,
-   ordering or number moved.  Odd-looking names that are REAL were left alone.
-   verify_fc27 grew 64 -> 85 checks, mutation-tested 13/13.  See REAL CLUB NAMES.
+   The French women's top flight likewise becomes Premiere Ligue instead of
+   EA's descriptor.  Exactly 21 name leaves changed; no id, key, ordering or
+   number moved.  Odd-looking names that are REAL were left alone, and the 40
+   generic stadium names were left alone because they are SHARED arenas.
+   verify_fc27 grew 64 -> 92 checks, mutation-tested 19/19.  See REAL CLUB NAMES.
 
 REMOVING THE PES BACKEND (r23)
 ------------------------------
@@ -958,9 +993,9 @@ premise before asserting the guard.
 That importer check guards a real bug found while building this: keying the
 manifest by filename silently dropped 64 clubs whose crest was already present.
 
-    Totals: verify_fc27 85 + verify_engine 131 + verify_backend 102
-            + verify_graphics 198 = 516 checks passing.
-    Mutation: mutate_fc27 13/13, mutate_backend 22/22, mutate_graphics 29/29.
+    Totals: verify_fc27 92 + verify_engine 131 + verify_backend 102
+            + verify_graphics 198 = 523 checks passing.
+    Mutation: mutate_fc27 19/19, mutate_backend 22/22, mutate_graphics 29/29.
 
 WHAT IS STILL NOT BUILT
     * a UI on top of /api/engine/* (the old one is inert, by choice).  The

@@ -78,6 +78,23 @@ DATA_MUTANTS = [
      'Logroño United kept'),
     ('a generated filler squad is given a real identity', 'clubs',
      wrong_name('132681', 'East Bengal'), 'United Tigers SC kept'),
+    ('the league keeps EA\'s descriptor', 'leagues',
+     lambda o: o['2218'].__setitem__('name', "France 1 Women's League"),
+     'Première Ligue'),
+    ('comps keeps the old league name', 'comps',
+     lambda o: o['2218'].__setitem__('name_en', "France 1 Women's League"),
+     'comps agrees for Première Ligue'),
+    # The override must be id-scoped: hitting the men's competition too would
+    # give two leagues one name and hand the women's side the men's crest.
+    ('the league override also hits men\'s Ligue 1', 'leagues',
+     lambda o: o['16'].__setitem__('name', 'Première Ligue'),
+     "men's Ligue 1 is untouched"),
+    ('the raw audit trail is rewritten', 'leagues',
+     lambda o: o['2218'].__setitem__('raw', 'Première Ligue (1)'),
+     'raw still records EA'),
+    ('the league id drifts to another competition', 'leagues',
+     lambda o: o['2218'].__setitem__('teams', o['2216']['teams']),
+     'proven by its members'),
 ]
 
 # --- importer mutants: (name, old, new, check substring that must fire) ------
@@ -92,6 +109,10 @@ IMPORTER_MUTANTS = [
      'if (real && r.teamname !== real) { r.teamname = real; realNamed++; }',
      'if (real && r.teamname !== real) { realNamed++; }',
      'importer applies the table to the raw team records'),
+    ('the importer loses the league override',
+     'const nm = REAL_LEAGUE_NAME.get(l.leagueid) || cleanLeague(l);',
+     'const nm = cleanLeague(l);',
+     'importer declares and applies REAL_LEAGUE_NAME'),
 ]
 
 
