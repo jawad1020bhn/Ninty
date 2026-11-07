@@ -1,0 +1,159 @@
+FC 27 EXTRACTION COVERAGE
+=========================
+
+Source: eafc-db-kit 1.1.0 bundled "FC 27" main template.
+Tables in template: 268
+  non-empty: 215
+  empty:     53
+  READ by tools/import_fc27.mjs: 43
+
+This file exists so the completeness claim can be checked, not taken on trust.
+Regenerate the reasoning by re-running the importer against the kit; the
+importer exits non-zero if any allowlisted table is missing or empty.
+
+1. READ AND EXTRACTED (43 tables)
+------------------------------------------------------------
+   BigAttendance                             7 rows
+   MatchIntensity                            9 rows
+   NoAttendance                              7 rows
+   attributecategorymap                     34 rows
+   attributeprefpositionformula            321 rows
+   bigmatchups                              38 rows
+   career_calendar                           1 rows
+   career_commonnames                      481 rows
+   career_createplayerattributes           149 rows
+   career_firstnames                     11744 rows
+   career_lastnames                       9358 rows
+   career_regenplayerattributes             66 rows
+   career_youthplayerposattributes          72 rows
+   clubcoefficients                        175 rows
+   competition                             235 rows
+   competitionseeds                        190 rows
+   competitionstadiumlinks                 769 rows
+   default_teamsheets                      870 rows
+   formations                              899 rows
+   leaguerefereelinks                      587 rows
+   leagues                                  57 rows
+   leagueteamlinks                         870 rows
+   manager                                 870 rows
+   mls_group_structure                      30 rows
+   multiclubownership                       99 rows
+   nationcoefficients                       27 rows
+   nations                                 219 rows
+   player_grudgelove                       303 rows
+   playerloans                             645 rows
+   playernames                           43066 rows
+   players                               21623 rows
+   playstyle_attribute_requirement          99 rows
+   prevcompetitionstats                   4437 rows
+   previousteam                            200 rows
+   referee                                 363 rows
+   rivals                                 1208 rows
+   stadiums                                181 rows
+   starratingboundaries                     11 rows
+   teamcounterparts                         64 rows
+   teamnationlinks                         174 rows
+   teamplayerlinks                       23594 rows
+   teams                                   870 rows
+   teamstadiumlinks                        878 rows
+   + localization bundle (LanguageStrings1/2, 115843 strings) for cup,
+     competition and PlayStyle display names.
+
+2. EMPTY UPSTREAM (53 tables) - nothing to extract
+------------------------------------------------------------
+   career_clinchedobjectives, career_managerawards, career_playerawards, career_playergrowthuserseason, career_playermatchratinghistory, career_scoutmission, career_scouts, career_teamofweek, career_youthplayerhistory, career_youthplayers, cm_default_mentalities, cm_mentalities, cm_teamsheets, competitionuefasponsors, cp_fat, cp_flesh, cp_skeletal, createplayer, customformations, customteamstyles, dc_fat, dc_flesh, dc_skeletal, dc_skins, dcplayernames, dlcballs, dlcboots, editedplayernames, fixtures, kitremapping, persistent_events, playerarchetypelinks, playerbootremapping, playerformdiff, playeroutfitlinks, playerperks, playersuspensions, scenarioevents, scenariosettings, ssfstadiummusic, stadiumassignments, stories, teamballremapping, teamformationteamstylelinks, teamformdiff, teamplayerlinks_vh, teamstadiumlinkscache, temp_createplayer, temp_formations, temp_players, temp_teamplayerlinks, temp_teams, transfers
+
+   Verified: fixtures = 0 rows, transfers = 0 rows, and the career_* state
+   tables (teamofweek, playerawards, managerawards, youthplayers, scouts,
+   playergrowthuserseason, ...) are all 0 rows. Others such as
+   career_playercontract / career_playerstats / career_leaguetable are not
+   present in this template at all. career_calendar has exactly 1 row and
+   its absolute dates are a 2008 placeholder (only the windows are shipped).
+
+   Consequence: match results, schedules, tables, budgets and market value
+   genuinely do not exist upstream - the engine must generate and own them.
+
+3. INSPECTED INDIVIDUALLY AND EXCLUDED (46 tables)
+------------------------------------------------------------
+   agents                                29  all 29 rows are "Agent Test N" placeholders; no real names
+   archetypes                            15  Pro Clubs archetype definitions
+   associatedplayers                     15  archetype ids (Pro Clubs), 15 rows
+   associateplayerspec                   45  Pro Clubs specializations
+   attribute_strengths                  442  attribute id space unresolved
+   broadcastleague                      870  broadcast presentation grouping
+   career_birthingpool                11460  appearance assets for generated players (head/hair/skin codes)
+   career_youth_skins                 11460  appearance assets for youth players
+   clubcustomization_stadium              3  cosmetic stadium unlocks
+   competitionmatchups                  450  partial UEFA pot draw (4 cups), not a fixture list; a draw is engine season state
+   competitionsponsorlinks              805  links competitions to texture assets; no financial terms
+   createplayerpositiontemplates        407  attribute ids 75..111, outside the 34-field range
+   dbversion                              1  schema metadata
+   default_mentalities                  870  pitch offset arrays (renderer)
+   defaultteamdata                      870  pitch offset arrays (renderer)
+   factory_teams                          1  1 default team row
+   fieldpositionboundingboxes            30  pitch geometry for the renderer
+   fifaGameSettings                     451  engine/renderer settings, not football data
+   formationoffsets                      33  pitch offsets; formations.json already carries per-slot xy
+   ftue_presets                           1  first-run tutorial preset
+   height_weight_impact                 216  attribute id space unresolved
+   height_weight_impact_range            26  attribute id space unresolved (ids up to 100+)
+   level_caps                            60  Pro Clubs archetype level caps
+   mentalities                         4001  pitch offset arrays (renderer tactical shapes)
+   perks                                 65  Pro Clubs perks
+   playerbodyrestrictions                 1  1 row
+   playernamemap                        106  commentary audio id -> player id; only 42/106 ids are in the roster
+   playerpositionzones                   30  pitch geometry for the renderer
+   playerpronouns                         1  1 row
+   playersockoverride                     4  4 cosmetic rows
+   playstyles                            36  id/type columns only (type is empty); thresholds come from playstyle_attribute_requirement
+   positionbonus                          4  every value is 0
+   rankweight                             6  every value is 0
+   reset_cost                             2  Pro Clubs respec cost
+   signature_perks                       30  Pro Clubs
+   signature_playstyles                  30  Pro Clubs archetype unlock order
+   signatureabilitymap                    5  Pro Clubs / gameplay
+   specialization_attr_strengths       1530  Pro Clubs specialization, attribute ids unresolved
+   specialization_map                    45  Pro Clubs spec -> archetype
+   specialization_perks                  45  Pro Clubs
+   sponsors                             392  names are texture asset keys (dynamic_01, Tottenham_Hotelscom); no contract/value fields
+   teamsheetanalysis                   2014  recorded positions per player, superseded by teamplayerlinks role
+   teamsheets                           802  802 user-saved sheets, mostly empty names; default_teamsheets is the authoritative one
+   teamsponsorlinks                     956  links teams to those texture assets; no financial terms
+   turfattributesmap                    184  attribute id space unresolved
+   version                                1  schema metadata
+
+4. NOT INDIVIDUALLY PROBED - classified by family (126 tables)
+------------------------------------------------------------
+   These were triaged by name and field list, NOT row-by-row. They are
+   presentation assets, audio, other game modes, or renderer geometry.
+   If the engine later needs one, it is a small importer addition.
+
+   appearance / rendering assets (89):
+     CustomizableAnthemChant, CustomizableChantPackage, CustomizableGoalMusic, CustomizableTeamName, accessories, adboardconsoleoverrides, adboardlogicexceptions, bannerplayers, basehead_fat, basehead_flesh, basehead_skeletal, brandpartnerassets, brandpartners, brandtypes, celebrations, clubcustomization_asset, clubcustomization_bundle, clubcustomization_cardeffects, clubcustomization_facilitycards, clubcustomization_kit, clubcustomization_tifo, clubcustomization_trophy, competitionbadges, competitionballs, competitionkits, competitionrefereekits, crowdaccessories, crowdbodies, crowdhairs, crowdheads, crowdoldsystem, crowdprops, crowdregion, crowdregionlrc, crowdtints, customcoloredsmoke, dynamicimages, emotelink, footwear, genericmascot, goalcelebrationlink, goalkeepergloves, gp_ucc, highres_fat, highres_flesh, highres_skeletal, highres_skins, highresasset, kitcoloroverrides, kitrewardsmapping, linecolor, lowresasset, mascot, modeadboardlinks, netpattern, outfitarrangements, outfithairlinks, playerboots, presentationmodesettings, preset_fat, preset_flesh, preset_skeletal, preset_skins, seatcolor, shoecolors, skins, slc, slc_competition_overrides, slc_fat, slc_flesh, slc_skeletal, slc_skins, spa, spa_fat, spa_flesh, spa_skeletal, spa_skins, stadiumcolor, tattoo, teamballs, teamkithudvalues, teamkits, tifo, ucc, vanitystoreitemlink, videos, vipplayers, wardrobecloset, wardrobeexclusions
+
+   audio / commentary (10):
+     AudioDeactivatedStories, SMPlayerCallLang, audionation, audiostadium, clubcommentarynames, commentarynames, deactivatedstories, playercalls, playervoicemap, womendeactivatedstories
+
+   other game modes (Pro Clubs / Volta / training) (17):
+     activity_config, cmplayers, createplayerpresets, createplayerpresets_link, createplayerviews, gameplay_site_config, kickabout_tests_gameplay_sites, main_world_gameplay_sites, matchscenarios, skillmeterchargecondition, smplayers, smteams, trainingteamplayerlinks, trainingteamplayernames, trainingteamplayers, wtlocations, wtregions
+
+   pitch geometry / renderer tactics (3):
+     ssfformations, ssfstadiums, turfsquadtypemap
+
+   Pro Clubs progression curves (7):
+     cm_attr_upgrade_cost_curve_map, cm_attribute_upgrade_cost, cm_level_curve, cm_level_curve_progress, cm_min_max_attributes, cm_role_synergies, cm_specialization_attribute_req
+
+KNOWN LIMITATIONS OF WHAT IS SHIPPED
+------------------------------------------------------------
+See NOTICE.txt for provenance and licensing. In summary:
+  - ratings.json is a LOSSY PES-25 projection; use ea_attrs.json (34 raw).
+  - formation slots are side-specific, player positions are coarse; bridge
+    them with ea_positions.json slotCompat (7887/7887 starters fit).
+  - ovr_weights.json / playstyles.json attribute ids use an UNRESOLVED EA
+    enum. Shipped raw with warnings; do not index ea_attrs.json with them.
+  - traits.json bitmasks are raw: no defensible PlayStyle mapping was found.
+  - style/form/inj in ratings.json are placeholders (single-valued).
+  - affinities.json emotion scale is inferred, not documented.
+  - 452/717 managers are named; the rest are upstream placeholders.
+  - Libertadores (1003) / Sudamericana (1014) seeds are outside the 717-club
+    universe; their names ship in external_teams.json.

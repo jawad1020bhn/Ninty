@@ -90,6 +90,27 @@ kits, vanity, audio) and stay out.  These twelve carry career logic:
                      See the warning below about the attribute ids.
     playstyles.json  36 PlayStyle unlock thresholds (26 named).
 
+COVERAGE - EVERY UPSTREAM TABLE IS ACCOUNTED FOR
+    data/fc27/COVERAGE.txt lists all 268 tables in the FC 27 template and says
+    what happened to each one:
+
+        43  read and extracted (+ the localization bundle)
+        53  empty upstream - nothing to extract
+        46  inspected individually and excluded, each with its reason
+       126  triaged by family only (appearance, audio, other modes, geometry)
+
+    The last group is labelled honestly: those were judged by name and field
+    list, NOT row by row.  r16 had called that whole remainder "presentation"
+    and r17 proved that wrong, so the distinction is kept visible.
+
+    Regenerate it with:
+        node tools/audit_fc27_coverage.mjs --kit /tmp/kit/package
+
+    The "read" list is parsed out of import_fc27.mjs, so it cannot drift from
+    what the importer does.  The tool exits non-zero if a table is unaccounted
+    for or unclassified - a new upstream table fails the audit instead of being
+    silently ignored.
+
 SECOND PASS - "presentation-only" WAS TOO SWEEPING
     r16 dismissed the remaining non-empty tables as presentation.  Checking
     them one by one showed several carry career logic, now extracted too:
@@ -329,6 +350,11 @@ BUILD HISTORY
    tuning and create-player templates were all real and are now extracted.
    A full reference sweep found 8 dangling team ids (CONMEBOL sides); it now
    ships external_teams.json + team_name(), leaving zero dangling references.
+16. r18: COVERAGE AUDIT TOOL.  tools/audit_fc27_coverage.mjs regenerates
+   data/fc27/COVERAGE.txt, accounting for all 268 upstream tables (43 read,
+   53 empty, 46 excluded with reasons, 126 triaged by family).  It derives the
+   read list from the importer and fails on any unclassified table, so a new
+   upstream table cannot be silently skipped.
    The separate engine with its own save is still the next piece of work.
 WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------
