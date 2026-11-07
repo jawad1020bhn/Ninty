@@ -90,6 +90,105 @@ kits, vanity, audio) and stay out.  These twelve carry career logic:
                      See the warning below about the attribute ids.
     playstyles.json  36 PlayStyle unlock thresholds (26 named).
 
+THE FC 27 ENGINE (separate game, own save)
+-----------------------------------------
+lib/engine/ is the game the database was prepared for.  It is a SEPARATE
+career system: it never reads or writes a PES save, never needs a PES
+install, and keeps its own JSON careers under data/saves/ (git-ignored,
+about 1.2 MB each).
+
+    lib/engine/store.py     save format, atomic writes, squad moves
+    lib/engine/world.py     build a career world from the database
+    lib/engine/fixtures.py  seeded double round-robin schedule
+    lib/engine/lineup.py    team selection (drives the existing AI)
+    lib/engine/match.py     match simulation on EA's 34 raw attributes
+    lib/engine/season.py    play fixtures, tables, form, injuries, bans
+    lib/engine/positions.py EA's 28-id enum -> the app's 13 POSN roles
+
+The division of responsibility is deliberate: the DATABASE owns static facts
+(names, attributes, birthdays, stadiums, formation shapes) and the SAVE owns
+only what a career changes.  So a database refresh is not destructive, and no
+fact has two sources of truth.
+
+Existing, credited algorithms are REUSED, not reimplemented:
+    lib/ailineup    how many changes to make for a big/normal/low match
+    lib/mlwrite     position-distance matrix + Hungarian assignment (pure)
+    lib/formengine  the 0-7 Form level from real match ratings
+    lib/revalue     the valuation curve that seeds market values
+Only the pure helpers are imported; no PES save machinery is touched, and
+tools/verify_engine.py asserts that by parsing the actual import statements.
+
+WHAT WORKS NOW
+    * create a career at any of the 717 clubs, in any of the 41 leagues
+    * a full 38-round double round-robin season, played in date order
+    * match simulation with scorers, assists, cards, injuries, substitutions,
+      possession, shots, referee and crowd
+    * league table, form guide, top scorers, per-player season stats
+    * injuries heal and bans are served as the clock advances
+    * deterministic: the same seed replays a season identically, and a
+      reloaded save continues exactly as an uninterrupted one would
+
+CALIBRATION IS MEASURED, NOT GUESSED
+Three full 380-match seasons (seeds 7, 19, 31) were simulated over a grid of
+chance/conversion/home-edge values.  The shipped setting produces
+
+    goals/game 2.74   home 45.7%   draw 24.8%   away 29.5%   shots/game 25.0
+
+against real Premier League references of roughly 2.8 / 46 / 24 / 30 / 25.
+Shots were already right, so conversion was the lever for goals and the
+home/away pair sets the result split.  A full season simulates in ~2.4s.
+
+Two data traps found while building this, both recorded in the code:
+  * match_tuning.attendance is a 0-10 EMOTION band, not a stadium fill
+    fraction.  Reading it as a fill gave 100% capacity at every ground.
+    Attendance is now an explicit engine choice from capacity + reputation.
+  * EA's bigmatchups list is curated and omits Manchester United-Liverpool,
+    which rivals.json rates intensity 5.  The engine treats a fixture as big
+    if EITHER source says so; fc27.is_big_match() still reports only upstream.
+
+NOT BUILT YET (honest scope)
+    cups and continental competition, the transfer market and negotiations,
+    player growth/aging between seasons, youth intake and regens, budgets
+    spent, morale effects, multi-season rollover, and the UI screens.  The
+    data for all of these is already shipped and verified; the engine
+    increment that consumes it is still to come.  Emergency call-ups stand in
+    for proper youth promotion when injuries strip a squad below 11.
+
+ENGINE API
+    GET  /api/engine/careers                 list careers
+    GET  /api/engine/state?id=               summary, table, next fixtures
+    GET  /api/engine/squad?id=&club=         squad with career state
+    GET  /api/engine/table?id=&league=       table + top scorers
+    GET  /api/engine/select?id=&club=&opp=   proposed XI and why
+    POST /api/engine/new                     {club, manager, seed, leagues}
+    POST /api/engine/play                    {id} play the next fixture
+    POST /api/engine/advance                 {id, days} run the clock (1..400)
+    POST /api/engine/transfer                {id, pid, to}
+    POST /api/engine/save                    {id}
+    POST /api/engine/delete                  {id}
+
+VERIFYING THE ENGINE
+    python3 tools/verify_engine.py            # 75 checks, about 8 seconds
+    python3 tools/verify_engine.py --quick    # 63 checks, skips calibration
+
+Careers are written to a temporary directory, so the verifier can never touch
+a real career.  It asserts BEHAVIOUR, not just consistency: reproducibility,
+exact save/reload, resume-after-reload, table arithmetic closing, scorer rows
+summing to the scoreline, injuries and bans actually affecting selection, and
+the stored Form equalling what formengine computes.
+
+Home advantage is tested in ISOLATION by putting the SAME XI on both sides,
+so team quality cannot mask a broken venue multiplier.
+
+The verifier was mutation-tested against 12 deliberately broken engines
+(neutralised home edge, ignored injuries, ignored suspensions, stubbed-out
+form, career id leaking into the seed, int keys breaking reload, wrong win
+points, injuries never healing, duplicate squads, single round-robin, arcade
+conversion).  All 12 were caught.  The first pass caught only 7 - three checks
+were passing vacuously because they injured or banned a player who was not in
+the XI anyway, and the home-advantage cutoff was too loose.  Those were fixed
+before the engine was committed.
+
 VERIFYING THE DATABASE
     There is no test suite in this repo, so the database ships with its own
     checker.  Run it after any regeneration:
@@ -405,7 +504,14 @@ BUILD HISTORY
    readiness checks in ~0.5s with no server or save, and exits non-zero on
    failure.  It proves every club can field a matchday squad from this data
    alone.  Mutation-tested against 10 corrupted copies; all were caught.
-   The separate engine with its own save is still the next piece of work.
+19. r21: THE SEPARATE ENGINE.  lib/engine/ is a standalone FC 27 career with
+   its own JSON save, no PES dependency.  Fixtures, match simulation on EA's
+   34 raw attributes, tables, form, injuries and bans all work; a 380-match
+   season simulates in ~2.4s and is calibrated against real Premier League
+   rates.  11 new API routes.  tools/verify_engine.py adds 75 behavioural
+   checks, mutation-tested 12/12.  279-endpoint differential vs r20: zero
+   regressions, all 9 sampled fc27 payloads byte-identical.
+   Cups, transfers, growth and the UI screens are the next pieces of work.
 WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------
   club                Birmingham City FC

@@ -43,6 +43,7 @@ import realmoves  # noqa: E402  pc307 stvarni transferi (Wikipedia)
 import regrules  # noqa: E402  pc195 pravila registracije (Michele & Claude)
 import revalue  # noqa: E402  pc197 revalorizacija (Michele & Claude)
 import fc27 as fc27db  # noqa: E402  EA SPORTS FC 27 database (data/fc27)
+import engine as fcengine  # noqa: E402  separate FC 27 career engine (data/saves)
 
 DEFAULT_CFG = {
     'save_dir': '',   # r9: never inherit pc414's machine-specific FL26 path; load_cfg() finds a real PES 2017 folder
@@ -12873,6 +12874,36 @@ def _qint(q, k, default=0):
         return default
 
 
+_ENG_CACHE = {}
+_ENG_LOCK = threading.RLock()
+
+
+def _eng_get(sid):
+    """Load a career once and keep it in memory.
+
+    The save on disk stays authoritative: every mutating route writes through
+    before returning, so a reload or a second process sees the same state.
+    """
+    sid = str(sid or '').strip()
+    if not sid:
+        raise fcengine.SaveError('a career id is required')
+    with _ENG_LOCK:
+        st = _ENG_CACHE.get(sid)
+        if st is None:
+            st = fcengine.load(sid)
+            _ENG_CACHE[sid] = st
+            while len(_ENG_CACHE) > 4:
+                _ENG_CACHE.pop(next(iter(_ENG_CACHE)), None)
+        return st
+
+
+def _eng_put(st):
+    with _ENG_LOCK:
+        fcengine.save(st)
+        _ENG_CACHE[st['id']] = st
+    return st
+
+
 def _fc27_tables():
     """Competition names and registration rules for FC 27.
 
@@ -20135,6 +20166,55 @@ class H(BaseHTTPRequestHandler):
                 return self.send(200, dict(ok=True, players=fc27db.search(
                     _q.get('q', [''])[0], limit=min(200, max(1, _qint(_q, 'limit', 40))),
                     club_id=_cid, pos=None if _pos < 0 else _pos)))
+            if u.path == '/api/engine/careers':
+                return self.send(200, dict(ok=True, careers=fcengine.list_saves()))
+            if u.path == '/api/engine/state':
+                _q = parse_qs(u.query)
+                try:
+                    _st = _eng_get(_q.get('id', [''])[0])
+                except fcengine.SaveError as _ex:
+                    return self.send(404, dict(ok=False, error=str(_ex)))
+                return self.send(200, dict(ok=True, career=fcengine.summary(_st),
+                                           table=fcengine.table(_st),
+                                           next=fcengine.next_fixture(_st),
+                                           fixtures=fcengine.upcoming(_st, limit=10)))
+            if u.path == '/api/engine/squad':
+                _q = parse_qs(u.query)
+                try:
+                    _st = _eng_get(_q.get('id', [''])[0])
+                except fcengine.SaveError as _ex:
+                    return self.send(404, dict(ok=False, error=str(_ex)))
+                _tid = _qint(_q, 'club') or _st['club']
+                if str(_tid) not in _st['clubs']:
+                    return self.send(404, dict(ok=False, error='No club %d in this career' % _tid))
+                return self.send(200, dict(ok=True, club=_tid,
+                                           clubName=fc27db.team_name(_tid),
+                                           players=fcengine.squad(_st, _tid)))
+            if u.path == '/api/engine/table':
+                _q = parse_qs(u.query)
+                try:
+                    _st = _eng_get(_q.get('id', [''])[0])
+                except fcengine.SaveError as _ex:
+                    return self.send(404, dict(ok=False, error=str(_ex)))
+                return self.send(200, dict(ok=True, table=fcengine.table(_st, _qint(_q, 'league') or None),
+                                           scorers=fcengine.scorers(_st, _qint(_q, 'league') or None)))
+            if u.path == '/api/engine/select':
+                _q = parse_qs(u.query)
+                try:
+                    _st = _eng_get(_q.get('id', [''])[0])
+                except fcengine.SaveError as _ex:
+                    return self.send(404, dict(ok=False, error=str(_ex)))
+                _tid = _qint(_q, 'club') or _st['club']
+                _opp = _qint(_q, 'opp') or None
+                try:
+                    _sel = fcengine.select(_st, _tid, _opp)
+                except fcengine.SaveError as _ex:
+                    return self.send(400, dict(ok=False, error=str(_ex)))
+                _sel = dict(_sel)
+                _sel['xi'] = [dict(pid=_p, name=fc27db.name(_p),
+                                   pos=fc27db.positions().get(str(_p), 5)) for _p in _sel['xi']]
+                _sel['bench'] = [dict(pid=_p, name=fc27db.name(_p)) for _p in _sel['bench']]
+                return self.send(200, dict(ok=True, selection=_sel))
             if u.path == '/api/pes17/setup':
                 import pes17_setup
                 return self.send(200, pes17_setup.status(CFG, HERE))
@@ -20621,6 +20701,87 @@ class H(BaseHTTPRequestHandler):
         try:
             n = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(n) or b'{}')
+            if self.path == '/api/engine/new':
+                try:
+                    _club = int(body.get('club') or 0)
+                except (TypeError, ValueError):
+                    return self.send(400, dict(ok=False, error='club must be an integer'))
+                if not _club:
+                    return self.send(400, dict(ok=False, error='club is required'))
+                _seed = body.get('seed')
+                try:
+                    _seed = int(_seed) if _seed is not None else None
+                except (TypeError, ValueError):
+                    return self.send(400, dict(ok=False, error='seed must be an integer'))
+                try:
+                    _st = fcengine.new(_club, manager=str(body.get('manager') or 'You'),
+                                       leagues=body.get('leagues'), seed=_seed)
+                    _eng_put(_st)
+                except fcengine.SaveError as _ex:
+                    return self.send(400, dict(ok=False, error=str(_ex)))
+                except (ValueError, KeyError) as _ex:
+                    return self.send(400, dict(ok=False, error=str(_ex)))
+                return self.send(200, dict(ok=True, career=fcengine.summary(_st)))
+            if self.path in ('/api/engine/play', '/api/engine/advance',
+                             '/api/engine/save', '/api/engine/delete',
+                             '/api/engine/transfer'):
+                _sid = str(body.get('id') or '').strip()
+                if self.path == '/api/engine/delete':
+                    try:
+                        _gone = fcengine.delete(_sid)
+                    except fcengine.SaveError as _ex:
+                        return self.send(400, dict(ok=False, error=str(_ex)))
+                    with _ENG_LOCK:
+                        _ENG_CACHE.pop(_sid, None)
+                    return self.send(200 if _gone else 404,
+                                     dict(ok=_gone, deleted=_sid if _gone else None))
+                try:
+                    _st = _eng_get(_sid)
+                except fcengine.SaveError as _ex:
+                    return self.send(404, dict(ok=False, error=str(_ex)))
+                try:
+                    if self.path == '/api/engine/play':
+                        with _ENG_LOCK:
+                            _r = fcengine.play_next(_st, body.get('club'))
+                            _eng_put(_st)
+                        if _r is None:
+                            return self.send(200, dict(ok=True, result=None,
+                                                       note='season complete',
+                                                       career=fcengine.summary(_st)))
+                        return self.send(200, dict(ok=True, result=_r,
+                                                   career=fcengine.summary(_st),
+                                                   table=fcengine.table(_st)))
+                    if self.path == '/api/engine/advance':
+                        # `body.get('days') or 1` would silently turn an
+                        # explicit 0 into 1, so test for None instead.
+                        _dv = body.get('days')
+                        try:
+                            _days = 1 if _dv is None else int(_dv)
+                        except (TypeError, ValueError):
+                            return self.send(400, dict(ok=False, error='days must be an integer'))
+                        if not 1 <= _days <= 400:
+                            return self.send(400, dict(ok=False, error='days must be 1..400'))
+                        with _ENG_LOCK:
+                            _r = fcengine.advance(_st, days=_days)
+                            _eng_put(_st)
+                        return self.send(200, dict(ok=True, advanced=_r['count'],
+                                                   date=_r['date'],
+                                                   career=fcengine.summary(_st),
+                                                   table=fcengine.table(_st)))
+                    if self.path == '/api/engine/transfer':
+                        try:
+                            _pid, _to = int(body.get('pid') or 0), int(body.get('to') or 0)
+                        except (TypeError, ValueError):
+                            return self.send(400, dict(ok=False, error='pid and to must be integers'))
+                        with _ENG_LOCK:
+                            _moved = fcengine.move_player(_st, _pid, _to)
+                            _eng_put(_st)
+                        return self.send(200, dict(ok=True, moved=_moved, pid=_pid, to=_to))
+                    with _ENG_LOCK:
+                        _eng_put(_st)
+                    return self.send(200, dict(ok=True, career=fcengine.summary(_st)))
+                except fcengine.SaveError as _ex:
+                    return self.send(400, dict(ok=False, error=str(_ex)))
             if self.path == '/api/lan/login':
                 return self._lan_login(body)
             if self.path == '/api/lan/set':
