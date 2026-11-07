@@ -103,6 +103,93 @@ def main():
     check('squad sizes plausible (18..38)', min(sizes) >= 18 and max(sizes) <= 38,
           'min=%d max=%d' % (min(sizes), max(sizes)))
 
+    # -------------------------------------------------------------- real names
+    # EA ships three Serie A clubs under invented names because it does not hold
+    # their licence. r25 replaces them with the real names. The rename is
+    # anchored to the SQUAD, not to the string: FIFPRO licenses the players even
+    # when the club is unlicensed, so Maignan / Modric / Pulisic being in the
+    # squad is what PROVES id 131681 is AC Milan. A later database that moves
+    # these ids must fail here rather than silently mislabel another club.
+    REAL_NAMES = {
+        '131681': ('AC Milan',
+                   ['Mike Maignan', 'Luka Modrić', 'Christian Pulisic']),
+        '131682': ('Inter',
+                   ['Lautaro Martínez', 'Nicolò Barella', 'Alessandro Bastoni']),
+        '115845': ('Atalanta',
+                   ['Marten de Roon', 'Berat Djimsiti', 'Davide Zappacosta']),
+    }
+    PLACEHOLDERS = {'Milano FC', 'Lombardia FC', 'Bergamo Calcio'}
+    full_of = {str(r[0]): r[1] for r in players}
+    teamids = L('teamids')
+    for tid, (real, anchors) in REAL_NAMES.items():
+        check('real name: %s is %s' % (tid, real),
+              clubs.get(tid, {}).get('name') == real,
+              str(clubs.get(tid, {}).get('name')))
+        sq_names = {full_of.get(str(p), '') for p in squads.get(tid, [])}
+        missing = [a for a in anchors if a not in sq_names]
+        check('real name: %s is proven by its squad, not guessed' % real,
+              not missing, 'squad lacks %s' % missing)
+        check('real name: teamids agrees for %s' % real,
+              teamids.get(tid) == real, str(teamids.get(tid)))
+        check('real name: %s belongs to exactly one club' % real,
+              sum(1 for r in clubs.values() if r['name'] == real) == 1)
+
+    # Loans carry a DENORMALISED club name, so a rename that missed them would
+    # leave the old name visible in the transfer UI. Checked for ALL 645 rows,
+    # not just the renamed ones, so the next rename is covered too.
+    loans = L('loans')
+    stale = [(r['pid'], r['from'], r['fromName']) for r in loans
+             if str(r['from']) in clubs
+             and r['fromName'] != clubs[str(r['from'])]['name']]
+    check('real name: every loan fromName matches its club', not stale,
+          '%d stale, e.g. %s' % (len(stale), stale[:3]))
+
+    # No placeholder may survive in ANY shipped table, including ones that
+    # store names incidentally (external_teams, cups, former_clubs).
+    found = {}
+    for fn in sorted(os.listdir(d)):
+        if not fn.endswith('.json'):
+            continue
+        with open(os.path.join(d, fn), encoding='utf-8') as fh:
+            txt = fh.read()
+        hits = [p for p in PLACEHOLDERS if p in txt]
+        if hits:
+            found[fn] = hits
+    check('real name: no EA placeholder survives in any table', not found, str(found))
+
+    # Renaming must not become over-eager. These odd-looking names are REAL and
+    # were deliberately left alone; a future "fix" must not rewrite them.
+    check('real name: Lazio is not renamed to Latium',
+          clubs.get('115841', {}).get('name') == 'Lazio',
+          str(clubs.get('115841', {}).get('name')))
+    check('real name: Logroño United kept (a real 2026 rebrand, not a placeholder)',
+          any(r['name'] == 'Logroño United' for r in clubs.values()))
+    check('real name: United Tigers SC kept (generated squad proves no real identity)',
+          clubs.get('132681', {}).get('name') == 'United Tigers SC',
+          str(clubs.get('132681', {}).get('name')))
+
+    # The committed data must equal what a re-import produces, or the rename
+    # silently reverts the next time the database is regenerated.
+    imp = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                       'tools', 'import_fc27.mjs')
+    src = ''
+    if os.path.isfile(imp):
+        with open(imp, encoding='utf-8') as fh:
+            src = fh.read()
+    import re as _re
+    m = _re.search(r'const REAL_TEAM_NAME = new Map\(\[(.*?)\]\);', src, _re.S)
+    check('real name: importer declares REAL_TEAM_NAME', bool(m))
+    table = dict(_re.findall(r"\[(\d+),\s*'([^']+)'\]", m.group(1))) if m else {}
+    check('real name: importer table reproduces the committed names',
+          table == {t: v[0] for t, v in REAL_NAMES.items()}, str(table))
+    check('real name: importer applies the table to the raw team records',
+          'for (const r of T.teams)' in src
+          and 'REAL_TEAM_NAME.get(r.assetid)' in src
+          and 'r.teamname = real' in src)
+    check('real name: importer applies it BEFORE the TEAM map is built',
+          0 <= src.find('REAL_TEAM_NAME.get(r.assetid)') < src.find('const TEAM = new Map'),
+          'rename must precede every teamname read')
+
     # ------------------------------------------------------------- coordinates
     compat = {int(k): int(v) for k, v in ep['slotCompat'].items()}
     check('slotCompat covers all 28 EA ids', set(compat) == set(range(28)))

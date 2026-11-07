@@ -190,6 +190,34 @@ for (const t of loc.databases.flatMap(d => d.tables)) for (const s of t.records)
 console.log('  localization'.padEnd(20) + LOC.size);
 const compName = id => LOC.get('LeagueName_' + id) || LOC.get('TrophyName_' + id) || '';
 
+/* ------------------------------------------------------- real club names */
+// EA ships three Serie A clubs under invented names because it does not hold
+// their licence. The players ARE real (FIFPRO covers players, not clubs), so
+// the shipped squad identifies each club beyond doubt:
+//   131681 Maignan / Modric / Rabiot / Pulisic / Leao      -> AC Milan
+//   131682 Barella / Lautaro / Dimarco / Bastoni / Thuram  -> Inter
+//   115845 Carnesecchi / Ederson / De Ketelaere / de Roon  -> Atalanta
+// Keyed by the STABLE asset id, never by the placeholder string, so a later
+// database that rewords the placeholder cannot rename the wrong club.
+// Applied to the raw records before TEAM is built, which is the single choke
+// point for all seven teamname reads: clubs.json, teamids.json,
+// loans.fromName and externalTeams therefore cannot disagree.
+// Deliberately NOT renamed: Lazio is already correct in FC 27 (the "Latium"
+// placeholder was FC 26); Logrono United is a real July 2026 rebrand of DUX
+// Logrono; United Tigers SC ships an entirely generated squad, so no real
+// identity can be proven and inventing one would be fabrication.
+const REAL_TEAM_NAME = new Map([
+  [131681, 'AC Milan'],
+  [131682, 'Inter'],
+  [115845, 'Atalanta'],
+]);
+let realNamed = 0;
+for (const r of T.teams) {
+  const real = REAL_TEAM_NAME.get(r.assetid);
+  if (real && r.teamname !== real) { r.teamname = real; realNamed++; }
+}
+console.log('  real club names'.padEnd(20) + realNamed);
+
 const NAME = new Map(T.playernames.map(r => [r.nameid, r.name]));
 const TEAM = new Map(T.teams.map(r => [r.assetid, r]));
 const NATION = new Map(T.nations.map(r => [r.nationid, r]));

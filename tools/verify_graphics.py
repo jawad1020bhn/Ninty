@@ -521,7 +521,9 @@ def section_importer_exercised():
     upstream = [
         'england/Liverpool_FC.svg',          # two FC 27 ids share one crest
         'italy/Milan.svg',                   # AC Milan's real file
-        'italy/Club_Milano.svg',             # Serie D side; strips to the same key
+        'italy/Club_Milano.svg',             # Serie D side; a namesake trap
+        'italy/Inter.svg',                   # matched by real name since r25
+        'italy/Atalanta.svg',                # matched by real name since r25
         'germany/SC_Köln-Brück_07.svg',      # NOT 1. FC Köln, which has no file
         'germany/Hoffenheim.svg',            # parent of Hoffenheim II
         'spain/Real_Sociedad.svg',           # parent of Real Sociedad B
@@ -573,11 +575,20 @@ def section_importer_exercised():
         def mapped(name):
             return any(clubs[i]['name'] == name for i in got)
 
-        # An explicit alias must outrank a lossy automatic key match.
-        check('importer run: EA placeholder gets the right club, not a namesake',
-              files_for('Milano FC') == {'Milan.svg'}, str(files_for('Milano FC')))
-        check('importer run: the namesake is not handed the placeholder',
+        # r25 ships the real names, so these now resolve EXACTLY. The namesake
+        # trap is still live: Club Milano is a real Serie D side and must not
+        # be handed to AC Milan, nor vice versa.
+        check('importer run: AC Milan gets its own crest, not a namesake',
+              files_for('AC Milan') == {'Milan.svg'}, str(files_for('AC Milan')))
+        check('importer run: the namesake is not handed to another club',
               'Club_Milano.svg' not in {e['file'].split('/')[-1] for e in got.values()})
+        check('importer run: Inter resolves by its real name',
+              files_for('Inter') == {'Inter.svg'}, str(files_for('Inter')))
+        check('importer run: Atalanta resolves by its real name',
+              files_for('Atalanta') == {'Atalanta.svg'}, str(files_for('Atalanta')))
+        check('importer run: no EA placeholder name survives in the database',
+              not ({'Milano FC', 'Lombardia FC', 'Bergamo Calcio'}
+                   & {r['name'] for r in clubs.values()}))
         # A club with no upstream file must stay unmapped, not grab a namesake.
         check('importer run: a club absent upstream is not given a namesake crest',
               not mapped('1. FC Köln'), str(files_for('1. FC Köln')))

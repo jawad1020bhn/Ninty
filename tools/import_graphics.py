@@ -72,10 +72,14 @@ _STOP.discard(' united')
 #   Rot-Weiss Essen  -> "Rot-Weiss Oberhausen"  REJECTED (different club)
 #   Real Sociedad B  -> "Real Sociedad"         REJECTED (reserve team)
 #   Al Diriyah       -> "Al Riyadh"             REJECTED (different club)
-# EA ships unlicensed clubs under invented names; those can never be matched by
-# similarity and must be mapped explicitly.
+# Names the collection spells differently from FC 27. These are all real clubs
+# on both sides; only the spelling differs.
+#
+# r25: the three Serie A placeholders (Milano FC / Lombardia FC / Bergamo
+# Calcio) used to need entries here. The database now ships the real names
+# AC Milan / Inter / Atalanta (see REAL_TEAM_NAME in import_fc27.mjs), and all
+# three match upstream EXACTLY, so their aliases were removed as dead code.
 ALIAS = {
-    'bergamo calcio': 'Atalanta',              # EA placeholder for Atalanta
     'gotham fc': 'NJNY Gotham FC',
     'losc lille': 'Lille',
     'ogc nice': 'Nice',
@@ -123,7 +127,6 @@ ALIAS = {
     'rc deportivo': 'Deportivo La Coruna',
     'real betis balompie': 'Real Betis',
     # Verified against the upstream file list, not guessed from similarity.
-    'lombardia fc': 'Inter',                   # upstream calls Inter just "Inter"
     'ol lyonnes': 'Olympique Lyonnais',        # Lyon women, rebranded 2025
     'ol lyonnais': 'Olympique Lyonnais',
     'antwerp': 'Royal Antwerp',
@@ -155,9 +158,6 @@ ALIAS = {
     'wellington phoenix': 'Wellington Phoenix FC',
     'auckland fc': 'Auckland FC',
     # Found by auditing every non-exact match, not by similarity.
-    'milano fc': 'Milan',                      # EA placeholder for AC Milan.
-    #   Stripping stopwords collapses "Milano FC" and "Club Milano" to the same
-    #   key, and Club Milano is a small Serie D side, not AC Milan.
     'gimnasia y esgrima la plata': 'Gimnasia LP',
     'racing club de avellaneda': 'Racing Club',
     'montpellier hsc': 'Montpellier',
@@ -284,9 +284,11 @@ def build_index(tf):
 
     The stopword-stripped key is LOSSY: "Milano FC" and "Club Milano" both
     collapse to ('milano',). Registering whichever came first in the tarball
-    silently handed AC Milan's placeholder a Serie D club's crest. A stripped
-    key is therefore only registered when exactly one file produces it; the
-    precise (unstripped) key is always registered.
+    silently handed EA's old AC Milan placeholder a Serie D club's crest. A
+    stripped key is therefore only registered when exactly one file produces
+    it; the precise (unstripped) key is always registered. r25 ships the real
+    name "AC Milan", which strips to ('milan',) and no longer collides, but
+    the guard stays: it protects every other lossy key, not just that one.
     """
     per = collections.defaultdict(dict)
     flat = collections.defaultdict(list)
@@ -355,10 +357,12 @@ def match_club(row, folder, per, flat):
                 return None, 'reserve'
         return m, how
 
-    # An explicit, hand-checked alias outranks EVERY automatic match. "Milano
-    # FC" is EA's placeholder for AC Milan, but it also strips to the same key
-    # as "Club Milano", a real Serie D side; consulting the exact key first
-    # handed it the wrong crest even with the alias present.
+    # An explicit, hand-checked alias outranks EVERY automatic match. Before
+    # r25, "Milano FC" was EA's placeholder for AC Milan and also stripped to
+    # the same key as "Club Milano", a real Serie D side; consulting the exact
+    # key first handed it the wrong crest even with the alias present. The
+    # database now ships real names, but alias-first precedence is still what
+    # keeps a hand-checked answer from being overridden by a lossy key.
     al = ALIAS.get(fold(name))
     if al:
         for kk in (key(al, stop=False), key(al)):

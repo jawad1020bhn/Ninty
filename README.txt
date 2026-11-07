@@ -272,12 +272,15 @@ VERIFYING THE DATABASE
     There is no test suite in this repo, so the database ships with its own
     checker.  Run it after any regeneration:
 
-        python3 tools/verify_fc27.py            # 64 checks, about half a second
+        python3 tools/verify_fc27.py            # 85 checks, about half a second
         python3 tools/verify_fc27.py --verbose   # list every check
+        python3 tools/mutate_fc27.py            # 13 mutants, about 8 seconds
 
     Stdlib only; no server, no save, no Node.  It exits non-zero on any failure
-    and checks five things: identity (every per-player table covers exactly the
-    roster), coordinates (all 7,887 designated starters fit their club's
+    and checks six things: identity (every per-player table covers exactly the
+    roster), real names (the three unlicensed Serie A clubs carry their real
+    names, proven by squad membership - see REAL CLUB NAMES below),
+    coordinates (all 7,887 designated starters fit their club's
     formation through slotCompat), references (zero dangling team/stadium/
     referee ids across all 730 referenced team ids), raw id spaces (the
     undecodable tables still carry their warnings, so a false alignment claim
@@ -293,6 +296,75 @@ VERIFYING THE DATABASE
     attribute row, reintroduced ab-alignment claim, out-of-range attribute,
     invalid join date, bad stadium id, club without an XI, asymmetric rivalry)
     were all caught.  A checker that cannot fail proves nothing.
+
+REAL CLUB NAMES (r25)
+---------------------
+EA does not hold the licence for three Serie A clubs, so it ships them under
+invented names.  This database now carries the REAL names, in the data itself -
+not as a display-layer patch, so the API, the engine, saves, search and the
+crest resolver all see the same name:
+
+    id 131681   Milano FC       ->  AC Milan
+    id 131682   Lombardia FC    ->  Inter
+    id 115845   Bergamo Calcio  ->  Atalanta
+
+HOW THE IDENTITY IS PROVEN, NOT GUESSED
+    FIFPRO licenses the PLAYERS even when the club is unlicensed, so the shipped
+    squad is real and identifies the club beyond doubt:
+
+      131681  Maignan, Modric, Rabiot, Pulisic, Leao          AC Milan
+      131682  Barella, Lautaro, Dimarco, Bastoni, Thuram      Inter
+      115845  Carnesecchi, Ederson, De Ketelaere, de Roon     Atalanta
+
+    verify_fc27 asserts those players are in that id's squad, so if a later
+    database reuses the id for a different club the check fails instead of
+    silently mislabelling it.  Press reporting (Footy Headlines, "Inter, AC
+    Milan and Atalanta unlicensed in EA FC 27") agrees, but the squad is the
+    primary evidence.
+
+WHAT WAS DELIBERATELY NOT RENAMED
+    An odd-sounding name is not evidence of a placeholder.  These were
+    investigated and left alone:
+
+      Lazio              already the real name here.  "Latium" was FC 26;
+                         carrying that list over to FC 27 would be wrong.
+      Logrono United     a REAL name - DUX Logrono renamed on 14 July 2026.
+      SC Delhi           real club, real players (Fane, Mehta, Babovic).
+      United Tigers SC   genuinely a generic filler, but its 18-man squad is
+                         entirely GENERATED (Chatterjee, Bhatt, Deshpande...).
+                         Press alternately links "United Tigers" to Inter Kashi
+                         (FC 26) and East Bengal (FC 27), and FC 27 already
+                         ships Inter Kashi separately with real players.  No
+                         identity can be proven, so inventing one would be
+                         fabrication.  It stays, and stays crest-blocked.
+      AFC Richmond Women the fictional Ted Lasso club, shipped on purpose.
+      Costa Adeje Tenerife, OL Lyonnes, FCSB, NEOM SC, Boston Legacy,
+      Denver Summit      all real current names.
+
+    All 717 names were reviewed during the r24 crest audit, so this set is
+    complete rather than a spot check.
+
+WHERE THE RENAME LIVES
+    tools/import_fc27.mjs applies REAL_TEAM_NAME to the raw team records BEFORE
+    the TEAM map is built.  That is the single choke point for all seven
+    teamname reads, so clubs.json, teamids.json, loans.fromName and
+    external_teams cannot disagree, and a re-import reproduces the rename
+    instead of reverting it.  The table is keyed by the STABLE asset id, never
+    by the placeholder string.
+
+    The committed JSON was patched at string level and diffed leaf by leaf:
+    exactly 18 name values changed (3 clubs + 3 teamids + 12 loan rows), with
+    no id, key, ordering, numeric or formatting drift.
+
+    Side effects checked: lib/venues.py and lib/clubcolors.py are name-keyed.
+    Neither name resolves a venue before or after, so no venue regression.
+    /api/clubcolors now matches its built-in "AC Milan" entry and returns real
+    rossonero colours - an improvement, and the only behaviour change beyond
+    the names themselves.  Club colours in clubs.json are still EA's.
+
+    Three crest ALIAS entries became dead and were deleted: all three real
+    names match upstream EXACTLY, moving crest matching from 551 exact/85 alias
+    to 554 exact/82 alias.  Coverage is unchanged at 700/717.
 
 COVERAGE - EVERY UPSTREAM TABLE IS ACCOUNTED FOR
     data/fc27/COVERAGE.txt lists all 268 tables in the FC 27 template and says
@@ -632,6 +704,15 @@ BUILD HISTORY
    for AC Milan, reserve sides inheriting their parent, two clubs on one file);
    coverage was deliberately cut from 709 to 700 to refuse them.  The artwork is
    git-ignored because this repository is public.  See GRAPHICS below.
+23. r25: REAL CLUB NAMES.  EA's three invented Serie A names are replaced with
+   the real ones - Milano FC -> AC Milan, Lombardia FC -> Inter, Bergamo Calcio
+   -> Atalanta - in the database itself, not as a display patch.  Each identity
+   is PROVEN by the shipped squad (FIFPRO licenses the players even when the
+   club is unlicensed), and the rename is applied at the importer's single
+   choke point keyed by stable asset id, so a re-import cannot revert it.
+   Exactly 18 name leaves changed across clubs/teamids/loans; no id, key,
+   ordering or number moved.  Odd-looking names that are REAL were left alone.
+   verify_fc27 grew 64 -> 85 checks, mutation-tested 13/13.  See REAL CLUB NAMES.
 
 REMOVING THE PES BACKEND (r23)
 ------------------------------
@@ -761,7 +842,7 @@ reproducible.  Matching is confined to each club's own country folder, because
 an unscoped token match happily pairs Leverkusen with "Leverstock Green" and
 Wolfsberger with Austria's "Wolfsberg".  Coverage measured against this database:
 
-    clubs    700 / 717  (97.6%)   551 exact, 85 alias, 40 token, 23 global, 1 parent
+    clubs    700 / 717  (97.6%)   554 exact, 82 alias, 40 token, 23 global, 1 parent
     leagues   32 / 41
     nations  197 / 219
     872 unique files, about 33 MB
@@ -772,9 +853,11 @@ the audit below).  Only 2 files are shared by differently-named clubs, both a
 men's/women's pair of the same club, so the manifest records 929 ids over 872
 files.
 
-Two matching problems are worth knowing about.  EA ships unlicensed clubs under
-invented names - "Lombardia FC" is Inter and "Bergamo Calcio" is Atalanta - which
-no similarity measure can resolve, so they are mapped explicitly.  And fuzzy
+Two matching problems are worth knowing about.  EA shipped three unlicensed
+Serie A clubs under invented names; r25 replaced them with the real names in the
+database itself (see REAL CLUB NAMES below), so "AC Milan", "Inter" and
+"Atalanta" now match upstream EXACTLY and their alias entries were deleted as
+dead code.  And fuzzy
 matching proposed several WRONG answers that would have shipped a rival's crest
 (Stade Rennais -> Stade de Reims, Real Sociedad B -> Real Sociedad, Austria
 Lustenau -> Austria Wien); every alias in the table was checked by eye and the
@@ -810,8 +893,8 @@ SEEING THE GRAPHICS
     It is a developer preview, NOT the game UI - the real UI is still unbuilt.
 
 VERIFYING GRAPHICS
-    python3 tools/verify_graphics.py                    # 195 checks, under 1 second
-    python3 tools/verify_graphics.py --http http://127.0.0.1:8765   # 216 with a server
+    python3 tools/verify_graphics.py                    # 198 checks, under 1 second
+    python3 tools/verify_graphics.py --http http://127.0.0.1:8765   # 219 with a server
     python3 tools/mutate_graphics.py                    # 29 mutants, about 9 seconds
 
 The portrait gates are tested against synthetic Commons payloads, not the live
@@ -824,8 +907,11 @@ THE CREST AUDIT - WHY COVERAGE WENT DOWN
     crest, so coverage was deliberately reduced to 700 to remove them:
 
       Milano FC        -> Club_Milano.svg   a small Serie D side, not AC Milan.
-                         Stripping stopwords collapses "Milano FC" and "Club
-                         Milano" to the same key.  Now aliased to Milan.svg.
+                         Stripping stopwords collapsed "Milano FC" and "Club
+                         Milano" to the same key.  Aliased to Milan.svg at the
+                         time; r25 renamed the club to "AC Milan", which strips
+                         to ('milan',) and matches Milan.svg exactly, so the
+                         alias is gone and the collision no longer arises.
       1. FC Koln       -> SC_Koln-Bru...    1. FC Koln has NO file upstream; the
                          token matcher picked the only Koln file that STARTS
                          with the token.  Now refused.
@@ -872,9 +958,9 @@ premise before asserting the guard.
 That importer check guards a real bug found while building this: keying the
 manifest by filename silently dropped 64 clubs whose crest was already present.
 
-    Totals: verify_fc27 64 + verify_engine 131 + verify_backend 102
-            + verify_graphics 195 = 492 checks passing.
-    Mutation: mutate_backend 22/22, mutate_graphics 29/29.
+    Totals: verify_fc27 85 + verify_engine 131 + verify_backend 102
+            + verify_graphics 198 = 516 checks passing.
+    Mutation: mutate_fc27 13/13, mutate_backend 22/22, mutate_graphics 29/29.
 
 WHAT IS STILL NOT BUILT
     * a UI on top of /api/engine/* (the old one is inert, by choice).  The

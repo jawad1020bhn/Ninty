@@ -606,7 +606,7 @@ committed to the repository. They are a local, personal-install cache.
   clu 115470 Estudiantes de Río Cuarto          crests/argentina/Estudiantes_de_Rio_Cuarto.svg
   clu 115472 Deportivo Riestra                  crests/argentina/Deportivo_Riestra.svg
   clu 115841 Lazio                              crests/italy/Lazio.svg
-  clu 115845 Bergamo Calcio                     crests/italy/Atalanta.svg
+  clu 115845 Atalanta                           crests/italy/Atalanta.svg
   clu 115995 Bayern München                     crests/germany/Bayern_München.svg
   clu 115996 Bayer 04 Leverkusen                crests/germany/Bayer_Leverkusen.svg
   clu 115997 Eintracht Frankfurt                crests/germany/Eintracht_Frankfurt.svg
@@ -678,8 +678,8 @@ committed to the repository. They are a local, personal-install cache.
   clu 131488 Qingdao West Coast FC              crests/china/Qingdao_West_Coast.svg
   clu 131491 KFUM-Kameratene Oslo               crests/norway/KFUM.svg
   clu 131531 Yunnan Yukun                       crests/china/Yunnan_Yukun.svg
-  clu 131681 Milano FC                          crests/italy/Milan.svg
-  clu 131682 Lombardia FC                       crests/italy/Inter.svg
+  clu 131681 AC Milan                           crests/italy/Milan.svg
+  clu 131682 Inter                              crests/italy/Inter.svg
   clu 131720 RC Deportivo                       crests/spain/Deportivo_La_Coruña.svg
   clu 131724 RC Strasbourg                      crests/france/AS_Strasbourg.svg
   clu 131725 Crystal Palace                     crests/england/Crystal_Palace.svg
