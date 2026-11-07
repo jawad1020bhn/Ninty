@@ -90,6 +90,32 @@ kits, vanity, audio) and stay out.  These twelve carry career logic:
                      See the warning below about the attribute ids.
     playstyles.json  36 PlayStyle unlock thresholds (26 named).
 
+VERIFYING THE DATABASE
+    There is no test suite in this repo, so the database ships with its own
+    checker.  Run it after any regeneration:
+
+        python3 tools/verify_fc27.py            # 64 checks, about half a second
+        python3 tools/verify_fc27.py --verbose   # list every check
+
+    Stdlib only; no server, no save, no Node.  It exits non-zero on any failure
+    and checks five things: identity (every per-player table covers exactly the
+    roster), coordinates (all 7,887 designated starters fit their club's
+    formation through slotCompat), references (zero dangling team/stadium/
+    referee ids across all 730 referenced team ids), raw id spaces (the
+    undecodable tables still carry their warnings, so a false alignment claim
+    cannot be quietly reintroduced), and readiness.
+
+    Readiness is the one that matters: for EVERY club it builds a matchday squad
+    - 11 starters, subs, captain, set-piece takers inside the squad, stadium,
+    manager, formation - using nothing but this database.  That is the
+    difference between "the files parse" and "a career can actually start".
+
+    The checker was mutation-tested: 10 deliberately corrupted copies (dangling
+    national-team id, broken slotCompat, captain outside the squad, missing
+    attribute row, reintroduced ab-alignment claim, out-of-range attribute,
+    invalid join date, bad stadium id, club without an XI, asymmetric rivalry)
+    were all caught.  A checker that cannot fail proves nothing.
+
 COVERAGE - EVERY UPSTREAM TABLE IS ACCOUNTED FOR
     data/fc27/COVERAGE.txt lists all 268 tables in the FC 27 template and says
     what happened to each one:
@@ -375,6 +401,10 @@ BUILD HISTORY
    the scan of the players table itself found three unread career fields
    (playerjointeamdate, growthprofile, icontrait1/2), now extracted.  The audit
    reports 0 tables with an unexplained logic field.
+18. r20: DATABASE VERIFIER.  tools/verify_fc27.py runs 64 integrity and
+   readiness checks in ~0.5s with no server or save, and exits non-zero on
+   failure.  It proves every club can field a matchday squad from this data
+   alone.  Mutation-tested against 10 corrupted copies; all were caught.
    The separate engine with its own save is still the next piece of work.
 WHAT THE APP READS FROM YOUR REAL SAVE
 --------------------------------------
