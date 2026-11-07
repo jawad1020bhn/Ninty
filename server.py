@@ -20022,7 +20022,25 @@ class H(BaseHTTPRequestHandler):
                 if not _c:
                     return self.send(404, dict(ok=False, error='No club %d' % _tid))
                 _sq = [fc27db.player(_p) for _p in fc27db.squad(_tid)]
-                return self.send(200, dict(ok=True, id=_tid, club=_c, squad=[_p for _p in _sq if _p]))
+                return self.send(200, dict(ok=True, id=_tid, club=_c, squad=[_p for _p in _sq if _p],
+                                           stadium=fc27db.stadium(_tid), manager=fc27db.manager(_tid),
+                                           formations=fc27db.club_formations(_tid),
+                                           rivals=fc27db.club_rivals(_tid),
+                                           xi=fc27db.starting_xi(_tid),
+                                           prevPos=fc27db.prev_pos().get(str(_tid)) or {}))
+            if u.path == '/api/fc27/cups':
+                _w = parse_qs(u.query).get('women', [''])[0]
+                _out = []
+                for _k, _v in sorted(fc27db.cups().items(), key=lambda kv: int(kv[0])):
+                    if _w in ('0', '1') and int(_v.get('women') or 0) != int(_w):
+                        continue
+                    _out.append(dict(id=int(_k), **_v))
+                return self.send(200, dict(ok=True, cups=_out))
+            if u.path == '/api/fc27/loans':
+                _tid = _qint(parse_qs(u.query), 'club')
+                _all = fc27db.loans()
+                return self.send(200, dict(ok=True, loans=[
+                    _l for _l in _all if not _tid or _l.get('from') == _tid or _l.get('to') == _tid]))
             if u.path == '/api/fc27/player':
                 _pid = _qint(parse_qs(u.query), 'id')
                 _p = fc27db.player(_pid)

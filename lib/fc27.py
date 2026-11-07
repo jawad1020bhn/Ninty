@@ -21,6 +21,18 @@ Files (see data/fc27/fc27_meta.json for the exact field mapping):
   birthdays.json  {pid: 'YYYY-MM-DD'}
   contract.json   {pid: {value, contract, release, intRep, gender, natPos}}
 
+Engine-facing reference data (static; the engine's own save holds season state):
+  stadiums.json   {stadiumid: {name, capacity, city, country, pitch, ...}}
+  managers.json   {tid: {id, name, nation, stars, gender}}
+  squad_meta.json {tid: {pid: [shirtNumber, role, eaPosition]}}
+                  role 0 = starting XI, 1 = substitute, 2 = reserve
+  rivals.json     {tid: [[otherTid, intensity, type], ...]} strongest first
+  formations.json {tid: [{id, name, pos[11], role[11], xy[11], attack, lines}]}
+  loans.json      [{pid, from, fromName, to, end, toBuy, futureOption}]
+  traits.json     {pid: {t1, t2, retiring, smLikelihood}}  t1/t2 are raw bitflags
+  cups.json       {compid: {name, kind, country, importance, teams, groups, ...}}
+  prev_pos.json   {tid: {prev, prevLeague}}  last season's finishing position
+
 The first six files are the same schema the existing algorithms already read
 through server._dbf(), so market/growth/negotiate/aitransfers keep working
 unchanged on FC 27 data.
@@ -126,6 +138,94 @@ def contracts():
     return _load('contract.json', {}) or {}
 
 
+def stadiums():
+    return _load('stadiums.json', {}) or {}
+
+
+def managers():
+    return _load('managers.json', {}) or {}
+
+
+def squad_meta():
+    """{tid: {pid: [shirt, role, eaPos]}}; role 0 XI, 1 sub, 2 reserve."""
+    return _load('squad_meta.json', {}) or {}
+
+
+def rivals():
+    return _load('rivals.json', {}) or {}
+
+
+def formations():
+    return _load('formations.json', {}) or {}
+
+
+def loans():
+    return _load('loans.json', []) or []
+
+
+def traits():
+    return _load('traits.json', {}) or {}
+
+
+def cups():
+    return _load('cups.json', {}) or {}
+
+
+def prev_pos():
+    return _load('prev_pos.json', {}) or {}
+
+
+def stadium(tid):
+    """Venue for a club, or None. Capacity here is the linked stadium's own."""
+    c = club(tid) or {}
+    return stadiums().get(str(c.get('stadium', '')))
+
+
+def manager(tid):
+    return managers().get(str(int(tid)))
+
+
+def shirt(pid, tid=None):
+    """Squad number, or 0. Pass tid when known to skip the club lookup."""
+    tid = club_of(pid) if tid is None else int(tid)
+    row = (squad_meta().get(str(tid)) or {}).get(str(int(pid)))
+    return row[0] if row else 0
+
+
+def role(pid, tid=None):
+    """0 starting XI, 1 substitute, 2 reserve, -1 free agent."""
+    tid = club_of(pid) if tid is None else int(tid)
+    row = (squad_meta().get(str(tid)) or {}).get(str(int(pid)))
+    return row[1] if row else -1
+
+
+def starting_xi(tid):
+    """The template's designated XI, ordered by shirt number.
+
+    This is a starting point for a career, not a live lineup: the engine owns
+    selection once the career is running.
+    """
+    m = squad_meta().get(str(int(tid))) or {}
+    xi = [(int(p), v[0]) for p, v in m.items() if v[1] == 0]
+    return [p for p, _ in sorted(xi, key=lambda x: x[1])]
+
+
+def club_formations(tid):
+    return formations().get(str(int(tid))) or []
+
+
+def club_rivals(tid):
+    """[{id, name, intensity, type}], strongest rivalry first."""
+    cs = clubs()
+    return [dict(id=b, name=(cs.get(str(b)) or {}).get('name', ''), intensity=i, type=t)
+            for b, i, t in (rivals().get(str(int(tid))) or [])]
+
+
+def loan_of(pid):
+    """Active loan record for a player, or None."""
+    return next((l for l in loans() if l['pid'] == int(pid)), None)
+
+
 _NAMES = {}
 
 
@@ -210,6 +310,8 @@ def player(pid):
         nation=nat.get('name', ''), nationIso=nat.get('iso', ''),
         wage=ct.get('value', 0), contractUntil=ct.get('contract', 0),
         release=ct.get('release', 0), gender=ct.get('gender', 0),
+        shirt=shirt(pid, tid), role=role(pid, tid),
+        traits=traits().get(k) or {}, loan=loan_of(pid),
     )
 
 
@@ -266,6 +368,9 @@ def summary():
         ok=available(), dir=DIR,
         players=len(players()), clubs=len(cs), leagues=len(lg),
         nations=len(nations()), squads=len(sq),
+        stadiums=len(stadiums()), managers=len(managers()), cups=len(cups()),
+        loans=len(loans()), formations=sum(len(v) for v in formations().values()),
+        rivalPairs=sum(len(v) for v in rivals().values()) // 2,
         contracted=sum(1 for ps in sq.values() for _ in ps),
         freeAgents=len(players()) - sum(len(ps) for ps in sq.values()),
         source=m.get('source', ''), upstream=m.get('upstream', ''),

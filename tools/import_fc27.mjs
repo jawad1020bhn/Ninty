@@ -121,13 +121,25 @@ const hex = (r, g, b) => '#' + [r, g, b].map(x => clamp(x, 0, 255).toString(16).
 console.log('reading FC 27 main + localization ...');
 const main = await readTemplateDatabase({
   version: 'FC 27',
-  tables: ['players', 'playernames', 'teams', 'teamplayerlinks', 'leagues', 'leagueteamlinks', 'nations'],
+  tables: ['players', 'playernames', 'teams', 'teamplayerlinks', 'leagues', 'leagueteamlinks', 'nations',
+    // engine-facing reference tables (venues, staff, kit numbers, XI, rivalries,
+    // formations, loans, cup fields). Verified present in the FC 27 template.
+    'stadiums', 'teamstadiumlinks', 'manager', 'playerloans', 'rivals', 'formations',
+    'competition', 'competitionseeds'],
 });
 const T = Object.fromEntries(main.databases.flatMap(d => d.tables).map(t => [t.name, t.records]));
 for (const k of ['players', 'playernames', 'teams', 'teamplayerlinks', 'leagues', 'leagueteamlinks', 'nations']) {
   if (!T[k]) { console.error('missing table: ' + k); process.exit(1); }
   console.log('  ' + k.padEnd(18) + T[k].length);
 }
+
+// Cup/trophy display names are not columns: they live in the localization
+// bundle as LeagueName_<id> / TrophyName_<id>.
+const loc = await readTemplateDatabase({ version: 'FC 27', database: 'localization' });
+const LOC = new Map();
+for (const t of loc.databases.flatMap(d => d.tables)) for (const s of t.records) LOC.set(s.stringid, s.sourcetext);
+console.log('  localization'.padEnd(20) + LOC.size);
+const compName = id => LOC.get('LeagueName_' + id) || LOC.get('TrophyName_' + id) || '';
 
 const NAME = new Map(T.playernames.map(r => [r.nameid, r.name]));
 const TEAM = new Map(T.teams.map(r => [r.assetid, r]));
@@ -295,6 +307,170 @@ for (const n of T.nations) nations[String(n.nationid)] = { name: n.nationname, i
 const squadObj = {};
 for (const [tid, ps] of squads) if (teamids[String(tid)]) squadObj[String(tid)] = ps.sort((a, b) => a - b);
 
+/* ------------------------------------------- engine-facing reference data */
+/* STATIC reference only. Season state (points, fixtures, results, budgets,
+   form, injuries) is deliberately NOT extracted: the engine owns that and will
+   keep it in its own save. The template's partial standings are not a played
+   season (points are non-zero for only 295/870 clubs), so importing them would
+   seed a career with contradictory numbers. */
+const CLUB_IDS = new Set(Object.keys(clubs).map(Number));
+const pidKnown = new Set(players.map(r => r[0]));
+
+// Venues: teams.teamstadiumcapacity is just a number. The name, city, country
+// and pitch dimensions live in stadiums + teamstadiumlinks (870/870 resolve).
+const STADIUM = new Map((T.stadiums || []).map(s => [s.stadiumid, s]));
+const TSTADIUM = new Map((T.teamstadiumlinks || []).map(l => [l.teamid, l.stadiumid]));
+const stadiums = {};
+for (const s of (T.stadiums || [])) {
+  if (!s.name) continue;
+  stadiums[String(s.stadiumid)] = {
+    name: String(s.name), capacity: Number(s.capacity) || 0,
+    city: Number(s.cityid) || 0, country: Number(s.countrycode) || 0,
+    home: Number(s.hometeamid) || 0, licensed: Number(s.islicensed) || 0,
+    pitch: [Number(s.stadiumpitchlength) || 0, Number(s.stadiumpitchwidth) || 0],
+  };
+}
+for (const [tid, c] of Object.entries(clubs)) {
+  const sid = TSTADIUM.get(Number(tid));
+  if (sid != null && STADIUM.has(sid) && stadiums[String(sid)]) c.stadium = sid;
+}
+
+// Managers: commonname where licensed, else firstname + surname. Many are
+// generic placeholders with no name at all - keep stars/nationality anyway.
+const managers = {};
+for (const m of (T.manager || [])) {
+  if (!CLUB_IDS.has(m.teamid)) continue;
+  const nm = String(m.commonname || '').trim()
+    || [m.firstname, m.surname].filter(Boolean).join(' ').trim();
+  managers[String(m.teamid)] = {
+    id: Number(m.managerid) || 0, name: nm,
+    nation: Number(m.nationality) || 0, stars: Number(m.starrating) || 0,
+    gender: Number(m.gender) || 0,
+  };
+}
+
+// Kit numbers + the template's designated XI. teamplayerlinks.position doubles
+// as a squad role: 0..27 = in the XI (with an EA position), 28 = sub, 29 =
+// reserve. Verified: 856/860 clubs have exactly 11 entries below 28.
+const squadMeta = {};
+for (const l of (T.teamplayerlinks || [])) {
+  if (!CLUB_IDS.has(l.teamid) || !pidKnown.has(l.playerid)) continue;
+  const p = Number(l.position);
+  const role = p >= 29 ? 2 : (p >= 28 ? 1 : 0);
+  (squadMeta[String(l.teamid)] = squadMeta[String(l.teamid)] || {})[String(l.playerid)] =
+    [Number(l.jerseynumber) || 0, role, role === 0 ? p : -1];
+}
+
+// Rivalries with intensity, richer than teams.rivalteam's single id.
+const rivals = {};
+for (const r of (T.rivals || [])) {
+  const a = Number(r.teamid1), b = Number(r.teamid2);
+  if (CLUB_IDS.has(a) && CLUB_IDS.has(b)) {
+    (rivals[String(a)] = rivals[String(a)] || []).push([b, Number(r.team1intensity) || 0, Number(r.rivaltype) || 0]);
+    (rivals[String(b)] = rivals[String(b)] || []).push([a, Number(r.team2intensity) || 0, Number(r.rivaltype) || 0]);
+  }
+}
+for (const v of Object.values(rivals)) v.sort((x, y) => y[1] - x[1]);
+
+// Formations: name, the 11 slots, per-slot roles and pitch offsets for the UI.
+const r3 = n => Math.round(Number(n) * 1000) / 1000;
+const formations = {};
+for (const f of (T.formations || [])) {
+  if (!CLUB_IDS.has(f.teamid)) continue;
+  const pos = [], role = [], xy = [];
+  for (let i = 0; i < 11; i++) {
+    pos.push(Number(f['position' + i]));
+    role.push(Number(f['pos' + i + 'role']) || 0);
+    xy.push([r3(f['offset' + i + 'x']), r3(f['offset' + i + 'y'])]);
+  }
+  (formations[String(f.teamid)] = formations[String(f.teamid)] || []).push({
+    id: Number(f.formationid) || 0, name: String(f.formationname || ''),
+    pos, role, xy, attack: Number(f.offensiverating) || 0,
+    lines: [Number(f.defenders) || 0, Number(f.midfielders) || 0, Number(f.attackers) || 0],
+  });
+}
+
+// Reverse index pid -> current club, from the squads already resolved above.
+const clubOfPid = new Map();
+for (const [tid, ps] of Object.entries(squadObj)) for (const pid of ps) clubOfPid.set(pid, Number(tid));
+
+// Loans: which club owns a player out on loan, and until when. loandateend uses
+// the same 1582-10-14 day epoch as birthdate.
+const loans = [];
+for (const l of (T.playerloans || [])) {
+  if (!pidKnown.has(l.playerid)) continue;
+  const from = Number(l.teamidloanedfrom) || 0;
+  loans.push({
+    pid: l.playerid, from, fromName: (TEAM.get(from) || {}).teamname || '',
+    to: clubOfPid.get(l.playerid) || 0, end: dobOf(l.loandateend),
+    toBuy: Number(l.isloantobuy) || 0, futureOption: Number(l.futureoptiontobuy) || 0,
+  });
+}
+loans.sort((a, b) => a.pid - b.pid);
+
+// Player traits are BITFLAGS. The individual bit meanings are not documented in
+// the template, so they are stored raw rather than guessed at.
+const traits = {};
+for (const p of T.players) {
+  if (!pidKnown.has(p.playerid)) continue;
+  traits[String(p.playerid)] = {
+    t1: Number(p.trait1) >>> 0, t2: Number(p.trait2) >>> 0,
+    retiring: Number(p.isretiring) || 0,
+    smLikelihood: Number(p.skillmoveslikelihood) || 0,
+  };
+}
+
+// Cups and other non-league competitions.
+//
+// Identity (name, country, importance, trophy) is STATIC reference data the
+// engine needs. Who qualifies is SEASON state the engine decides, so a cup is
+// emitted whenever it has a name - requiring seeded teams here would drop the
+// FA Cup, DFB-Pokal and Coppa Italia, which ship with empty seed tables.
+// Template seeds are kept only as an optional starting hint.
+const SEEDS = new Map();
+for (const s of (T.competitionseeds || [])) {
+  if (!SEEDS.has(s.competitionid)) SEEDS.set(s.competitionid, []);
+  SEEDS.get(s.competitionid).push(s);
+}
+const cups = {};
+let cupNoName = 0, cupSeeded = 0;
+for (const c of (T.competition || [])) {
+  const id = c.competitionid;
+  if (LEAGUE.has(id)) continue;                       // leagues already emitted
+  const nm = compName(id);
+  if (!nm) { cupNoName++; continue; }                 // genuinely unnamed in loc
+  // Seed teams are only a hint: keep the ones that are clubs we actually ship.
+  const seeds = (SEEDS.get(id) || []).filter(s => CLUB_IDS.has(s.teamid));
+  const groups = {};
+  for (const s of seeds) (groups[String(s.group)] = groups[String(s.group)] || []).push(s.teamid);
+  if (seeds.length) cupSeeded++;
+  const cc = Number(c.country_lock);
+  cups[String(id)] = {
+    name: nm, kind: 'cup',
+    // country_lock is -1 for many licensed cups (DFB-Pokal, Coupe de France);
+    // that means "not locked in the data", not "unknown country." Do not guess.
+    country: Number.isFinite(cc) ? cc : -1,
+    countryName: (NATION.get(cc) || {}).nationname || '',
+    importance: Number(c.competitionimportance) || 0,
+    women: Number(c.iswomencompetition) || 0, real: Number(c.isrealcompetition) || 0,
+    trophy: Number(c.hastrophy) || 0,
+    seeded: seeds.length > 0, groups,
+    teams: [...new Set(seeds.map(s => s.teamid))].sort((a, b) => a - b),
+  };
+}
+
+// Last season's finish per club: useful for reputation, board expectations and
+// continental qualification. This is a real static column (870/870 populated),
+// unlike the template's half-filled current standings.
+const prevPos = {};
+for (const l of (T.leagueteamlinks || [])) {
+  if (!CLUB_IDS.has(l.teamid)) continue;
+  prevPos[String(l.teamid)] = {
+    prev: Number(l.previousyeartableposition) || 0,
+    prevLeague: Number(l.prevleagueid) || 0,
+  };
+}
+
 /* ------------------------------------------------------------------ write */
 mkdirSync(OUT, { recursive: true });
 const w = (f, o) => writeFileSync(join(OUT, f), JSON.stringify(o), 'utf8');
@@ -312,11 +488,30 @@ w('nats.json', nats);
 w('potential.json', pot);
 w('birthdays.json', dob);
 w('contract.json', extra);
+w('stadiums.json', stadiums);
+w('managers.json', managers);
+w('squad_meta.json', squadMeta);
+w('rivals.json', rivals);
+w('formations.json', formations);
+w('loans.json', loans);
+w('traits.json', traits);
+w('cups.json', cups);
+w('prev_pos.json', prevPos);
 w('fc27_meta.json', {
   source: 'eafc-db-kit (MIT) bundled FC 27 main template',
   upstream: 'https://github.com/ViniMacacari/eafc-db-kit',
   generated: new Date().toISOString(), asOf: AS_OF,
-  counts: { players: players.length, clubs: Object.keys(clubs).length, leagues: Object.keys(leagues).length, nations: Object.keys(nations).length },
+  counts: {
+    players: players.length, clubs: Object.keys(clubs).length, leagues: Object.keys(leagues).length, nations: Object.keys(nations).length,
+    stadiums: Object.keys(stadiums).length, managers: Object.keys(managers).length,
+    cups: Object.keys(cups).length, loans: loans.length,
+    rivalPairs: Object.values(rivals).reduce((n, v) => n + v.length, 0) / 2,
+    formations: Object.values(formations).reduce((n, v) => n + v.length, 0),
+  },
+  cupsSkipped: { noName: cupNoName }, cupsWithTemplateSeeds: cupSeeded,
+  squadRole: { 0: 'starting XI', 1: 'substitute', 2: 'reserve' },
+  notExtracted: ['points', 'fixtures', 'results', 'budgets', 'form', 'injuries', 'market value'],
+  notExtractedWhy: 'season state belongs to the engine save; market value is not a column in FC 27 (only wage/releaseclause), so the engine derives it',
   skipped: { noName, noClub, womenPlayers: women },
   posn: POSN, ab: AB, abSource: AB_SRC, eaPos: EA_POS,
   birthEpoch: '1582-10-14', foot: { 1: 'R', 2: 'L' },
@@ -342,5 +537,23 @@ for (const id of [158023, 20801, 231747, 202126, 192985, 239085, 203376]) {
 const sizes = Object.entries(squadObj).map(([k, v]) => [TN.get(Number(k)), v.length]).sort((a, b) => b[1] - a[1]);
 console.log('\nlargest squads:', sizes.slice(0, 5).map(x => x.join('=')).join(', '));
 console.log('smallest squads:', sizes.slice(-5).map(x => x.join('=')).join(', '));
+console.log('\nengine reference data:');
+console.log('  stadiums   %d (%d/%d clubs linked)', Object.keys(stadiums).length,
+  Object.values(clubs).filter(c => c.stadium != null).length, Object.keys(clubs).length);
+console.log('  managers   %d (%d named)', Object.keys(managers).length, Object.values(managers).filter(m => m.name).length);
+console.log('  squad meta %d clubs | XI %d | subs %d | reserves %d', Object.keys(squadMeta).length,
+  ...[0, 1, 2].map(r => Object.values(squadMeta).reduce((n, m) => n + Object.values(m).filter(v => v[1] === r).length, 0)));
+console.log('  rivalries  %d pairs | formations %d | loans %d',
+  Object.values(rivals).reduce((n, v) => n + v.length, 0) / 2,
+  Object.values(formations).reduce((n, v) => n + v.length, 0), loans.length);
+console.log('  cups       %d named (%d with template seeds; %d unnamed skipped)', Object.keys(cups).length, cupSeeded, cupNoName);
+for (const id of ['201', '202', '206', '208', '210', '223', '224', '1003']) {
+  const c = cups[id];
+  if (c) console.log('    %s %s - %s, seeds %d', id.padStart(5), c.name.padEnd(30), (c.countryName || 'not country-locked').padEnd(14), c.teams.length);
+}
+const liv = formations['9'];
+if (liv) console.log('  Liverpool formation: %s (id %d)', liv[0].name, liv[0].id);
+const anfield = clubs['9'] && clubs['9'].stadium;
+if (anfield) console.log('  Liverpool stadium: %s (%s seats)', stadiums[String(anfield)].name, stadiums[String(anfield)].capacity);
 console.log('\nleagues:');
 for (const [id, l] of Object.entries(leagues)) console.log('  %s %s (%s, L%d) %d teams', id.padStart(4), l.name.padEnd(28), l.countryName.padEnd(16), l.level, l.teams.length);

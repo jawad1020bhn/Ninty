@@ -80,3 +80,20 @@ Data notes
   `defensiveawareness`. Contract data comes from the player record
   (`contractvaliduntil`, `wage`, `releaseclause`) because the template's
   career_playercontract table is empty.
+- Stadium names come from `stadiums` + `teamstadiumlinks`; the `teams` table
+  only carries a capacity number. Manager names come from `manager`
+  (commonname, else firstname + surname); many are unnamed placeholders.
+- `squad_meta.json` roles come from `teamplayerlinks.position`, which doubles
+  as a squad role: 0..27 = in the starting XI (with an EA position),
+  28 = substitute, 29 = reserve. Shirt numbers are `jerseynumber`.
+- Cup names are not columns: they resolve from the localization bundle as
+  `LeagueName_<id>` / `TrophyName_<id>`. `country_lock` is -1 for several
+  licensed cups (DFB-Pokal, Coupe de France); that means "not locked in the
+  data", not "unknown country", and is not guessed at.
+- `trait1`/`trait2` are stored as raw bitflags. Their individual bit meanings
+  are not documented in the template, so no interpretation is invented.
+- Season state (points, fixtures, results, budgets, form, injuries) is NOT
+  extracted: the game engine owns it in its own save. The template's standings
+  are half-populated and would seed a career with contradictory numbers.
+- Market value is not a column in FC 27 (only `wage` and `releaseclause`), so
+  the engine derives it; market.py / revalue.py already implement valuation.

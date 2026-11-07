@@ -11,8 +11,8 @@ See FC 27 DATABASE below for what is wired and what is NOT yet done.
 
 FC 27 DATABASE (r12)
 --------------------
-The game runs on 21,623 players, 717 real clubs and 41 competitions extracted
-from the FC 27 tables bundled in eafc-db-kit (MIT, (c) 2026 ViniMacacari):
+The game runs on 21,623 players, 717 real clubs, 41 leagues and 102 cups
+extracted from the FC 27 tables bundled in eafc-db-kit (MIT, (c) 2026 ViniMacacari):
 
     https://github.com/ViniMacacari/eafc-db-kit
 
@@ -34,13 +34,48 @@ aitransfers.py, ailineup.py, aimanager.py, negotiate.py, revalue.py, board.py,
 formengine.py and the ovr_weights tables are all KEPT and run on FC 27 data
 unchanged.  Nothing was rebranded in the UI; the new source is wired underneath.
 
+ENGINE REFERENCE DATA
+The engine is a separate program with its own save. It needs static reference
+data, not season state, so these tables are extracted too:
+
+    stadiums.json    181 venues; name, capacity, city, pitch dimensions.
+                     Linked for 717/717 clubs (teams only carried a capacity).
+    managers.json    717 entries; name where licensed (452), stars, nationality.
+    squad_meta.json  shirt numbers + squad role per player:
+                     0 = starting XI, 1 = substitute, 2 = reserve.
+                     Every club has exactly 11 designated starters.
+    formations.json  717 formations; name ("4-2-3-1"), 11 slots, per-slot roles
+                     and pitch offsets for the UI.
+    rivals.json      1,040 derby pairs with intensity (Everton 5, Man Utd 5 for
+                     Liverpool) - richer than teams.rivalteam's single id.
+    loans.json       645 loans; owning club, destination, end date, option to buy.
+    traits.json      trait1/trait2 as RAW bitflags, isretiring, skill-move
+                     likelihood. The bit meanings are undocumented upstream, so
+                     they are stored raw rather than guessed at.
+    cups.json        102 named cups (FA Cup, Carabao Cup, DFB-Pokal, Copa del
+                     Rey, Coppa Italia, UCL/UEL/UECL, Libertadores...).
+    prev_pos.json    last season's finishing position per club, for reputation
+                     and board expectations.
+
+DELIBERATELY NOT EXTRACTED - the engine owns this
+    points, fixtures, results, budgets, form, injuries, league tables.
+    The template's standings are half-filled (points non-zero for only 295/870
+    clubs), so importing them would seed a career with contradictory numbers.
+    Cup qualification is likewise engine state: a cup is shipped whenever it
+    has a name, and the template's seed list is kept only as an optional hint.
+    Market value is NOT a column in FC 27 (only wage and release clause), so
+    the engine must derive it - market.py/revalue.py already do this.
+
 Read API (no save required):
     /api/fc27/status            counts + provenance
-    /api/fc27/leagues?women=0   competition list
+    /api/fc27/leagues?women=0   league list
     /api/fc27/league?id=13      one league + its clubs
-    /api/fc27/club?id=9         club + full squad, best first
-    /api/fc27/player?id=203376  one player
+    /api/fc27/club?id=9         club, squad, stadium, manager, formations,
+                                rivals, starting XI, last season's position
+    /api/fc27/player?id=203376  one player incl. shirt, role, traits, loan
     /api/fc27/search?q=mbappe   accent-insensitive search
+    /api/fc27/cups?women=0      cup list
+    /api/fc27/loans?club=9      loans in/out for a club
 
 TWO ID COLLISIONS THAT HAD TO BE FIXED (not cosmetic)
     FC 27 reuses small competition ids for DIFFERENT leagues: 17 is Ligue 2
@@ -59,19 +94,15 @@ ALSO REMOVED IN r12
     instead.  _dbf() no longer falls back to data/ root, which would silently
     serve FL26 players against FC 27 squads.
 
-WHAT IS *NOT* DONE YET - READ THIS BEFORE EXPECTING A FULL GAME
-    This is step 1 (the database), not a finished standalone game.
-    * Career state still comes from a PES save.  Without one, /api/state and
-      the squad/table/transfer screens still fail exactly as they did before;
-      a native career file has not been written yet.
-    * There is NO match engine.  Nothing in this repo simulates a match, so
-      there is no source of results, scorers or ratings.  formengine.py only
-      derives form from matches that were already played.
-    * The 25 PES attributes are MAPPED from EA's separate attribute set, so
-      they are approximations.  Overall rating is EA's own value, used
-      directly (dbimport.USE_GAME_OVR), not recomputed from the mapped 25.
-    Next milestone: a native career state + a results source, so the kept
-    algorithms have something to run on without PES.
+SCOPE OF THIS STEP
+    This is the database step.  The separate game engine - time and season
+    progression, match simulation, career state and its own save - is the next
+    piece of work and is not built yet.  The existing UI still reads career
+    state through the old PES save path, so those screens need the engine (or a
+    save) before they show anything; the /api/fc27 routes above work standalone.
+    The 25 PES attributes are MAPPED from EA's separate attribute set, so they
+    are approximations.  Overall rating is EA's own value, used directly
+    (dbimport.USE_GAME_OVR), not recomputed from the mapped 25.
 
 LICENSING - IMPORTANT
     eafc-db-kit's MIT licence covers the KIT'S CODE, not EA's football data.
