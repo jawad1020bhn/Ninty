@@ -15,4 +15,17 @@ data/_kitmiss.log
 # FC 27 engine careers: runtime state, one JSON per career (about 1.2 MB each).
 data/saves/
 
+# Third-party crest artwork fetched by tools/import_graphics.py (~33 MB).
+# NOT committed: the upstream repo's MIT licence covers its code, not the
+# artwork, which remains the trademark/copyright of each club, league and
+# federation. This is a public repository, so publishing it would not be
+# "personal use". The manifest and ATTRIBUTION.txt ARE committed (metadata
+# only); lib/graphics.py generates a shield for anything absent, so a fresh
+# clone still renders every club without running the importer.
+data/graphics/crests/
+data/graphics/faces/
+
+# Build-time download cache (the pinned upstream tarball).
+.cache/
+
 .DS_Store

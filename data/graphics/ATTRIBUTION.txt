@@ -1,0 +1,951 @@
+CREST ATTRIBUTION
+============================================================
+
+Source: https://github.com/JoseArroyave/football-logos
+Commit: 5ab11fed47427b3003f4b276554491fe683387b1
+
+Upstream repo is MIT for its code/curcation only. The artwork is the trademark and copyright of the respective clubs, leagues and federations. Personal use only.
+
+These files are NOT covered by this project's licence and are NOT
+committed to the repository. They are a local, personal-install cache.
+
+874 files, 938 mapped ids. Mapping (id -> upstream file):
+
+  clu 1    Arsenal                            crests/england/Arsenal.svg
+  clu 2    Aston Villa                        crests/england/Aston_Villa.svg
+  clu 3    Blackburn Rovers                   crests/england/Blackburn_Rovers.svg
+  clu 4    Bolton Wanderers                   crests/england/Bolton_Wanderers.svg
+  clu 5    Chelsea                            crests/england/Chelsea.svg
+  clu 7    Everton                            crests/england/Everton.svg
+  clu 8    Leeds United                       crests/england/Leeds_United.svg
+  clu 9    Liverpool                          crests/england/Liverpool_FC.svg
+  clu 10   Manchester City                    crests/england/Manchester_City.svg
+  clu 11   Manchester United                  crests/england/Manchester_United.svg
+  clu 12   Middlesbrough                      crests/england/Middlesbrough.svg
+  clu 13   Newcastle United                   crests/england/Newcastle_United.svg
+  clu 14   Nottingham Forest                  crests/england/Nottingham_Forest.svg
+  clu 15   Queens Park Rangers                crests/england/Queens_Park_Rangers.svg
+  clu 17   Southampton                        crests/england/Southampton.svg
+  clu 18   Tottenham Hotspur                  crests/england/Tottenham.svg
+  clu 19   West Ham United                    crests/england/West_Ham.svg
+  clu 21   Bayern München                     crests/germany/Bayern_München.svg
+  clu 22   Borussia Dortmund                  crests/germany/Borussia_Dortmund.svg
+  clu 23   Borussia M'gladbach                crests/germany/Borussia_Mönchengladbach.svg
+  clu 25   SC Freiburg                        crests/germany/Freiburg.svg
+  clu 27   Hansa Rostock                      crests/germany/Hansa_Rostock.svg
+  clu 28   Hamburger SV                       crests/germany/Hamburger_SV.svg
+  clu 29   1. FC Kaiserslautern               crests/germany/FC_Kaiserslautern.svg
+  clu 31   1. FC Köln                         crests/germany/SC_Köln-Brück_07.svg
+  clu 32   Bayer 04 Leverkusen                crests/germany/Bayer_Leverkusen.svg
+  clu 34   FC Schalke 04                      crests/germany/Schalke_04.svg
+  clu 36   VfB Stuttgart                      crests/germany/VfB_Stuttgart.svg
+  clu 37   Lommel SK                          crests/belgium/Lommel_SK.svg
+  clu 38   Werder Bremen                      crests/germany/Werder_Bremen.svg
+  clu 45   Juventus                           crests/italy/Juventus.svg
+  clu 48   Napoli                             crests/italy/Napoli.svg
+  clu 50   Parma                              crests/italy/Parma.svg
+  clu 52   Roma                               crests/italy/AS_Roma.svg
+  clu 54   Torino                             crests/italy/Torino.svg
+  clu 55   Udinese                            crests/italy/Udinese.svg
+  clu 57   AJ Auxerre                         crests/france/Auxerre.svg
+  clu 62   En Avant Guingamp                  crests/france/EA_Guingamp.svg
+  clu 64   RC Lens                            crests/france/RC_Lens.svg
+  clu 65   LOSC Lille                         crests/france/Lille.svg
+  clu 66   Olympique Lyonnais                 crests/france/Olympique_Lyonnais.svg
+  clu 68   FC Metz                            crests/france/FC_Metz.svg
+  clu 69   AS Monaco                          crests/france/AS_Monaco.svg
+  clu 70   Montpellier HSC                    crests/france/Montpellier.svg
+  clu 71   FC Nantes                          crests/france/Nantes.svg
+  clu 72   OGC Nice                           crests/france/Nice.svg
+  clu 73   Paris Saint-Germain                crests/france/Paris_Saint-Germain_(PSG).svg
+  clu 74   Stade Rennais                      crests/france/Rennes.svg
+  clu 76   RC Strasbourg                      crests/france/AS_Strasbourg.svg
+  clu 77   Aberdeen                           crests/scotland/Aberdeen.svg
+  clu 78   Celtic                             crests/scotland/Celtic.svg
+  clu 79   Falkirk                            crests/scotland/Falkirk.svg
+  clu 80   Heart of Midlothian                crests/scotland/Hearts.svg
+  clu 81   Hibernian                          crests/scotland/Hibernian.svg
+  clu 82   Kilmarnock                         crests/scotland/Kilmarnock.svg
+  clu 83   Motherwell                         crests/scotland/Motherwell.svg
+  clu 86   Rangers                            crests/scotland/Rangers.svg
+  clu 88   Birmingham City                    crests/england/Birmingham_City.svg
+  clu 89   Charlton Athletic                  crests/england/Charlton_Athletic.svg
+  clu 91   Derby County                       crests/england/Derby_County.svg
+  clu 92   Grimsby Town                       crests/england/Grimsby_Town.svg
+  clu 94   Ipswich Town                       crests/england/Ipswich.svg
+  clu 95   Leicester City                     crests/england/Leicester.svg
+  clu 97   Millwall                           crests/england/Millwall.svg
+  clu 106  Sunderland                         crests/england/Sunderland.svg
+  clu 109  West Bromwich Albion               crests/england/West_Bromwich_Albion.svg
+  clu 110  Wolverhampton Wanderers            crests/england/Wolverhampton_Wanderers.svg
+  clu 121  Crewe Alexandra                    crests/england/Crewe_Alexandra.svg
+  clu 127  Shrewsbury Town                    crests/england/Shrewsbury_Town.svg
+  clu 135  Barnet                             crests/england/Barnet.svg
+  clu 142  Doncaster Rovers                   crests/england/Doncaster_Rovers.svg
+  clu 143  Exeter City                        crests/england/Exeter_City.svg
+  clu 144  Fulham                             crests/england/Fulham.svg
+  clu 149  Lincoln City                       crests/england/Lincoln_City.svg
+  clu 159  Arminia Bielefeld                  crests/germany/Arminia_Bielefeld.svg
+  clu 160  VfL Bochum                         crests/germany/VfL_Bochum.svg
+  clu 162  Energie Cottbus                    crests/germany/Energie_Cottbus.svg
+  clu 165  SpVgg Greuther Fürth               crests/germany/SpVgg_Greuther_Fürth.svg
+  clu 166  Hertha BSC                         crests/germany/Hertha_BSC.svg
+  clu 169  1. FSV Mainz 05                    crests/germany/Mainz_05.svg
+  clu 171  1. FC Nürnberg                     crests/germany/FC_Nürnberg.svg
+  clu 175  VfL Wolfsburg                      crests/germany/Wolfsburg.svg
+  clu 180  Dundee FC                          crests/scotland/Dundee.svg
+  clu 181  Dundee United                      crests/scotland/Dundee_United.svg
+  clu 189  Bologna                            crests/italy/Bologna.svg
+  clu 191  RB Salzburg                        crests/austria/Salzburg.svg
+  clu 205  Venezia                            crests/italy/Venezia.svg
+  clu 206  Hellas Verona                      crests/italy/Hellas_Verona.svg
+  clu 209  Sturm Graz                         crests/austria/Sturm_Graz.svg
+  clu 211  Dinamo Zagreb                      crests/croatia/GNK_Dinamo_Zagreb.svg
+  clu 217  FC Lorient                         crests/france/Lorient_FC.svg
+  clu 219  Olympique de Marseille             crests/france/Marseille.svg
+  clu 226  FC Sochaux                         crests/france/FC_Sochaux-Montbéliard.svg
+  clu 229  Anderlecht                         crests/belgium/RSC_Anderlecht.svg
+  clu 230  Antwerp                            crests/belgium/Royal_Antwerp_FC.svg
+  clu 231  Club Brugge                        crests/belgium/Club_Brugge.svg
+  clu 232  Standard Liège                     crests/belgium/Standard_Liège.svg
+  clu 234  Benfica                            crests/portugal/Benfica.svg
+  clu 236  FC Porto                           crests/portugal/FC_Porto.svg
+  clu 237  Sporting CP                        crests/portugal/Sporting_CP.svg
+  clu 240  Atlético de Madrid                 crests/spain/Atletico_Madrid.svg
+  clu 241  FC Barcelona                       crests/spain/Barcelona.svg
+  clu 242  RC Deportivo                       crests/spain/Deportivo_La_Coruña.svg
+  clu 243  Real Madrid                        crests/spain/Real_Madrid.svg
+  clu 245  Ajax                               crests/netherlands/Ajax.svg
+  clu 246  Feyenoord                          crests/netherlands/Feyenoord.svg
+  clu 247  PSV                                crests/netherlands/PSV_Eindhoven.svg
+  clu 252  LASK                               crests/austria/LASK.svg
+  clu 254  SK Rapid                           crests/austria/Rapid_Vienna.svg
+  clu 256  Austria Wien                       crests/austria/Austria_Wien.svg
+  clu 260  CD Tenerife                        crests/spain/Tenerife.svg
+  clu 263  Hajduk Split                       crests/croatia/Hajduk_Split.svg
+  clu 264  Omonia Nicosia FC                  crests/cyprus/Omonoia_Nicosia.svg
+  clu 266  Slavia Praha                       crests/czech-republic/SK_Slavia_Praha.svg
+  clu 267  Sparta Praha                       crests/czech-republic/AC_Sparta_Praha.svg
+  clu 269  Brøndby IF                         crests/denmark/Brøndby_IF.svg
+  clu 270  Silkeborg IF                       crests/denmark/Silkeborg_IF.svg
+  clu 271  AGF                                crests/denmark/AGF.svg
+  clu 272  Odense Boldklub                    crests/denmark/OB.svg
+  clu 278  AEK                                crests/greece/AEK_Athens.svg
+  clu 280  Olympiacos                         crests/greece/Olympiacos.svg
+  clu 294  ESTAC Troyes                       crests/france/Troyes.svg
+  clu 298  Rosenborg BK                       crests/norway/Rosenborg.svg
+  clu 299  Lillestrøm SK                      crests/norway/Lillestrøm.svg
+  clu 300  Viking FK                          crests/norway/Viking_FK.svg
+  clu 301  Widzew Łódź                        crests/poland/Widzew_Lodz.svg
+  clu 305  Bohemians                          crests/republic-of-ireland/Bohemian.svg
+  clu 306  Shamrock Rovers                    crests/republic-of-ireland/Shamrock_Rovers.svg
+  clu 308  Universitatea Craiova              crests/romania/Universitatea_Craiova.svg
+  clu 310  FC Rapid                           crests/romania/Rapid_Bucureşti.svg
+  clu 319  IFK Göteborg                       crests/sweden/IFK_Göteborg.svg
+  clu 320  Malmö FF                           crests/sweden/Malmö.svg
+  clu 321  Halmstads BK                       crests/sweden/Halmstad.svg
+  clu 322  Grasshopper Club Zürich            crests/switzerland/Grasshoppers.svg
+  clu 324  Servette FC                        crests/switzerland/Servette.svg
+  clu 325  Galatasaray                        crests/turkey/Galatasaray.svg
+  clu 326  Fenerbahçe                         crests/turkey/Fenerbahçe.svg
+  clu 327  Beşiktaş                           crests/turkey/Beşiktaş.svg
+  clu 347  Lecce                              crests/italy/Lecce.svg
+  clu 361  Stevenage                          crests/england/Stevenage.svg
+  clu 378  Stade Brestois 29                  crests/france/AS_Brest.svg
+  clu 379  Stade de Reims                     crests/france/Stade_de_Reims.svg
+  clu 393  PAOK                               crests/greece/PAOK.svg
+  clu 417  Molde FK                           crests/norway/Molde.svg
+  clu 418  Tromsø IL                          crests/norway/Tromsø.svg
+  clu 420  Górnik Zabrze                      crests/poland/Górnik_Zabrze.svg
+  clu 423  St Patrick's Athletic              crests/republic-of-ireland/St_Patrick's_Athletic.svg
+  clu 433  AIK                                crests/sweden/AIK.svg
+  clu 436  Trabzonspor                        crests/turkey/Trabzonspor.svg
+  clu 445  Derry City                         crests/republic-of-ireland/Derry_City.svg
+  clu 448  Athletic Club de Bilbao            crests/spain/Athletic_Club_Bilbao.svg
+  clu 449  Real Betis Balompié                crests/spain/Real_Betis.svg
+  clu 450  RC Celta de Vigo                   crests/spain/Celta.svg
+  clu 452  RCD Espanyol                       crests/spain/Espanyol.svg
+  clu 453  RCD Mallorca                       crests/spain/Mallorca.svg
+  clu 456  Racing de Santander                crests/spain/Racing_Santander.svg
+  clu 457  Real Sociedad                      crests/spain/Real_Sociedad.svg
+  clu 459  Real Sporting de Gijón             crests/spain/Sporting_Gijón.svg
+  clu 461  Valencia CF                        crests/spain/Valencia.svg
+  clu 462  Real Valladolid                    crests/spain/Real_Valladolid.svg
+  clu 463  Deportivo Alavés                   crests/spain/Deportivo_Alavés.svg
+  clu 467  SD Eibar                           crests/spain/Eibar.svg
+  clu 468  Elche CF                           crests/spain/Elche.svg
+  clu 472  UD Las Palmas                      crests/spain/Las_Palmas.svg
+  clu 479  CA Osasuna                         crests/spain/Osasuna.svg
+  clu 480  Rayo Vallecano                     crests/spain/Rayo_Vallecano.svg
+  clu 481  Sevilla FC                         crests/spain/Sevilla.svg
+  clu 483  Villarreal CF                      crests/spain/Villarreal.svg
+  clu 485  Hannover 96                        crests/germany/Hannover_96.svg
+  clu 487  VfL Osnabrück                      crests/germany/Osnabrück.svg
+  clu 492  SV Wehen Wiesbaden                 crests/germany/SV_Wehen_Wiesbaden.svg
+  clu 503  Dynamo Dresden                     crests/germany/Dynamo_Dresden.svg
+  clu 523  1. FC Saarbrücken                  crests/germany/Saarbrücken.svg
+  clu 531  Preußen Münster                    crests/germany/Preußen_Münster.svg
+  clu 543  Jahn Regensburg                    crests/germany/Jahn.svg
+  clu 563  Sligo Rovers                       crests/republic-of-ireland/Sligo_Rovers.svg
+  clu 573  Málaga CF                          crests/spain/Málaga.svg
+  clu 576  Holstein Kiel                      crests/germany/Holstein_Kiel.svg
+  clu 580  SV Elversberg                      crests/germany/SV_Elversberg.svg
+  clu 605  Al Hilal                           crests/saudi-arabia/Al_Hilal.svg
+  clu 607  Al Ittihad                         crests/saudi-arabia/Al_Ittihad.svg
+  clu 634  Fortuna Sittard                    crests/netherlands/Fortuna_Sittard.svg
+  clu 647  SC Cambuur                         crests/netherlands/SC_Cambuur.svg
+  clu 650  ADO Den Haag                       crests/netherlands/ADO_Den_Haag.svg
+  clu 670  Charleroi                          crests/belgium/Royal_Charleroi_S.C..svg
+  clu 673  Genk                               crests/belgium/KRC_Genk.svg
+  clu 674  Gent                               crests/belgium/KAA_Gent.svg
+  clu 680  Sint-Truiden                       crests/belgium/Sint-Truidense_VV.svg
+  clu 681  Westerlo                           crests/belgium/KVC_Westerlo.svg
+  clu 687  Columbus Crew                      crests/usa/Columbus_Crew.svg
+  clu 688  D.C. United                        crests/usa/DC_United.svg
+  clu 689  Red Bull New York                  crests/usa/New_York_Red_Bulls.svg
+  clu 691  New England Revolution             crests/usa/New_England_Revolution.svg
+  clu 693  Chicago Fire FC                    crests/usa/Chicago_Fire_FC.svg
+  clu 694  Colorado Rapids                    crests/usa/Colorado_Rapids.svg
+  clu 695  FC Dallas                          crests/usa/FC_Dallas.svg
+  clu 696  Sporting KC                        crests/usa/Sporting_Kansas_City.svg
+  clu 697  Los Angeles Galaxy                 crests/usa/Los_Angeles_Galaxy.svg
+  clu 698  Houston Dynamo                     crests/usa/Houston_Dynamo_FC.svg
+  clu 700  IF Elfsborg                        crests/sweden/Elfsborg.svg
+  clu 706  Örgryte IS                         crests/sweden/Örgryte.svg
+  clu 708  Hammarby IF                        crests/sweden/Hammarby.svg
+  clu 710  Djurgårdens IF                     crests/sweden/Djurgården.svg
+  clu 711  BK Häcken                          crests/sweden/Häcken.svg
+  clu 717  Alverca                            crests/portugal/Alverca.svg
+  clu 718  Estrela da Amadora                 crests/portugal/Estrela_da_Amadora.svg
+  clu 744  Rio Ave                            crests/portugal/Rio_Ave.svg
+  clu 748  Samsunspor                         crests/turkey/Samsunspor.svg
+  clu 749  Erzurumspor FK                     crests/turkey/erzurumspor.svg
+  clu 753  Waterford                          crests/republic-of-ireland/Waterford.svg
+  clu 780  SV Ried                            crests/austria/Ried.svg
+  clu 781  Austria Lustenau                   crests/austria/Lustenau.svg
+  clu 819  FC København                       crests/denmark/F.C._Copenhagen.svg
+  clu 834  Shelbourne                         crests/republic-of-ireland/Shelbourne.svg
+  clu 837  Dundalk                            crests/republic-of-ireland/Dundalk_FC.svg
+  clu 873  Lech Poznań                        crests/poland/Lech_Poznań.svg
+  clu 894  FC Zürich                          crests/switzerland/Zürich.svg
+  clu 896  FC Basel                           crests/switzerland/Basel.svg
+  clu 897  FC Luzern                          crests/switzerland/Luzern.svg
+  clu 898  FC St. Gallen                      crests/switzerland/St._Gallen.svg
+  clu 900  BSC Young Boys                     crests/switzerland/Young_Boys.svg
+  clu 918  FK Bodø/Glimt                      crests/norway/BodøGlimt.svg
+  clu 919  SK Brann                           crests/norway/Brann.svg
+  clu 920  Vålerenga Fotball                  crests/norway/Vålerenga.svg
+  clu 980  Daejeon Hana Citizen               crests/south-korea/Daejeon_Hana_Citizen.svg
+  clu 982  FC Seoul                           crests/south-korea/FC_Seoul.svg
+  clu 1013 San Lorenzo de Almagro             crests/argentina/San_Lorenzo_de_Almagro.svg
+  clu 1032 Monterrey                          crests/mexico/Monterrey.svg
+  clu 1438 Santa Clara                        crests/portugal/Santa_Clara.svg
+  clu 1439 Kalmar FF                          crests/sweden/Kalmar.svg
+  clu 1443 Viborg FF                          crests/denmark/Viborg_FF.svg
+  clu 1446 AC Horsens                         crests/denmark/Horsens.svg
+  clu 1447 Sønderjyske Fodbold                crests/denmark/Sonderjyske.svg
+  clu 1473 Ulsan HD FC                        crests/south-korea/Ulsan_HD_FC.svg
+  clu 1474 Pohang Steelers                    crests/south-korea/Pohang_Steelers.svg
+  clu 1477 Jeonbuk Hyundai Motors             crests/south-korea/Jeonbuk.svg
+  clu 1478 Jeju SK FC                         crests/south-korea/Jeju_SK_FC.svg
+  clu 1516 FC Midtjylland                     crests/denmark/FC_Midtjylland.svg
+  clu 1524 IK Start                           crests/norway/IK_Start.svg
+  clu 1530 Angers SCO                         crests/france/Angers.svg
+  clu 1569 Wisła Płock                        crests/poland/Wisła_Płock.svg
+  clu 1571 Galway United                      crests/republic-of-ireland/Galway_United_FC.svg
+  clu 1572 Drogheda United                    crests/republic-of-ireland/Drogheda_United.svg
+  clu 1598 Bahia                              crests/brazil/Bahia.svg
+  clu 1715 FC Thun                            crests/switzerland/Thun.svg
+  clu 1738 Le Havre AC                        crests/france/Le_Havre_AC.svg
+  clu 1739 Le Mans FC                         crests/france/Le_Mans_FC.svg
+  clu 1744 Modena                             crests/italy/Modena.svg
+  clu 1745 Como                               crests/italy/Como_1907.svg
+  clu 1746 Empoli                             crests/italy/Empoli.svg
+  clu 1750 Cercle Brugge                      crests/belgium/Cercle_Brugge_KSV.svg
+  clu 1755 Aalesunds FK                       crests/norway/Aalesund.svg
+  clu 1757 Sandefjord Fotball                 crests/norway/Sandefjord.svg
+  clu 1786 Randers FC                         crests/denmark/Randers_FC.svg
+  clu 1788 FC Nordsjælland                    crests/denmark/FC_Nordsjælland.svg
+  clu 1790 Portsmouth                         crests/england/Portsmouth.svg
+  clu 1792 Norwich City                       crests/england/Norwich_City.svg
+  clu 1793 Reading                            crests/england/Reading.svg
+  clu 1794 Sheffield United                   crests/england/Sheffield_United.svg
+  clu 1795 Watford                            crests/england/Watford.svg
+  clu 1796 Burnley                            crests/england/Burnley.svg
+  clu 1797 Rotherham United                   crests/england/Rotherham_United.svg
+  clu 1798 Milton Keynes Dons                 crests/england/Milton_Keynes_Dons.svg
+  clu 1799 Crystal Palace                     crests/england/Crystal_Palace.svg
+  clu 1800 Coventry City                      crests/england/Coventry_City.svg
+  clu 1801 Preston North End                  crests/england/Preston_North_End.svg
+  clu 1802 Gillingham                         crests/england/Gillingham.svg
+  clu 1803 Walsall                            crests/england/Walsall.svg
+  clu 1804 Bradford City                      crests/england/Bradford_City.svg
+  clu 1805 Grenoble Foot 38                   crests/france/Grenoble_Foot_38.svg
+  clu 1806 Stoke City                         crests/england/Stoke_City.svg
+  clu 1807 Sheffield Wednesday                crests/england/Sheffield_Wednesday.svg
+  clu 1808 Brighton & Hove Albion             crests/england/Brighton.svg
+  clu 1809 Toulouse FC                        crests/france/Toulouse.svg
+  clu 1814 Stade Lavallois MFC                crests/france/Stade_Lavallois.svg
+  clu 1815 Clermont Foot                      crests/france/Clermont_Foot.svg
+  clu 1819 AS Saint-Étienne                   crests/france/AS_Saint-Étienne.svg
+  clu 1823 AS Nancy                           crests/france/Nancy_Lorraine.svg
+  clu 1824 Eintracht Frankfurt                crests/germany/Eintracht_Frankfurt.svg
+  clu 1825 MSV Duisburg                       crests/germany/MSV_Duisburg.svg
+  clu 1826 Alemannia Aachen                   crests/germany/Alemannia_Aachen.svg
+  clu 1831 1. FC Union Berlin                 crests/germany/Union_Berlin.svg
+  clu 1832 Karlsruher SC                      crests/germany/Karlsruher_SC.svg
+  clu 1837 Sampdoria                          crests/italy/Sampdoria.svg
+  clu 1842 Cagliari                           crests/italy/Cagliari.svg
+  clu 1843 Palermo                            crests/italy/Palermo.svg
+  clu 1847 Ascoli                             crests/italy/Ascoli.svg
+  clu 1853 Levante UD                         crests/spain/Levante.svg
+  clu 1854 Albacete Balompié                  crests/spain/Albacete.svg
+  clu 1860 Getafe CF                          crests/spain/Getafe.svg
+  clu 1861 UD Almería                         crests/spain/Almería.svg
+  clu 1862 FC Lausanne-Sport                  crests/switzerland/Lausanne-Sport.svg
+  clu 1867 Córdoba CF                         crests/spain/Córdoba.svg
+  clu 1871 Legia Warszawa                     crests/poland/Legia_Warszawa.svg
+  clu 1873 Wisła Kraków                       crests/poland/Wisła_Kraków.svg
+  clu 1874 Ferencvárosi TC                    crests/hungary/Ferencváros.svg
+  clu 1876 River Plate                        crests/argentina/River_Plate.svg
+  clu 1877 Boca Juniors                       crests/argentina/Boca_Juniors.svg
+  clu 1878 Cruz Azul                          crests/mexico/Cruz_Azul.svg
+  clu 1879 América                            crests/mexico/Club_America.svg
+  clu 1880 Guadalajara                        crests/mexico/CD_Guadalajara.svg
+  clu 1881 Pumas U.N.A.M.                     crests/mexico/UNAM_Pumas.svg
+  clu 1882 Toluca                             crests/mexico/Toluca.svg
+  clu 1884 Panathinaikos                      crests/greece/Panathinaikos.svg
+  clu 1887 Vitória de Guimarães               crests/portugal/Vitória_de_Guimarães.svg
+  clu 1888 Gil Vicente FC                     crests/portugal/Gil_Vicente.svg
+  clu 1891 Nacional da Madeira                crests/portugal/Nacional_da_Madeira.svg
+  clu 1893 Marítimo                           crests/portugal/Marítimo.svg
+  clu 1894 AD Ceuta                           crests/spain/Ceuta.svg
+  clu 1896 Sporting de Braga                  crests/portugal/SC_Braga.svg
+  clu 1900 Moreirense                         crests/portugal/Moreirense.svg
+  clu 1903 FC Utrecht                         crests/netherlands/FC_Utrecht.svg
+  clu 1906 AZ                                 crests/netherlands/AZ_Alkmaar.svg
+  clu 1907 Willem II                          crests/netherlands/Willem_II.svg
+  clu 1908 FC Twente                          crests/netherlands/Twente.svg
+  clu 1910 N.E.C. Nijmegen                    crests/netherlands/N.E.C._Nijmegen.svg
+  clu 1913 sc Heerenveen                      crests/netherlands/sc_Heerenveen.svg
+  clu 1914 PEC Zwolle                         crests/netherlands/PEC_Zwolle.svg
+  clu 1915 FC Groningen                       crests/netherlands/FC_Groningen.svg
+  clu 1917 Wigan Athletic                     crests/england/Wigan_Athletic.svg
+  clu 1919 Bristol City                       crests/england/Bristol_City.svg
+  clu 1920 Oldham Athletic                    crests/england/Oldham_Athletic.svg
+  clu 1923 Luton Town                         crests/england/Luton_Town.svg
+  clu 1924 Chesterfield                       crests/england/Chesterfield.svg
+  clu 1925 Brentford                          crests/england/Brentford.svg
+  clu 1926 Blackpool                          crests/england/Blackpool.svg
+  clu 1928 Port Vale                          crests/england/Port_Vale_FC.svg
+  clu 1929 Plymouth Argyle                    crests/england/Plymouth_Argyle.svg
+  clu 1930 Northampton Town                   crests/england/Northampton_Town.svg
+  clu 1931 Stockport County                   crests/england/Stockport_County.svg
+  clu 1932 Barnsley                           crests/england/Barnsley.svg
+  clu 1933 Wycombe Wanderers                  crests/england/Wycombe_Wanderers.svg
+  clu 1934 Swindon Town                       crests/england/Swindon_Town.svg
+  clu 1935 Colchester United                  crests/england/Colchester_United.svg
+  clu 1936 Cheltenham Town                    crests/england/Cheltenham_Town.svg
+  clu 1937 Notts County                       crests/england/Notts_County.svg
+  clu 1938 Peterborough United                crests/england/Peterborough_United.svg
+  clu 1939 Huddersfield Town                  crests/england/Huddersfield_Town.svg
+  clu 1940 Mansfield Town                     crests/england/Mansfield_Town.svg
+  clu 1943 AFC Bournemouth                    crests/england/Bournemouth.svg
+  clu 1944 Cambridge United                   crests/england/Cambridge_United.svg
+  clu 1947 Wrexham                            crests/england/Wrexham_AFC.svg
+  clu 1948 York City                          crests/england/York_City.svg
+  clu 1951 Oxford United                      crests/england/Oxford_United.svg
+  clu 1952 Hull City                          crests/england/Hull_City.svg
+  clu 1955 Rochdale                           crests/england/Rochdale.svg
+  clu 1958 Leyton Orient                      crests/england/Leyton_Orient.svg
+  clu 1960 Swansea City                       crests/england/Swansea_City.svg
+  clu 1961 Cardiff City                       crests/england/Cardiff_City.svg
+  clu 1962 Bristol Rovers                     crests/england/Bristol_Rovers.svg
+  clu 1968 Cádiz CF                           crests/spain/Cádiz_CF.svg
+  clu 1970 Tigres U.A.N.L.                    crests/mexico/Tigres_UANL.svg
+  clu 1971 Excelsior                          crests/netherlands/Excelsior_Rotterdam.svg
+  clu 2014 Union Saint-Gilloise               crests/belgium/Union_Saint-Gilloise.svg
+  clu 2017 Hartberg                           crests/austria/Hartberg.svg
+  clu 2038 Avellino                           crests/italy/US_Avellino_1912.svg
+  clu 2041 Fredrikstad FK                     crests/norway/Fredrikstad.svg
+  clu 2055 Gimcheon Sangmu                    crests/south-korea/Gimcheon_Sangmu_FC.svg
+  clu 10020 Estoril                            crests/portugal/Estoril.svg
+  clu 10029 TSG 1899 Hoffenheim                crests/germany/Hoffenheim.svg
+  clu 10030 SC Paderborn 07                    crests/germany/SC_Paderborn.svg
+  clu 10032 FC Lugano                          crests/switzerland/Lugano.svg
+  clu 10846 Burgos CF                          crests/spain/Burgos_CF.svg
+  clu 15001 Lyngby BK                          crests/denmark/Lyngby.svg
+  clu 15005 Zulte Waregem                      crests/belgium/Zulte_Waregem.svg
+  clu 15009 Altach                             crests/austria/Altach.svg
+  clu 15015 Burton Albion                      crests/england/Burton_Albion.svg
+  clu 15021 CE Sabadell                        crests/spain/Sabadell.svg
+  clu 15040 WSG Tirol                          crests/austria/Tirol.svg
+  clu 15048 Tranmere Rovers                    crests/england/Tranmere_Rovers.svg
+  clu 100081 Kortrijk                           crests/belgium/KV_Kortrijk.svg
+  clu 100087 OH Leuven                          crests/belgium/Oud-Heverlee_Leuven.svg
+  clu 100135 APOEL Nicosia FC                   crests/cyprus/APOEL.svg
+  clu 100325 HJK Helsinki                       crests/finland/HJK_Helsinki.svg
+  clu 100409 FC Augsburg                        crests/germany/Augsburg.svg
+  clu 100632 Go Ahead Eagles                    crests/netherlands/Go_Ahead_Eagles.svg
+  clu 100638 Telstar                            crests/netherlands/Telstar.svg
+  clu 100646 Sparta Rotterdam                   crests/netherlands/Sparta_Rotterdam.svg
+  clu 100757 Dinamo București                   crests/romania/Dinamo_Bucureşti.svg
+  clu 100759 FC Argeș                           crests/romania/Argeș_Pitești.svg
+  clu 100804 St. Johnstone                      crests/scotland/St_Johnstone.svg
+  clu 100805 St. Mirren                         crests/scotland/St._Mirren.svg
+  clu 100852 CD Castellón                       crests/spain/Castellón.svg
+  clu 100888 CD Leganés                         crests/spain/Leganés.svg
+  clu 101014 İstanbul Başakşehir FK             crests/turkey/Başakşehir.svg
+  clu 101025 Gençlerbirliği                     crests/turkey/Gençlerbirliği.svg
+  clu 101026 Göztepe                            crests/turkey/Göztepe_Izmir.svg
+  clu 101032 Kocaelispor                        crests/turkey/Kocaelispor.svg
+  clu 101033 Konyaspor                          crests/turkey/Konyaspor.svg
+  clu 101037 Çaykur Rizespor                    crests/turkey/Çaykur_Rizespor.svg
+  clu 101047 Dynamo Kyiv                        crests/ukraine/Dynamo_Kyiv.svg
+  clu 101059 Shakhtar Donetsk                   crests/ukraine/Shakhtar.svg
+  clu 101083 Estudiantes de La Plata            crests/argentina/Estudiantes_de_La_Plata.svg
+  clu 101084 Gimnasia y Esgrima La Plata        crests/argentina/Gimnasia_y_Esgrima.svg
+  clu 101085 Racing Club de Avellaneda          crests/argentina/Racing.svg
+  clu 101088 Vélez Sarsfield                    crests/argentina/Vélez_Sarsfield.svg
+  clu 101100 Atlético Nacional                  crests/colombia/Atlético_Nacional.svg
+  clu 101112 Vancouver Whitecaps                crests/usa/Vancouver_Whitecaps_FC.svg
+  clu 101114 Atlas                              crests/mexico/Atlas.svg
+  clu 101116 Atlante                            crests/mexico/Atlante_FC.svg
+  clu 101121 Necaxa                             crests/mexico/Necaxa.svg
+  clu 110062 Girona FC                          crests/spain/Girona.svg
+  clu 110072 SC Oțelul Galați                   crests/romania/Oțelul_Galați.svg
+  clu 110075 Farul Constanța                    crests/romania/Farul_Constanța.svg
+  clu 110078 Petrolul Ploiești                  crests/romania/Petrolul_Ploiești.svg
+  clu 110093 Independiente                      crests/argentina/Independiente.svg
+  clu 110144 Santos Laguna                      crests/mexico/Santos_Laguna.svg
+  clu 110147 Pachuca                            crests/mexico/Pachuca.svg
+  clu 110150 Gallos Blancos de Querétaro        crests/mexico/Queretaro_FC.svg
+  clu 110152 Puebla                             crests/mexico/Puebla.svg
+  clu 110169 Fortuna Köln                       crests/germany/SC_Fortuna_Köln.svg
+  clu 110197 Würzburger Kickers                 crests/germany/Würzburger_Kickers.svg
+  clu 110206 GKS Katowice                       crests/poland/GKS_Katowice.svg
+  clu 110313 Accrington Stanley                 crests/england/Accrington_Stanley.svg
+  clu 110321 Pau FC                             crests/france/Pau_FC.svg
+  clu 110329 FC St. Pauli                       crests/germany/St_Pauli.svg
+  clu 110374 Fiorentina                         crests/italy/Fiorentina.svg
+  clu 110395 Lanús                              crests/argentina/Lanús.svg
+  clu 110396 Newell's Old Boys                  crests/argentina/Newell's_Old_Boys.svg
+  clu 110404 Banfield                           crests/argentina/Banfield.svg
+  clu 110468 Viktoria Plzeň                     crests/czech-republic/Viktoria_Plzeň.svg
+  clu 110500 Eintracht Braunschweig             crests/germany/Eintracht_Braunschweig.svg
+  clu 110501 SC Verl                            crests/germany/SC_Verl.svg
+  clu 110502 SV Darmstadt 98                    crests/germany/SV_Darmstadt_98.svg
+  clu 110532 SV Waldhof Mannheim                crests/germany/SV_Waldhof_Mannheim.svg
+  clu 110556 Genoa                              crests/italy/Genoa.svg
+  clu 110569 Dijon FCO                          crests/france/Dijon_FCO.svg
+  clu 110580 Rosario Central                    crests/argentina/Rosario_Central.svg
+  clu 110588 1. FC Magdeburg                    crests/germany/1._FC_Magdeburg.svg
+  clu 110597 SV Meppen                          crests/germany/SV_Meppen.svg
+  clu 110636 Fortuna Düsseldorf                 crests/germany/Fortuna_Düsseldorf.svg
+  clu 110645 Viktoria Köln                      crests/germany/FC_Viktoria_Köln.svg
+  clu 110678 TSV Havelse                        crests/germany/TSV_Havelse.svg
+  clu 110685 TSG 1899 Hoffenheim II             crests/germany/Hoffenheim.svg
+  clu 110697 VfB Stuttgart II                   crests/germany/VfB_Stuttgart.svg
+  clu 110711 Real Sociedad B                    crests/spain/Real_Sociedad.svg
+  clu 110716 RC Celta Fortuna                   crests/spain/Celta.svg
+  clu 110724 KV Mechelen                        crests/belgium/KV_Mechelen.svg
+  clu 110738 Pisa                               crests/italy/Pisa.svg
+  clu 110745 Jagiellonia Białystok              crests/poland/Jagiellonia_Białystok.svg
+  clu 110746 Pogoń Szczecin                     crests/poland/Pogoń_Szczecin.svg
+  clu 110747 Cracovia                           crests/poland/Cracovia.svg
+  clu 110749 Zagłębie Lubin                     crests/poland/Zagłębie_Lubin.svg
+  clu 110750 UTA Arad                           crests/romania/UTA_Arad.svg
+  clu 110751 Universitatea Cluj                 crests/romania/Universitatea_Cluj.svg
+  clu 110752 FC Botoșani                        crests/romania/Botoşani.svg
+  clu 110765 Incheon United                     crests/south-korea/Incheon_United.svg
+  clu 110770 FC Sion                            crests/switzerland/Sion.svg
+  clu 110776 Gaziantep FK                       crests/turkey/Gaziantep.svg
+  clu 110781 León                               crests/mexico/Club_Leon.svg
+  clu 110827 Real Oviedo                        crests/spain/Oviedo.svg
+  clu 110832 Granada CF                         crests/spain/Granada.svg
+  clu 110890 Crawley Town                       crests/england/Crawley_Town.svg
+  clu 110907 Arezzo                             crests/italy/Arezzo.svg
+  clu 110908 Catanzaro                          crests/italy/Catanzaro.svg
+  clu 110912 Padova                             crests/italy/Padova.svg
+  clu 110913 SK Beveren                         crests/belgium/S.K._Beveren.svg
+  clu 110915 Cesena                             crests/italy/Cesena_FC.svg
+  clu 110953 Instituto de Córdoba               crests/argentina/Instituto_Córdoba.svg
+  clu 110955 Shanghai Shenhua                   crests/china/Shanghai_Shenhua.svg
+  clu 111019 Argentinos Juniors                 crests/argentina/Argeninos_Juniors.svg
+  clu 111020 Independiente Rivadavia            crests/argentina/Independiente_Rivadavia.svg
+  clu 111022 Belgrano de Córdoba                crests/argentina/Belgrano.svg
+  clu 111065 Real Salt Lake                     crests/usa/Real_Salt_Lake.svg
+  clu 111083 Korona Kielce                      crests/poland/Korona_Kielce.svg
+  clu 111086 Piast Gliwice                      crests/poland/Piast_Gliwice.svg
+  clu 111088 Radomiak Radom                     crests/poland/Radomiak_Radom.svg
+  clu 111092 Śląsk Wrocław                      crests/poland/Śląsk_Wrocław.svg
+  clu 111097 Motor Lublin                       crests/poland/Motor_Lublin.svg
+  clu 111138 Minnesota United FC                crests/usa/Minnesota_United_FC.svg
+  clu 111139 CF Montréal                        crests/usa/CF_Montréal.svg
+  clu 111140 Portland Timbers                   crests/usa/Portland_Timbers.svg
+  clu 111144 Seattle Sounders                   crests/usa/Seattle_Sounders_FC.svg
+  clu 111235 1. FC Heidenheim                   crests/germany/FC_Heidenheim.svg
+  clu 111239 FC Ingolstadt 04                   crests/germany/Ingolstadt.svg
+  clu 111273 Red Star FC (FRANCE)               crests/france/Red_Star_FC.svg
+  clu 111276 USL Dunkerque                      crests/france/Dunkerque.svg
+  clu 111339 Kasımpaşa                          crests/turkey/Kasımpaşa.svg
+  clu 111379 SG Sonnenhof Großaspach            crests/germany/SG_Sonnenhof_Großaspach.svg
+  clu 111393 Adelaide United                    crests/australia/Adelaide_United_FC.svg
+  clu 111395 Brisbane Roar                      crests/australia/Brisbane_Roar_FC.svg
+  clu 111396 Central Coast Mariners             crests/australia/Central_Coast_Mariners_FC.svg
+  clu 111397 Melbourne Victory                  crests/australia/Melbourne_Victory_FC.svg
+  clu 111398 Newcastle Jets                     crests/australia/Newcastle_Jets_FC.svg
+  clu 111399 Perth Glory                        crests/australia/Perth_Glory_FC.svg
+  clu 111400 Sydney FC                          crests/australia/Sydney_FC.svg
+  clu 111433 Mantova                            crests/italy/Mantova_1911.svg
+  clu 111434 Cremonese                          crests/italy/Cremonese.svg
+  clu 111594 GAIS                               crests/sweden/GAIS.svg
+  clu 111651 Toronto FC                         crests/usa/Toronto_FC.svg
+  clu 111657 Frosinone                          crests/italy/Frosinone_Calcio.svg
+  clu 111659 Rodez Aveyron Football             crests/france/Rodez_AF.svg
+  clu 111674 Al Shabab                          crests/saudi-arabia/Al_Shabab.svg
+  clu 111678 Club Tijuana                       crests/mexico/Club_Tijuana.svg
+  clu 111701 Al Ain FC (UAE)                    crests/uae/Al_Ain_FC.svg
+  clu 111705 IF Brommapojkarna                  crests/sweden/Brommapojkarna.svg
+  clu 111707 Aldosivi                           crests/argentina/Aldosivi.svg
+  clu 111708 Atlético Tucumán                   crests/argentina/Atlético_Tucumán.svg
+  clu 111710 Defensa y Justicia                 crests/argentina/Defensa_y_Justicia.svg
+  clu 111711 Huracán                            crests/argentina/CA_Huracán.svg
+  clu 111715 Tigre                              crests/argentina/Tigre.svg
+  clu 111716 Unión de Santa Fe                  crests/argentina/Union.svg
+  clu 111724 Shandong Taishan                   crests/china/Shandong_Taishan.svg
+  clu 111766 Wellington Phoenix                 crests/new-zealand/Wellington_Phoenix_FC.svg
+  clu 111768 Beijing Guoan                      crests/china/Beijing_Guoan.svg
+  clu 111774 Tianjin Jinmen Tiger               crests/china/Tianjin_Jinmen_Tiger.svg
+  clu 111779 Henan FC                           crests/china/Henan_Songshan_Longmen.svg
+  clu 111811 Monza                              crests/italy/AC_Monza.svg
+  clu 111817 Paris FC                           crests/france/Paris_FC.svg
+  clu 111822 Wolfsberger AC                     crests/austria/Wolfsberg.svg
+  clu 111928 San Jose Earthquakes               crests/usa/San_Jose_Earthquakes.svg
+  clu 111974 Sassuolo                           crests/italy/Sassuolo.svg
+  clu 112026 Benevento                          crests/italy/Benevento.svg
+  clu 112072 Mjällby AIF                        crests/sweden/Mjällby.svg
+  clu 112096 Al Ettifaq                         crests/saudi-arabia/Al_Ettifaq.svg
+  clu 112115 Gangwon FC                         crests/south-korea/Gangwon_FC.svg
+  clu 112124 Juve Stabia                        crests/italy/Juve_Stabia.svg
+  clu 112134 Philadelphia Union                 crests/usa/Philadelphia_Union.svg
+  clu 112139 Al Nassr                           crests/saudi-arabia/Al_Nassr.svg
+  clu 112163 Zhejiang Professional FC           crests/china/Zhejiang_Professional_FC.svg
+  clu 112172 RB Leipzig                         crests/germany/RB_Leipzig.svg
+  clu 112180 Västerås SK                        crests/sweden/Västerås_SK.svg
+  clu 112199 Sarpsborg 08                       crests/norway/Sarpsborg_08.svg
+  clu 112224 Melbourne City                     crests/australia/Melbourne_City_FC.svg
+  clu 112254 Newport County                     crests/england/Newport_County.svg
+  clu 112258 Gwangju FC                         crests/south-korea/Gwangju_FC.svg
+  clu 112259 AFC Wimbledon                      crests/england/AFC_Wimbledon.svg
+  clu 112260 Fleetwood Town                     crests/england/Fleetwood_Town.svg
+  clu 112372 Ludogorets Razgrad                 crests/bulgaria/Ludogorets.svg
+  clu 112387 Al Ahli                            crests/saudi-arabia/Al_Ahli.svg
+  clu 112389 Al Faisaly                         crests/saudi-arabia/Al-Faisaly_FC.svg
+  clu 112390 Al Fateh                           crests/saudi-arabia/Al_Fateh.svg
+  clu 112391 Al Qadsiah                         crests/saudi-arabia/Al_Qadsiah.svg
+  clu 112393 Al Taawoun                         crests/saudi-arabia/Al_Taawoun.svg
+  clu 112427 Western Sydney Wanderers           crests/australia/Western_Sydney_Wanderers_FC.svg
+  clu 112493 Carrarese                          crests/italy/Carrarese_Calcio.svg
+  clu 112494 Südtirol                           crests/italy/Suditrol.svg
+  clu 112513 Arouca                             crests/portugal/Arouca.svg
+  clu 112540 Shanghai Port                      crests/china/Shanghai_Port.svg
+  clu 112554 Bucheon FC 1995                    crests/south-korea/Bucheon_FC_1995.svg
+  clu 112555 FC Anyang                          crests/south-korea/FC_Anyang.svg
+  clu 112587 Académico de Viseu                 crests/portugal/Académico_de_Viseu.svg
+  clu 112606 Orlando City SC                    crests/usa/Orlando_City.svg
+  clu 112638 Buriram United                     crests/thailand/Buriram_United.svg
+  clu 112670 Talleres de Córdoba                crests/argentina/Talleres.svg
+  clu 112678 Atlético de San Luis               crests/mexico/Atletico_de_San_Luis.svg
+  clu 112689 Platense                           crests/argentina/Platense.svg
+  clu 112713 Sarmiento                          crests/argentina/Sarmiento.svg
+  clu 112764 Bromley                            crests/england/Bromley.svg
+  clu 112809 Famalicão                          crests/portugal/Famalicao.svg
+  clu 112828 New York City FC                   crests/usa/New_York_City_Football_Club.svg
+  clu 112883 Al Khaleej                         crests/saudi-arabia/Al_Khaleej.svg
+  clu 112885 Atlanta United FC                  crests/usa/Atlanta_United.svg
+  clu 112893 Inter Miami                        crests/usa/Inter_Miami_CF.svg
+  clu 112954 Vicenza                            crests/italy/Vicenza.svg
+  clu 112965 Central Córdoba                    crests/argentina/Central_Córdoba.svg
+  clu 112996 Los Angeles FC                     crests/usa/Los_Angeles_Football_Club.svg
+  clu 113018 St. Louis City SC                  crests/usa/St._Louis_CITY_SC.svg
+  clu 113037 Al Riyadh                          crests/saudi-arabia/Al_Riyadh.svg
+  clu 113040 NorthEast United                   crests/india/NorthEast_United_FC.svg
+  clu 113044 Barracas Central                   crests/argentina/Barracas_Central.svg
+  clu 113050 Gimnasia y Esgrima de Mendoza      crests/argentina/Gimnasia_y_Esgrima.svg
+  clu 113057 Al Fayha                           crests/saudi-arabia/Al_Fayha.svg
+  clu 113058 Abha Club                          crests/saudi-arabia/Abha.svg
+  clu 113134 FC Juárez                          crests/mexico/FC_Juarez.svg
+  clu 113142 Corendon Alanyaspor                crests/turkey/Alanyaspor.svg
+  clu 113146 Mohun Bagan Super Giant            crests/india/Mohun_Bagan_Super_Giant.svg
+  clu 113147 Entella                            crests/italy/Virtus_Entella.svg
+  clu 113149 FC Cincinnati                      crests/usa/FC_Cincinnati.svg
+  clu 113182 FC Voluntari                       crests/romania/Voluntari.svg
+  clu 113222 Al Hazem                           crests/saudi-arabia/Al_Hazem.svg
+  clu 113224 Al Diriyah                         crests/saudi-arabia/Diriyah_Club.svg
+  clu 113257 Odisha FC                          crests/india/Odisha_FC.svg
+  clu 113297 Chennaiyin FC                      crests/india/Chennaiyin_FC.svg
+  clu 113298 FC Goa                             crests/india/FC_Goa.svg
+  clu 113299 Kerala Blasters FC                 crests/india/Kerala_Blasters_FC.svg
+  clu 113300 Mumbai City FC                     crests/india/Mumbai_City_FC.svg
+  clu 113301 SC Delhi                           crests/india/Delhi_FC.svg
+  clu 113302 Bengaluru FC                       crests/india/Bengaluru_FC.svg
+  clu 113378 Sepsi OSK                          crests/romania/Sepsi.svg
+  clu 113449 Corvinul Hunedoara                 crests/romania/Corvinul_Hunedoara.svg
+  clu 113458 IK Sirius                          crests/sweden/Sirius.svg
+  clu 113459 Kristiansund BK                    crests/norway/Kristiansund.svg
+  clu 113616 Grazer AK                          crests/austria/Grazer_AK.svg
+  clu 113888 Qarabağ FK                         crests/azerbaijan/Qarabağ.svg
+  clu 113892 Degerfors IF                       crests/sweden/Degerfors.svg
+  clu 113926 Salford City                       crests/england/Salford_City.svg
+  clu 114161 Austin FC                          crests/usa/Austin_FC.svg
+  clu 114162 Nashville SC                       crests/usa/Nashville_SC.svg
+  clu 114168 Jamshedpur FC                      crests/india/Jamshedpur_FC.svg
+  clu 114326 Raków Częstochowa                  crests/poland/Raków_Częstochowa.svg
+  clu 114385 CFR Cluj                           crests/romania/CFR_Cluj.svg
+  clu 114510 Casa Pia                           crests/portugal/Casa_Pia_AC.svg
+  clu 114546 FK Csíkszereda Miercurea Ciuc      crests/romania/Csíkszereda.svg
+  clu 114554 FC Andorra                         crests/spain/FC_Andorra.svg
+  clu 114604 Macarthur FC                       crests/australia/Macarthur_FC.svg
+  clu 114640 Charlotte FC                       crests/usa/Charlotte_FC.svg
+  clu 115202 Punjab FC                          crests/india/Punjab_FC.svg
+  clu 115470 Estudiantes de Río Cuarto          crests/argentina/Estudiantes_de_Rio_Cuarto.svg
+  clu 115472 Deportivo Riestra                  crests/argentina/Deportivo_Riestra.svg
+  clu 115841 Lazio                              crests/italy/Lazio.svg
+  clu 115845 Bergamo Calcio                     crests/italy/Atalanta.svg
+  clu 115995 Bayern München                     crests/germany/Bayern_München.svg
+  clu 115996 Bayer 04 Leverkusen                crests/germany/Bayer_Leverkusen.svg
+  clu 115997 Eintracht Frankfurt                crests/germany/Eintracht_Frankfurt.svg
+  clu 115998 VfL Wolfsburg                      crests/germany/Wolfsburg.svg
+  clu 115999 TSG 1899 Hoffenheim                crests/germany/Hoffenheim.svg
+  clu 116002 SC Freiburg                        crests/germany/Freiburg.svg
+  clu 116003 1. FC Köln                         crests/germany/SC_Köln-Brück_07.svg
+  clu 116004 Werder Bremen                      crests/germany/Werder_Bremen.svg
+  clu 116009 Arsenal                            crests/england/Arsenal.svg
+  clu 116010 Chelsea                            crests/england/Chelsea.svg
+  clu 116011 Tottenham Hotspur                  crests/england/Tottenham.svg
+  clu 116012 Manchester United                  crests/england/Manchester_United.svg
+  clu 116013 Brighton & Hove Albion             crests/england/Brighton.svg
+  clu 116014 West Ham United                    crests/england/West_Ham.svg
+  clu 116015 Aston Villa                        crests/england/Aston_Villa.svg
+  clu 116016 Everton                            crests/england/Everton.svg
+  clu 116017 Manchester City                    crests/england/Manchester_City.svg
+  clu 116019 Birmingham City                    crests/england/Birmingham_City.svg
+  clu 116021 RB Leipzig                         crests/germany/RB_Leipzig.svg
+  clu 116033 OL Lyonnes                         crests/france/Olympique_Lyonnais.svg
+  clu 116034 Paris Saint-Germain                crests/france/Paris_Saint-Germain_(PSG).svg
+  clu 116035 Paris FC                           crests/france/Paris_FC.svg
+  clu 116036 FC Fleury 91                       crests/france/FC_Fleury_91.svg
+  clu 116037 Montpellier FC                     crests/france/Montpellier.svg
+  clu 116280 Juventus                           crests/italy/Juventus.svg
+  clu 116282 Roma                               crests/italy/AS_Roma.svg
+  clu 116300 Seattle Reign FC                   crests/usa/Seattle_Reign_FC.svg
+  clu 116302 Portland Thorns FC                 crests/usa/Portland_Thorns_FC.svg
+  clu 116303 North Carolina Courage             crests/usa/North_Carolina_Courage.svg
+  clu 116304 Washington Spirit                  crests/usa/Washington_Spirit.svg
+  clu 116305 Chicago Stars FC                   crests/usa/Chicago_Stars_FC.svg
+  clu 116306 Houston Dash                       crests/usa/Houston_Dash.svg
+  clu 116307 Orlando Pride                      crests/usa/Orlando_Pride.svg
+  clu 116308 Racing Louisville FC               crests/usa/Racing_Louisville_FC.svg
+  clu 116309 Kansas City Current                crests/usa/Kansas_City_Current.svg
+  clu 116310 Gotham FC                          crests/usa/NJNY_Gotham_FC.svg
+  clu 116311 Angel City FC                      crests/usa/Angel_City_FC.svg
+  clu 116312 San Diego Wave FC                  crests/usa/San_Diego_Wave_FC.svg
+  clu 116325 FC Barcelona                       crests/spain/Barcelona.svg
+  clu 116326 Real Madrid                        crests/spain/Real_Madrid.svg
+  clu 116327 Atlético de Madrid                 crests/spain/Atletico_Madrid.svg
+  clu 116328 Athletic Club de Bilbao            crests/spain/Athletic_Club_Bilbao.svg
+  clu 116329 Deportivo Alavés                   crests/spain/Deportivo_Alavés.svg
+  clu 116331 SD Eibar                           crests/spain/Eibar.svg
+  clu 116332 Costa Adeje Tenerife               crests/spain/Tenerife.svg
+  clu 116336 Real Sociedad                      crests/spain/Real_Sociedad.svg
+  clu 116337 Sevilla FC                         crests/spain/Sevilla.svg
+  clu 116339 Valencia CF                        crests/spain/Valencia.svg
+  clu 116343 Liverpool                          crests/england/Liverpool_FC.svg
+  clu 116360 Chengdu Rongcheng F.C.             crests/china/Chengdu_Rongcheng.svg
+  clu 116361 Wuhan Three Towns                  crests/china/Wuhan_Three_Towns.svg
+  clu 116416 Le Havre AC                        crests/france/Le_Havre_AC.svg
+  clu 116417 FC Nantes                          crests/france/Nantes.svg
+  clu 131110 CD Eldense                         crests/spain/CD_Eldense.svg
+  clu 131125 FC Badalona Women                  crests/spain/Badalona.svg
+  clu 131173 Qingdao Hainiu FC                  crests/china/Qingdao_Hainiu.svg
+  clu 131174 Eyüpspor                           crests/turkey/Eyüpspor.svg
+  clu 131358 Benfica                            crests/portugal/Benfica.svg
+  clu 131359 Ajax                               crests/netherlands/Ajax.svg
+  clu 131360 Slavia Praha                       crests/czech-republic/SK_Slavia_Praha.svg
+  clu 131361 FC Zürich                          crests/switzerland/Zürich.svg
+  clu 131386 1. FC Nürnberg                     crests/germany/FC_Nürnberg.svg
+  clu 131391 Granada CF                         crests/spain/Granada.svg
+  clu 131439 San Diego FC                       crests/usa/San_Diego_Football_Club.svg
+  clu 131447 FC Annecy                          crests/france/Annecy.svg
+  clu 131461 Inter Kashi                        crests/india/Inter_Kashi.svg
+  clu 131464 Wieczysta Kraków                   crests/poland/Wieczysta_Kraków.svg
+  clu 131477 Bay FC                             crests/usa/Bay_FC.svg
+  clu 131478 Utah Royals                        crests/usa/Utah_Royals_FC.svg
+  clu 131487 Shenzhen Peng City                 crests/china/Shenzhen_Xinpengcheng.svg
+  clu 131488 Qingdao West Coast FC              crests/china/Qingdao_West_Coast.svg
+  clu 131491 KFUM-Kameratene Oslo               crests/norway/KFUM.svg
+  clu 131531 Yunnan Yukun                       crests/china/Yunnan_Yukun.svg
+  clu 131681 Milano FC                          crests/italy/Club_Milano.svg
+  clu 131682 Lombardia FC                       crests/italy/Inter.svg
+  clu 131720 RC Deportivo                       crests/spain/Deportivo_La_Coruña.svg
+  clu 131724 RC Strasbourg                      crests/france/AS_Strasbourg.svg
+  clu 131725 Crystal Palace                     crests/england/Crystal_Palace.svg
+  clu 131733 RCD Espanyol                       crests/spain/Espanyol.svg
+  clu 131735 Al Kholood                         crests/saudi-arabia/Al-Kholood.svg
+  clu 131739 Auckland FC                        crests/new-zealand/Auckland_FC.svg
+  clu 131798 NEOM SC                            crests/saudi-arabia/Neom_SC.svg
+  clu 132139 Liaoning Tieren                    crests/china/Liaoning_Tiening.svg
+  clu 132176 London City Lionesses              crests/england/London_City_Lionesses.svg
+  clu 132231 RAAL La Louvière                   crests/belgium/RAAL_La_Louvière.svg
+  clu 132305 Dalian Yingbo FC                   crests/china/Dalian_Yingbo.svg
+  clu 132370 Olympique de Marseille             crests/france/Marseille.svg
+  clu 132392 Amed SK                            crests/turkey/Amed_SFK.svg
+  clu 132533 Hamburger SV                       crests/germany/Hamburger_SV.svg
+  clu 132588 RC Lens                            crests/france/RC_Lens.svg
+  clu 132589 1. FC Union Berlin                 crests/germany/Union_Berlin.svg
+  clu 132680 US Boulogne                        crests/france/Boulogne.svg
+  clu 132681 United Tigers SC                   crests/india/United_SC.svg
+  clu 132697 Boston Legacy FC                   crests/usa/Boston_Legacy_FC.svg
+  clu 132698 Denver Summit FC                   crests/usa/Denver_Summit_FC.svg
+  clu 132784 Chongqing Tonglianglong F.C.       crests/china/Chongqing_Tonglianglong.svg
+  clu 132816 BK Häcken                          crests/sweden/Häcken.svg
+  clu 132823 AFC Richmond Women                 crests/england/AFC_Richmond.svg
+  clu 132831 Toulouse FC                        crests/france/Toulouse.svg
+  clu 132861 US Saint-Malo                      crests/france/US_Saint-Malo.svg
+  clu 132865 VfB Stuttgart                      crests/germany/VfB_Stuttgart.svg
+  clu 132866 1. FSV Mainz 05                    crests/germany/Mainz_05.svg
+  clu 132867 Charlton Athletic                  crests/england/Charlton_Athletic.svg
+  clu 132868 Çorum F.K.                         crests/turkey/Çorum_FK.svg
+  clu 132889 SK Brann                           crests/norway/Brann.svg
+  clu 132890 Breiðablik                         crests/iceland/Breidablik.svg
+  clu 132891 FC Twente                          crests/netherlands/Twente.svg
+  lea 4    Pro League                         crests/belgium/Belgian_Pro_League.svg
+  lea 10   Eredivisie                         crests/netherlands/Eredivisie.svg
+  lea 13   Premier League                     crests/england/Premier_League.svg
+  lea 14   Championship                       crests/england/EFL_Championship.svg
+  lea 16   Ligue 1                            crests/france/Ligue_1.svg
+  lea 17   Ligue 2                            crests/france/Ligue_2.svg
+  lea 19   1. Bundesliga                      crests/germany/Bundesliga.svg
+  lea 20   2. Bundesliga                      crests/germany/2._Bundesliga.svg
+  lea 31   Serie A                            crests/italy/Serie_A.svg
+  lea 32   Serie B                            crests/italy/Serie_B.svg
+  lea 39   Major League Soccer                crests/usa/MLS_-_Major_League_Soccer.svg
+  lea 41   Eliteserien                        crests/norway/Eliteserien.svg
+  lea 50   Premiership                        crests/scotland/Scottish_Premiership.svg
+  lea 53   Primera División                   crests/spain/La_Liga.svg
+  lea 54   Segunda División                   crests/spain/La_Liga_2.svg
+  lea 56   Allsvenskan                        crests/sweden/Allsvenskan.svg
+  lea 60   League One                         crests/england/EFL_League_One.svg
+  lea 61   League Two                         crests/england/EFL_League_Two.svg
+  lea 65   Premier Division                   crests/republic-of-ireland/League_of_Ireland_Premier_Division.svg
+  lea 66   Ekstraklasa                        crests/poland/PKO_BP_Ekstraklasa.svg
+  lea 68   Süper Lig                          crests/turkey/Super_Lig.svg
+  lea 80   Bundesliga                         crests/austria/Austrian_Football_Bundesliga.svg
+  lea 83   K League 1                         crests/south-korea/K_League_1.svg
+  lea 189  Super League                       crests/switzerland/Swiss_Super_League.svg
+  lea 308  Primeira Liga                      crests/portugal/Primeira_Liga.svg
+  lea 341  Liga MX                            crests/mexico/Liga_MX.svg
+  lea 350  Saudi Pro League                   crests/saudi-arabia/Saudi_Professional_League.svg
+  lea 351  A-League                           crests/australia/A-League.svg
+  lea 2012 China Super League                 crests/china/Chinese_Super_League.svg
+  lea 2076 3. Liga                            crests/germany/3._Liga.svg
+  lea 2149 Indian Super League                crests/india/Indian_Super_League.svg
+  lea 2221 NWSL                               crests/usa/National_Women's_Soccer_League.svg
+  nat 1    Albania                            crests/albania/Albania_National_Team.svg
+  nat 2    Andorra                            crests/andorra/Andorra_National_Team.svg
+  nat 3    Armenia                            crests/armenia/Armenia_National_Team.svg
+  nat 4    Austria                            crests/austria/Austria_National_Team.svg
+  nat 5    Azerbaijan                         crests/azerbaijan/Azerbaijan_National_Team.svg
+  nat 6    Belarus                            crests/belarus/Belarus_National_Team.svg
+  nat 7    Belgium                            crests/belgium/Belgium_National_Team.svg
+  nat 8    Bosnia and Herzegovina             crests/bosnia-and-herzegovina/Bosnia_and_Herzegovina_National_Team.svg
+  nat 9    Bulgaria                           crests/bulgaria/Bulgaria_National_Team.svg
+  nat 10   Croatia                            crests/croatia/Croatia_National_Team.svg
+  nat 11   Cyprus                             crests/cyprus/Cyprus_National_Team.svg
+  nat 12   Czech Republic                     crests/czech-republic/Czech_Republic_National_Team.svg
+  nat 13   Denmark                            crests/denmark/Denmark_National_Team.svg
+  nat 14   England                            crests/england/England_National_Team.svg
+  nat 15   Montenegro                         crests/montenegro/Montenegro_National_Team.svg
+  nat 16   Faroe Islands                      crests/faroe-islands/Faroe_Islands_National_Team.svg
+  nat 17   Finland                            crests/finland/Finland_National_Team.svg
+  nat 18   France                             crests/france/France_National_Team.svg
+  nat 19   North Macedonia                    crests/north-macedonia/North_Macedonia_National_Team.svg
+  nat 20   Georgia                            crests/georgia/Georgia_National_Team.svg
+  nat 21   Germany                            crests/germany/Germany_National_Team.svg
+  nat 22   Greece                             crests/greece/Greece_National_Team.svg
+  nat 23   Hungary                            crests/hungary/Hungary_National_Team.svg
+  nat 24   Iceland                            crests/iceland/Iceland_National_Team.svg
+  nat 25   Republic of Ireland                crests/republic-of-ireland/Republic_of_Ireland_National_Team.svg
+  nat 26   Israel                             crests/israel/Israel_National_Team.svg
+  nat 27   Italy                              crests/italy/Italy_National_Team.svg
+  nat 28   Latvia                             crests/latvia/Latvia_National_Team.svg
+  nat 29   Liechtenstein                      crests/liechtenstein/Liechtenstein_National_Team.svg
+  nat 30   Lithuania                          crests/lithuania/Lithuania_National_Team.svg
+  nat 31   Luxembourg                         crests/luxembourg/Luxembourg_National_Team.svg
+  nat 32   Malta                              crests/malta/Malta_National_Team.svg
+  nat 33   Moldova                            crests/moldova/Moldova_National_Team.svg
+  nat 35   Northern Ireland                   crests/northern-ireland/Northern_Ireland_National_Team.svg
+  nat 36   Norway                             crests/norway/Norway_National_Team.svg
+  nat 37   Poland                             crests/poland/Poland_National_Team.svg
+  nat 39   Romania                            crests/romania/Romania_National_Team.svg
+  nat 40   Russia                             crests/russia/Russia_National_Team.svg
+  nat 41   San Marino                         crests/san-marino/San_Marino_National_Team.svg
+  nat 42   Scotland                           crests/scotland/Scotland_National_Team.svg
+  nat 43   Slovakia                           crests/slovakia/Slovakia_National_Team.svg
+  nat 44   Slovenia                           crests/slovenia/Slovenia_National_Team.svg
+  nat 45   Spain                              crests/spain/Spain_National_Team.svg
+  nat 46   Sweden                             crests/sweden/Sweden_National_Team.svg
+  nat 47   Switzerland                        crests/switzerland/Switzerland_National_Team.svg
+  nat 48   Turkey                             crests/turkey/Turkey_National_Team.svg
+  nat 49   Ukraine                            crests/ukraine/Ukraine_National_Team.svg
+  nat 50   Wales                              crests/wales/Wales_National_Team.svg
+  nat 51   Serbia                             crests/serbia/Serbia_National_Team.svg
+  nat 52   Argentina                          crests/argentina/Argentina_National_Team.svg
+  nat 53   Bolivia                            crests/bolivia/Bolivia_National_Team.svg
+  nat 54   Brazil                             crests/brazil/Brazil_National_Team.svg
+  nat 55   Chile                              crests/chile/Chile_National_Team.svg
+  nat 56   Colombia                           crests/colombia/Colombia_National_Team.svg
+  nat 57   Ecuador                            crests/ecuador/Ecuador_National_Team.svg
+  nat 58   Paraguay                           crests/paraguay/Paraguay_National_Team.svg
+  nat 59   Peru                               crests/peru/Peru_National_Team.svg
+  nat 60   Uruguay                            crests/uruguay/Uruguay_National_Team.svg
+  nat 61   Venezuela                          crests/venezuela/Venezuela_National_Team.svg
+  nat 62   Anguilla                           crests/anguilla/Anguilla_National_Team.svg
+  nat 63   Antigua and Barbuda                crests/antigua-and-barbuda/Antigua_and_Barbuda_National_Team.svg
+  nat 64   Aruba                              crests/aruba/Aruba_National_Team.svg
+  nat 65   Bahamas                            crests/bahamas/Bahamas_National_Team.svg
+  nat 66   Barbados                           crests/barbados/Barbados_National_Team.svg
+  nat 67   Belize                             crests/belize/Belize_National_Team.svg
+  nat 68   Bermuda                            crests/bermuda/Bermuda_National_Team.svg
+  nat 69   British Virgin Islands             crests/british-virgin-islands/British_Virgin_Islands_National_Team.svg
+  nat 70   Canada                             crests/canada/Canada_National_Team.svg
+  nat 71   Cayman Islands                     crests/cayman-islands/Cayman_Islands_National_Team.svg
+  nat 72   Costa Rica                         crests/costa-rica/Costa_Rica_National_Team.svg
+  nat 73   Cuba                               crests/cuba/Cuba_National_Team.svg
+  nat 74   Dominica                           crests/dominica/Dominica_National_Team.svg
+  nat 76   El Salvador                        crests/el-salvador/El_Salvador_National_Team.svg
+  nat 77   Grenada                            crests/grenada/Grenada_National_Team.svg
+  nat 78   Guatemala                          crests/guatemala/Guatemala_National_Team.svg
+  nat 79   Guyana                             crests/guyana/Guyana_National_Team.svg
+  nat 80   Haiti                              crests/haiti/Haiti_National_Team.svg
+  nat 81   Honduras                           crests/honduras/Honduras_National_Team.svg
+  nat 82   Jamaica                            crests/jamaica/Jamaica_National_Team.svg
+  nat 83   Mexico                             crests/mexico/Mexico_National_Team.svg
+  nat 84   Montserrat                         crests/montserrat/Montserrat_National_Team.svg
+  nat 85   Curaçao                            crests/curacao/Curacao_National_Team.svg
+  nat 86   Nicaragua                          crests/nicaragua/Nicaragua_National_Team.svg
+  nat 87   Panama                             crests/panama/Panama_National_Team.svg
+  nat 88   Puerto Rico                        crests/puerto-rico/Puerto_Rico_National_Team.svg
+  nat 89   St. Kitts and Nevis                crests/st-kitts-and-nevis/St_Kitts_and_Nevis_National_Team.svg
+  nat 92   Suriname                           crests/suriname/Suriname_National_Team.svg
+  nat 93   Trinidad and Tobago                crests/trinidad-and-tobago/Trinidad_and_Tobago_National_Team.svg
+  nat 94   Turks and Caicos Islands           crests/turks-and-caicos-islands/Turks_and_Caicos_Islands_National_Team.svg
+  nat 97   Algeria                            crests/algeria/Algeria_National_Team.svg
+  nat 98   Angola                             crests/angola/Angola_National_Team.svg
+  nat 99   Benin                              crests/benin/Benin_National_Team.svg
+  nat 100  Botswana                           crests/botswana/Botswana_National_Team.svg
+  nat 101  Burkina Faso                       crests/burkina-faso/Burkina_Faso_National_Team.svg
+  nat 102  Burundi                            crests/burundi/Burundi_National_Team.svg
+  nat 103  Cameroon                           crests/cameroon/Cameroon_National_Team.svg
+  nat 105  Central African Republic           crests/central-african-republic/Central_African_Republic_National_Team.svg
+  nat 106  Chad                               crests/chad/Chad_National_Team.svg
+  nat 107  Congo                              crests/congo/Congo_National_Team.svg
+  nat 108  Côte d'Ivoire                      crests/cote-d-ivoire/Côte_d'Ivoire_National_Team.svg
+  nat 109  Djibouti                           crests/djibouti/Djibouti_National_Team.svg
+  nat 110  Congo DR                           crests/congo-dr/Congo_DR_National_Team.svg
+  nat 111  Egypt                              crests/egypt/Egypt_National_Team.svg
+  nat 112  Equatorial Guinea                  crests/equatorial-guinea/Equatorial_Guinea_National_Team.svg
+  nat 113  Eritrea                            crests/eritrea/Eritrea_National_Team.svg
+  nat 114  Ethiopia                           crests/ethiopia/Ethiopia_National_Team.svg
+  nat 115  Gabon                              crests/gabon/Gabon_National_Team.svg
+  nat 116  Gambia                             crests/gambia/Gambia_National_Team.svg
+  nat 117  Ghana                              crests/ghana/Ghana_National_Team.svg
+  nat 118  Guinea                             crests/guinea/Guinea_National_Team.svg
+  nat 119  Guinea-Bissau                      crests/guinea-bissau/Guinea-Bissau_National_Team.svg
+  nat 120  Kenya                              crests/kenya/Kenya_National_Team.svg
+  nat 121  Lesotho                            crests/lesotho/Lesotho_National_Team.svg
+  nat 122  Liberia                            crests/liberia/Liberia_National_Team.svg
+  nat 123  Libya                              crests/libya/Libya_National_Team.svg
+  nat 124  Madagascar                         crests/madagascar/Madagascar_National_Team.svg
+  nat 125  Malawi                             crests/malawi/Malawi_National_Team.svg
+  nat 126  Mali                               crests/mali/Mali_National_Team.svg
+  nat 127  Mauritania                         crests/mauritania/Mauritania_National_Team.svg
+  nat 128  Mauritius                          crests/mauritius/Mauritius_National_Team.svg
+  nat 129  Morocco                            crests/morocco/Morocco_National_Team.svg
+  nat 130  Mozambique                         crests/mozambique/Mozambique_National_Team.svg
+  nat 131  Namibia                            crests/namibia/Namibia_National_Team.svg
+  nat 132  Niger                              crests/niger/Niger_National_Team.svg
+  nat 133  Nigeria                            crests/nigeria/Nigeria_National_Team.svg
+  nat 134  Rwanda                             crests/rwanda/Rwanda_National_Team.svg
+  nat 136  Senegal                            crests/senegal/Senegal_National_Team.svg
+  nat 137  Seychelles                         crests/seychelles/Seychelles_National_Team.svg
+  nat 138  Sierra Leone                       crests/sierra-leone/Sierra_Leone_National_Team.svg
+  nat 139  Somalia                            crests/somalia/Somalia_National_Team.svg
+  nat 140  South Africa                       crests/south-africa/South_Africa_National_Team.svg
+  nat 141  Sudan                              crests/sudan/Sudan_National_Team.svg
+  nat 142  Eswatini                           crests/eswatini/Eswatini_National_Team.svg
+  nat 143  Tanzania                           crests/tanzania/Tanzania_National_Team.svg
+  nat 144  Togo                               crests/togo/Togo_National_Team.svg
+  nat 145  Tunisia                            crests/tunisia/Tunisia_National_Team.svg
+  nat 146  Uganda                             crests/uganda/Uganda_National_Team.svg
+  nat 147  Zambia                             crests/zambia/Zambia_National_Team.svg
+  nat 148  Zimbabwe                           crests/zimbabwe/Zimbabwe_National_Team.svg
+  nat 149  Afghanistan                        crests/afghanistan/Afghanistan_National_Team.svg
+  nat 150  Bahrain                            crests/bahrain/Bahrain_National_Team.svg
+  nat 151  Bangladesh                         crests/bangladesh/Bangladesh_National_Team.svg
+  nat 152  Bhutan                             crests/bhutan/Bhutan_National_Team.svg
+  nat 154  Cambodia                           crests/cambodia/Cambodia_National_Team.svg
+  nat 157  Guam                               crests/guam/Guam_National_Team.svg
+  nat 158  Hong Kong                          crests/hong-kong/Hong_Kong_National_Team.svg
+  nat 159  India                              crests/india/India_National_Team.svg
+  nat 160  Indonesia                          crests/indonesia/Indonesia_National_Team.svg
+  nat 161  Iran                               crests/iran/Iran_National_Team.svg
+  nat 162  Iraq                               crests/iraq/Iraq_National_Team.svg
+  nat 163  Japan                              crests/japan/Japan_National_Team.svg
+  nat 164  Jordan                             crests/jordan/Jordan_National_Team.svg
+  nat 165  Kazakhstan                         crests/kazakhstan/Kazakhstan_National_Team.svg
+  nat 168  Kuwait                             crests/kuwait/Kuwait_National_Team.svg
+  nat 169  Kyrgyzstan                         crests/kyrgyzstan/Kyrgyzstan_National_Team.svg
+  nat 170  Laos                               crests/laos/Laos_National_Team.svg
+  nat 171  Lebanon                            crests/lebanon/Lebanon_National_Team.svg
+  nat 173  Malaysia                           crests/malaysia/Malaysia_National_Team.svg
+  nat 174  Maldives                           crests/maldives/Maldives_National_Team.svg
+  nat 175  Mongolia                           crests/mongolia/Mongolia_National_Team.svg
+  nat 176  Myanmar                            crests/myanmar/Myanmar_National_Team.svg
+  nat 177  Nepal                              crests/nepal/Nepal_National_Team.svg
+  nat 178  Oman                               crests/oman/Oman_National_Team.svg
+  nat 179  Pakistan                           crests/pakistan/Pakistan_National_Team.svg
+  nat 180  Palestine                          crests/palestine/Palestine_National_Team.svg
+  nat 181  Philippines                        crests/philippines/Philippines_National_Team.svg
+  nat 182  Qatar                              crests/qatar/Qatar_National_Team.svg
+  nat 183  Saudi Arabia                       crests/saudi-arabia/Saudi_Arabia_National_Team.svg
+  nat 184  Singapore                          crests/singapore/Singapore_National_Team.svg
+  nat 185  Sri Lanka                          crests/sri-lanka/Sri_Lanka_National_Team.svg
+  nat 186  Syria                              crests/syria/Syria_National_Team.svg
+  nat 187  Tajikistan                         crests/tajikistan/Tajikistan_National_Team.svg
+  nat 188  Thailand                           crests/thailand/Thailand_National_Team.svg
+  nat 189  Turkmenistan                       crests/turkmenistan/Turkmenistan_National_Team.svg
+  nat 191  Uzbekistan                         crests/uzbekistan/Uzbekistan_National_Team.svg
+  nat 192  Vietnam                            crests/vietnam/Vietnam_National_Team.svg
+  nat 193  Yemen                              crests/yemen/Yemen_National_Team.svg
+  nat 194  American Samoa                     crests/american-samoa/American_Samoa_National_Team.svg
+  nat 195  Australia                          crests/australia/Australia_National_Team.svg
+  nat 196  Cook Islands                       crests/cook-islands/Cook_Islands_National_Team.svg
+  nat 197  Fiji                               crests/fiji/Fiji_National_Team.svg
+  nat 198  New Zealand                        crests/new-zealand/New_Zealand_National_Team.svg
+  nat 199  Papua New Guinea                   crests/papua-new-guinea/Papua_New_Guinea_National_Team.svg
+  nat 200  Samoa                              crests/samoa/Samoa_National_Team.svg
+  nat 201  Solomon Islands                    crests/solomon-islands/Solomon_Islands_National_Team.svg
+  nat 202  Tahiti                             crests/tahiti/Tahiti_National_Team.svg
+  nat 203  Tonga                              crests/tonga/Tonga_National_Team.svg
+  nat 204  Vanuatu                            crests/vanuatu/Vanuatu_National_Team.svg
+  nat 205  Gibraltar                          crests/gibraltar/Gibraltar_National_Team.svg
+  nat 206  Greenland                          crests/greenland/Greenland_National_Team.svg
+  nat 207  Dominican Republic                 crests/dominican-republic/Dominican_Republic_National_Team.svg
+  nat 208  Estonia                            crests/estonia/Estonia_National_Team.svg
+  nat 212  Timor-Leste                        crests/timor-leste/Timor-Leste_National_Team.svg
+  nat 214  Comoros                            crests/comoros/Comoros_National_Team.svg
+  nat 215  New Caledonia                      crests/new-caledonia/New_Caledonia_National_Team.svg
+  nat 218  South Sudan                        crests/south-sudan/South_Sudan_National_Team.svg
+  nat 219  Kosovo                             crests/kosovo/Kosovo_National_Team.svg

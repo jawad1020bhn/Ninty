@@ -13,6 +13,9 @@ API
   POST /api/engine/*     new, play, advance, finish, close_season, transfer,
                          save, delete
   GET  /api/{art,stadium,venue,clubcolors,i18n,fmtext,myscene}  shared assets
+  GET  /api/crest        club/league/nation mark, or a generated shield
+  GET  /api/face         player/manager portrait, or a generated avatar
+  GET  /api/graphics/status  crest coverage and portrait-cache counts
 
 The old PES/FL26 career backend was removed in r23. static/index.html is kept
 only as a design reference: it calls those removed endpoints and will not run
@@ -41,11 +44,14 @@ import engine as fcengine    # noqa: E402  the career engine (data/saves)
 import clubcolors            # noqa: E402  club colour overrides
 import wiki                  # noqa: E402  stadium photo cache
 import venues                # noqa: E402  read-only venue metadata
+import graphics              # noqa: E402  crests + generated fallbacks
+import faces                 # noqa: E402  licence-gated portraits
 
 DEFAULT_CFG = {
     'port': 8765,
     'lang': 'en',
     'wiki_web': False,       # offline by default; cached images still serve
+    'faces_web': False,      # portraits: local cache only unless enabled
 }
 CFG = dict(DEFAULT_CFG)
 LOCK = threading.Lock()
@@ -635,6 +641,56 @@ class H(BaseHTTPRequestHandler):
                 if not _p:
                     return self.send(404, b'', 'image/jpeg')
                 return self.send(200, open(_p, 'rb').read(), 'image/jpeg')
+            if u.path == '/api/crest':
+                _q = parse_qs(u.query)
+                if 'club' in _q:
+                    _kind, _id = 'clubs', _q['club'][0]
+                elif 'league' in _q:
+                    _kind, _id = 'leagues', _q['league'][0]
+                elif 'nation' in _q:
+                    _kind, _id = 'nations', _q['nation'][0]
+                else:
+                    return self.send(400, {'error': 'need club, league or nation'})
+                _id = re.sub(r'[^0-9]', '', str(_id))[:9]
+                if not _id:
+                    return self.send(400, {'error': 'id must be numeric'})
+                _tbl = {'clubs': fc27db.clubs, 'leagues': fc27db.leagues,
+                        'nations': fc27db.nations}[_kind]()
+                _row = (_tbl or {}).get(_id) or {}
+                if not _row:
+                    return self.send(404, {'error': 'unknown ' + _kind + ' id'})
+                _b, _mt, _src = graphics.crest(_kind, _id, _row.get('name', ''),
+                                               _row.get('colors'),
+                                               os.path.join(HERE, 'data', 'graphics'))
+                if _q.get('meta', [''])[0] in ('1', 'true'):
+                    return self.send(200, dict(kind=_kind, id=_id, name=_row.get('name'),
+                                               source=_src, mime=_mt, bytes=len(_b)))
+                return self.send(200, _b, _mt)
+            if u.path == '/api/face':
+                _q = parse_qs(u.query)
+                _gd = os.path.join(HERE, 'data', 'graphics')
+                if 'manager' in _q:
+                    _cid = re.sub(r'[^0-9]', '', str(_q['manager'][0]))[:9]
+                    _mg = (fc27db.managers() or {}).get(_cid) or {}
+                    _nm, _key, _desc = _mg.get('name') or '', 'm' + _cid, 'football manager'
+                else:
+                    _pid = re.sub(r'[^0-9]', '', str(_q.get('pid', [''])[0]))[:9]
+                    if not _pid:
+                        return self.send(400, {'error': 'need pid or manager'})
+                    _nm, _key, _desc = fc27db.name(int(_pid)) or '', 'p' + _pid, 'footballer'
+                _b, _mt, _src, _att = faces.face(_key, _nm, _gd,
+                                                allow_network=bool(CFG.get('faces_web')),
+                                                description=_desc)
+                if _q.get('meta', [''])[0] in ('1', 'true'):
+                    return self.send(200, dict(name=_nm, source=_src, mime=_mt,
+                                               bytes=len(_b), attribution=_att))
+                return self.send(200, _b, _mt)
+            if u.path == '/api/graphics/status':
+                _gd = os.path.join(HERE, 'data', 'graphics')
+                _st = graphics.status(_gd)
+                _st['faces'] = faces.status(_gd)
+                _st['faces_web'] = bool(CFG.get('faces_web'))
+                return self.send(200, _st)
             if u.path == '/favicon.ico':
                 return self.send(204, b'', 'image/x-icon')
             name = 'index.html' if u.path in ('/', '') else u.path.lstrip('/').replace('\\', '/')

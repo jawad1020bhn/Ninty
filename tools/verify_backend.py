@@ -154,6 +154,9 @@ def section_routes():
         '/api/engine/finish', '/api/engine/close_season',
         '/api/i18n', '/api/fmtext', '/api/clubcolors', '/api/venue', '/api/myscene',
         '/api/myscene-m', '/api/art', '/api/stadium',
+        # r24 graphics: crests, portraits and their coverage report. These are
+        # the only routes added since the strip; none touches a save format.
+        '/api/crest', '/api/face', '/api/graphics/status',
     }
     check('every intended route is present', not (expected - found), ', '.join(sorted(expected - found)))
     extra = found - expected

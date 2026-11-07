@@ -473,6 +473,23 @@ LICENSING - IMPORTANT
     publishing or selling this.  The importer and runtime depend only on the
     JSON schema, so the data can be swapped for a set you have rights to.
 
+    CRESTS ARE A SEPARATE, ADDITIONAL PROBLEM.  The logo collection imported by
+    tools/import_graphics.py is also MIT, but again only for its code and
+    curation: every crest is the trademark and copyright of its club, league or
+    federation, and no open-source licence grants those rights.  Because this
+    repository is PUBLIC, the artwork is NOT committed - data/graphics/crests/
+    is git-ignored, exactly like the older data/crests/.  Only the manifest and
+    ATTRIBUTION.txt are tracked.  Run the importer locally for a personal
+    install; do not publish the fetched files.  The generated shields in
+    lib/graphics.py are original geometry and carry no third-party rights.
+
+    PORTRAITS are restricted to the freely-licensed subset of Wikimedia Commons
+    (CC0, public domain, CC BY, CC BY-SA).  Fair-use, non-free, non-commercial
+    and no-derivatives images are refused, and every accepted image records its
+    attribution.  Copyright is not the only right involved: a free photo still
+    depicts a real person, so this is for editorial/fan display, not
+    merchandising or endorsement.
+
 BUILD HISTORY
 -------------
 1. First build: synthetic saves only.  It could NOT open a real PES 2017 save.
@@ -604,6 +621,14 @@ BUILD HISTORY
    were decoupled from save bytes and proven behaviourally identical.  A new
    tools/verify_backend.py adds 102 checks, mutation-tested 22/22.  63-endpoint
    live differential vs r22: zero regressions.  See the section below.
+22. r24: GRAPHICS.  Established that FC 27 ships no artwork, then added crests
+   and portraits in three degrading layers so nothing renders broken.  A pinned,
+   country-scoped importer resolves 709/717 clubs, 32/41 leagues and 197/219
+   nations; generated shields cover the rest and the whole of a fresh clone.
+   Portraits are restricted to freely-licensed Commons images behind separate
+   licence and identity gates, off by default.  Three new routes.  175 new
+   checks, mutation-tested 24/24 after two weak checks were strengthened.  The
+   artwork is git-ignored because this repository is public.  See GRAPHICS below.
 
 REMOVING THE PES BACKEND (r23)
 ------------------------------
@@ -628,9 +653,16 @@ WHAT THE SERVER IS NOW
                           finish, close_season)
     GET  /api/art, /api/stadium, /api/venue, /api/clubcolors, /api/i18n,
          /api/fmtext, /api/myscene, /api/myscene-m   shared football assets
+    GET  /api/crest       ?club= | ?league= | ?nation=   club/league/nation mark
+    GET  /api/face        ?pid= | ?manager=              player/manager portrait
+    GET  /api/graphics/status                            crest and portrait coverage
     plus /api/version, /api/clientlog, /api/quit and PIN-gated phone/tablet
     access on port+1.  Static files are served from static/ with a traversal
     guard.  Everything else returns 404.
+
+    /api/crest and /api/face accept &meta=1 to return JSON instead of image
+    bytes, reporting source ('vendored' | 'generated' for a crest, 'photo' |
+    'avatar' for a face), mime, byte length and any portrait attribution.
 
 THE OLD UI IS AN INERT REFERENCE
     static/index.html is deliberately UNCHANGED (byte-for-byte).  It is kept as
@@ -699,12 +731,105 @@ kept endpoints including a full 380-match season and a rollover: ZERO
 regressions, every payload byte-identical.  24 removed PES endpoints correctly
 return 404, and the traversal guard still blocks ../ paths.
 
-All 29 surviving modules import cleanly.  totals: verify_fc27 64 checks,
-verify_engine 131 checks, verify_backend 102 checks - 297 passing.
+All 29 surviving modules import cleanly.  Totals are listed under VERIFYING
+GRAPHICS below, which supersedes the r23 count of 297.
+
+GRAPHICS: CRESTS AND PORTRAITS (r24)
+------------------------------------
+FC 27's database contains NO artwork.  The kit's own README says "external
+crests/textures ... require the game's own tooling", so crests cannot come from
+the same files as the players and ratings.  Extracting them from a game install
+would need EA's texture pipeline (the ftex/bc7/dds tooling deleted in r23) and
+would produce EA's copyrighted images.
+
+Instead there are three layers, and every request resolves through them in
+order.  Nothing ever renders broken:
+
+    1. VENDORED   a real mark from the local cache built by the importer
+    2. GENERATED  an original shield built from that club's own FC 27 colours
+    3. (faces)    a freely-licensed Commons photo, else a generated avatar
+
+IMPORTING CRESTS (optional, local, personal use)
+    python3 tools/import_graphics.py --dry-run   # report coverage, write nothing
+    python3 tools/import_graphics.py             # download pinned snapshot, extract
+
+The upstream snapshot is pinned to a full commit sha so a re-import is
+reproducible.  Matching is confined to each club's own country folder, because
+an unscoped token match happily pairs Leverkusen with "Leverstock Green" and
+Wolfsberger with Austria's "Wolfsberg".  Coverage measured against this database:
+
+    clubs    709 / 717  (98.9%)   561 exact, 52 token, 71 alias, 24 global, 1 parent
+    leagues   32 / 41
+    nations  197 / 219
+    874 unique files, about 33 MB
+
+The 8 unmatched clubs are genuinely absent or ambiguous upstream and get
+generated shields.  61 crests are legitimately shared by more than one club
+(a women's side and its parent), so the manifest records 938 ids over 874 files.
+
+Two matching problems are worth knowing about.  EA ships unlicensed clubs under
+invented names - "Lombardia FC" is Inter and "Bergamo Calcio" is Atalanta - which
+no similarity measure can resolve, so they are mapped explicitly.  And fuzzy
+matching proposed several WRONG answers that would have shipped a rival's crest
+(Stade Rennais -> Stade de Reims, Real Sociedad B -> Real Sociedad, Austria
+Lustenau -> Austria Wien); every alias in the table was checked by eye and the
+rejected proposals are recorded in a comment so they are not reintroduced.
+
+The artwork is git-ignored (see LICENSING above).  A fresh clone with no cache
+still renders all 717 clubs, all 41 leagues and all 219 nations from generated
+geometry, which is the behaviour the verifier actually asserts.
+
+PORTRAITS
+    lib/faces.py accepts only freely-licensed images, behind two independent
+    gates: licence_ok() refuses anything not explicitly free (a MISSING licence
+    is a refusal, not a pass), and identity_ok() refuses the wrong human, since
+    a name collision that ships another person's face is worse than no face.
+    Network access is OFF by default (config faces_web); with it off the module
+    reads the local cache and otherwise returns a generated avatar, so the game
+    never silently phones out.  Accepted images are cached with their attribution
+    and a line in data/graphics/faces/CREDITS.txt.  A network failure is NOT
+    recorded as "no photo exists", so a transient error cannot poison the cache.
+
+    The old lib/wiki.py photo fetchers requested iiprop=url|size|mime with no
+    licence metadata at all.  They are unreachable from the server (only
+    fetch_stadium is called) and were left alone rather than retrofitted; the
+    new module is the only portrait path.
+
+VERIFYING GRAPHICS
+    python3 tools/verify_graphics.py                    # 175 checks, under 1 second
+    python3 tools/verify_graphics.py --http http://127.0.0.1:8765   # 196 with a server
+    python3 tools/mutate_graphics.py                    # 24 mutants, about 8 seconds
+
+The portrait gates are tested against synthetic Commons payloads, not the live
+API: the licence and identity decisions are pure functions, so they are verified
+exhaustively offline.  THE LIVE NETWORK PATH IS NOT EXERCISED by these checks.
+
+Mutation-tested 24/24.  Two weak checks were found and fixed during this step.
+The traversal guard was only tested with paths ending in .py/.exe, which the
+extension allowlist already rejected on its own, so removing the guard changed
+nothing; it is now tested with ../../secret.svg and against a real file outside
+the cache.  And the importer was only checked by reading the committed manifest,
+which is a static file, so breaking the importer was invisible; the verifier now
+RUNS it against a synthetic tarball where two clubs share one crest.
+
+That second check guards a real bug found while building this: keying the
+manifest by filename silently dropped 64 clubs whose crest was already present.
+
+    Totals: verify_fc27 64 + verify_engine 131 + verify_backend 102
+            + verify_graphics 175 = 472 checks passing.
+    Mutation: mutate_backend 22/22, mutate_graphics 24/24.
 
 WHAT IS STILL NOT BUILT
-    * a UI on top of /api/engine/* (the old one is inert, by choice)
+    * a UI on top of /api/engine/* (the old one is inert, by choice).  The
+      graphics routes are ready for it to consume, but nothing draws them yet:
+      the inert index.html does not call /api/crest or /api/face either.
     * cups and continental competition
     * a transfer market with negotiation and budgets actually spent
     * morale
     Rollover auto-renews expiring contracts until negotiation exists.
+
+    Graphics limitations worth knowing: 8 clubs have no upstream crest and show
+    a generated shield; 9 leagues and 22 nations likewise.  Portrait coverage is
+    unmeasured - the live Commons path has never been exercised from this
+    environment, so expect most of the 21,623 players (and the 265 unnamed
+    managers) to show a generated avatar even with faces_web enabled.
