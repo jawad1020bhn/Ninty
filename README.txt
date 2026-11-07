@@ -302,10 +302,11 @@ REAL CLUB NAMES (r25)
 ---------------------
 EA does not hold the licence for three Serie A clubs, so it ships them under
 invented names.  This database now carries the REAL names, in the data itself -
-not as a display-layer patch, so the API, the engine, saves, search and the
-crest resolver all see the same name.  One competition name is fixed the same
-way, and the generic stadium names are deliberately NOT touched; both are
-explained below:
+not as a display-layer patch, so the read APIs, the engine, its saves and the
+crest resolver all see the same name.  (/api/fc27/search matches PLAYER names
+only - there is no club-name search to update.)  One competition name is fixed
+the same way, and the generic stadium names are deliberately NOT touched; both
+are explained below:
 
     id 131681   Milano FC       ->  AC Milan
     id 131682   Lombardia FC    ->  Inter
