@@ -85,6 +85,7 @@ def upcoming(st, tid=None, limit=10):
 def squad(st, tid=None):
     """A club's squad with career state, sorted starters-first then by rating."""
     import fc27
+    from . import roster as R
     tid = int(tid if tid is not None else st['club'])
     meta = fc27.squad_meta().get(str(tid)) or {}
     out = []
@@ -95,9 +96,9 @@ def squad(st, tid=None):
         s = _save.stats_of(st, pid)
         m = meta.get(str(pid)) or [0, 2, 0]
         out.append(dict(
-            pid=int(pid), name=fc27.name(pid), shirt=m[0], role=m[1],
-            pos=fc27.positions().get(str(pid), 5), ovr=r[_save.P_OVR],
-            age=lineup.age_on(pid, st['date']), form=r[_save.P_FORM],
+            pid=int(pid), name=R.name(st, pid), shirt=m[0], role=m[1],
+            pos=R.pos(st, pid), ovr=r[_save.P_OVR],
+            age=R.age(st, pid), form=r[_save.P_FORM],
             fitness=r[_save.P_FIT], injury=r[_save.P_INJ],
             suspended=(st.get('suspended') or {}).get(str(pid), 0),
             value=r[_save.P_VALUE], contract=r[_save.P_CONTRACT],
@@ -116,6 +117,34 @@ def move_player(st, pid, to_tid):
     return _save.move_player(st, pid, to_tid)
 
 
+def season_finished(st):
+    """True when every fixture in the career's leagues has been played."""
+    fx = st.get('fixtures') or []
+    return bool(fx) and all(f['played'] for f in fx)
+
+
+def finish_season(st):
+    """Play out every remaining fixture so the season can be closed."""
+    return season.finish_season(st)
+
+
+def close_season(st):
+    """Roll the career into the next season. Raises SaveError if unfinished.
+
+    Ages and develops every player, retires the old, revalues the market, brings
+    through a youth intake, releases the surplus and opens the next fixture list.
+    Returns the report; the caller decides when to save().
+    """
+    from . import rollover
+    return rollover.close_season(st)
+
+
+def history(st, limit=10):
+    """Archived season reports, newest first (movers abbreviated on disk)."""
+    return list(reversed((st.get('history') or [])[-int(limit):]))
+
+
 __all__ = ['new', 'save', 'load', 'list_saves', 'delete', 'play_next', 'advance',
            'play_fixture', 'table', 'scorers', 'summary', 'next_fixture',
-           'upcoming', 'squad', 'select', 'move_player', 'SaveError']
+           'upcoming', 'squad', 'select', 'move_player', 'SaveError',
+           'season_finished', 'finish_season', 'close_season', 'history']

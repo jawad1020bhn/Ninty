@@ -9,6 +9,12 @@ r12 begins the move from a PES save-file companion to a standalone game:
 EA SPORTS FC 27 is now the only game and supplies the player database.
 See FC 27 DATABASE below for what is wired and what is NOT yet done.
 
+r22 makes it a CAREER rather than a single season: the season now closes and
+the next one opens, with aging, development, retirement, revaluation, youth
+intake at every club and a release valve that keeps the world from inflating.
+See SEASON ROLLOVER below.  r21 added the engine itself; r20 the database
+checker; r18 the table-coverage audit (268/268 tables accounted for).
+
 FC 27 DATABASE (r12)
 --------------------
 The game runs on 21,623 players, 717 real clubs, 41 leagues and 102 cups
@@ -104,6 +110,10 @@ about 1.2 MB each).
     lib/engine/match.py     match simulation on EA's 34 raw attributes
     lib/engine/season.py    play fixtures, tables, form, injuries, bans
     lib/engine/positions.py EA's 28-id enum -> the app's 13 POSN roles
+    lib/engine/roster.py    save-aware player facts + compact save codecs
+    lib/engine/rollover.py  end-of-season aging, growth, retirement, intake
+    lib/engine/names.py     regen names by language pool and club gender
+    lib/engine/posgroup.py  the inferred position-group enum for templates
 
 The division of responsibility is deliberate: the DATABASE owns static facts
 (names, attributes, birthdays, stadiums, formation shapes) and the SAVE owns
@@ -127,6 +137,9 @@ WHAT WORKS NOW
     * injuries heal and bans are served as the clock advances
     * deterministic: the same seed replays a season identically, and a
       reloaded save continues exactly as an uninterrupted one would
+    * MULTI-SEASON: close a season and the next one opens.  Players age,
+      develop or decline, retire, get revalued; every club gets a youth
+      intake, surplus players are released, and free agents age out
 
 CALIBRATION IS MEASURED, NOT GUESSED
 Three full 380-match seasons (seeds 7, 19, 31) were simulated over a grid of
@@ -146,13 +159,58 @@ Two data traps found while building this, both recorded in the code:
     which rivals.json rates intensity 5.  The engine treats a fixture as big
     if EITHER source says so; fc27.is_big_match() still reports only upstream.
 
+SEASON ROLLOVER
+    close_season() ages and develops every player, retires the old, revalues
+    the market, brings through an academy group at all 717 clubs, releases the
+    surplus to free agency, and opens the next fixture list.  It reuses two
+    more credited modules rather than inventing curves:
+
+        lib/growth   month_plan() - development, decline, destiny, late bloomers
+        lib/revalue  merit()/new_value() - end-of-season revaluation
+
+    Attribute deltas live in the SAVE as an overlay; the database is never
+    mutated.  Retirement and intake are engine rules, not database facts:
+    upstream ships isretiring = 0 for all 21,623 players and no intake rules.
+
+    Six defects found by running FIVE seasons, all recorded in the code and
+    covered by the verifier:
+      * the keeper-restock loop asked the DATABASE whether a club had two
+        keepers.  A generated keeper is invisible there, so the test never
+        became true and the loop span forever.  Player facts now resolve
+        through lib/engine/roster.py, and the loop is bounded.
+      * the keeper age allowance was ADDED, retiring 30-year-old keepers as if
+        they were 33.  Keepers get three years SUBTRACTED.
+      * only 20 of 717 clubs are simulated, so 19,081 players had no minutes.
+        Scoring absent evidence as bad form retired 1,224 of them in one
+        close.  Unsimulated players now get a neutral regular season.
+      * intake ran BEFORE trimming, so a club already at the squad limit got
+        no academy at all - including the big clubs a manager is most likely
+        to run.  Squads are trimmed first, with slots reserved for the intake.
+      * nothing ever left the world except retirees: population climbed
+        21,623 -> 24,355 in three seasons while mean OVR fell.  Clubs now carry
+        a 26-man list, the surplus is released, and unsigned free agents age
+        out.  Population settles near 19,000 and elite quality holds steady
+        (Premier League best-XI mean 80.28 -> 80.02 over six seasons).
+      * unfiltered name picking gave men's clubs feminine forenames and mixed
+        language pools ("Maimouna Kubanychbekova").  Names now come from ONE
+        pool and match the club's own `women` flag (85 of 717 are women's
+        sides).  The flag meanings were verified against 363 known names.
+
+    A youth player who is not selected still trains: without an academy floor
+    his playing share was 0 and he could never close the gap to the seniors
+    ahead of him.  Generated players now reach first-team minutes.
+
+    Saves stay small: per-player progress is stored positionally instead of
+    as 25 repeated attribute names, and archived history keeps the headline
+    movers.  A five-season career is about 7 MB instead of 15 MB at three.
+
 NOT BUILT YET (honest scope)
-    cups and continental competition, the transfer market and negotiations,
-    player growth/aging between seasons, youth intake and regens, budgets
-    spent, morale effects, multi-season rollover, and the UI screens.  The
-    data for all of these is already shipped and verified; the engine
-    increment that consumes it is still to come.  Emergency call-ups stand in
-    for proper youth promotion when injuries strip a squad below 11.
+    cups and continental competition, the transfer market and contract
+    negotiations, budgets spent, morale effects, and the UI screens.  The
+    data for these is already shipped and verified; the engine increment that
+    consumes it is still to come.  Rollover auto-renews expiring contracts
+    until negotiation exists.  The engine is reachable by API only - the
+    career screens still gate on a PES save.
 
 ENGINE API
     GET  /api/engine/careers                 list careers
@@ -164,12 +222,19 @@ ENGINE API
     POST /api/engine/play                    {id} play the next fixture
     POST /api/engine/advance                 {id, days} run the clock (1..400)
     POST /api/engine/transfer                {id, pid, to}
+    POST /api/engine/finish                  {id} play out the whole season
+    POST /api/engine/close_season            {id} roll into the next season
+    GET  /api/engine/history?id=&limit=      archived season reports
     POST /api/engine/save                    {id}
     POST /api/engine/delete                  {id}
 
+    play only advances the MANAGED club's fixtures, so finish exists to play
+    the rest of the league; close_season refuses (400) until every fixture is
+    played, rather than half-applying a rollover.
+
 VERIFYING THE ENGINE
-    python3 tools/verify_engine.py            # 75 checks, about 8 seconds
-    python3 tools/verify_engine.py --quick    # 63 checks, skips calibration
+    python3 tools/verify_engine.py            # 129 checks, about 60 seconds
+    python3 tools/verify_engine.py --quick    # 117 checks, skips calibration
 
 Careers are written to a temporary directory, so the verifier can never touch
 a real career.  It asserts BEHAVIOUR, not just consistency: reproducibility,
@@ -180,7 +245,19 @@ the stored Form equalling what formengine computes.
 Home advantage is tested in ISOLATION by putting the SAME XI on both sides,
 so team quality cannot mask a broken venue multiplier.
 
-The verifier was mutation-tested against 12 deliberately broken engines
+The verifier was mutation-tested against 26 deliberately broken engines: 12
+for the single-season core and 14 for rollover (database-only keeper lookup,
+inverted keeper allowance, absent minutes scored as bad form, intake after
+trimming, no release valve, immortal free agents, a retiree left in his squad,
+names ignoring club gender, names mixing language pools, no academy floor,
+unchecked season completion, uncapped history, a roster blind to generated
+players, and a codec dropping negative deltas).  All 26 were caught.  The
+rollover pass caught only 9 of 14 at first: five checks were too weak - two
+passed the gender explicitly instead of exercising the club-flag lookup, one
+could not reach a 20-season history cap in two rollovers, and two asserted an
+outcome the mutant did not actually change.  Those were fixed and re-run.
+
+The original 12 were
 (neutralised home edge, ignored injuries, ignored suspensions, stubbed-out
 form, career id leaking into the seed, int keys breaking reload, wrong win
 points, injuries never healing, duplicate squads, single round-robin, arcade

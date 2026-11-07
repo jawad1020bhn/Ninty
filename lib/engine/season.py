@@ -15,6 +15,7 @@ import formengine
 
 from . import store as S
 from . import lineup, match
+from . import roster as R
 from .positions import line_of
 
 POINTS_WIN, POINTS_DRAW = 3, 1
@@ -99,7 +100,7 @@ def _apply(st, fixture, res):
         S.bump(st, pid, S.S_RSUM, rating)
         S.bump(st, pid, S.S_MIN, res['minutes'].get(str(pid), 0))
         ga = res['sc'][1] if tid == home else res['sc'][0]
-        if ga == 0 and fc27.positions().get(str(pid), 5) <= 3:
+        if ga == 0 and R.pos(st, pid) <= 3:
             S.bump(st, pid, S.S_CS, 1)
         rec = st.setdefault('recent', {}).setdefault(str(pid), [])
         rec.append([res['date'], rating, tid])
@@ -142,9 +143,8 @@ def _update_form(st, tid):
     mine = [r for r in st['results'] if tid in (int(r['home']), int(r['away']))]
     if not mine:
         return
-    pos_db = fc27.positions()
     ms = [dict(home=int(r['home']), sc=r['sc'], rows=r['rows']) for r in mine]
-    out = formengine.compute(ms, int(tid), lambda p: int(pos_db.get(str(int(p)), 5)))
+    out = formengine.compute(ms, int(tid), lambda p: R.pos(st, p))
     for pid, info in out.items():
         r = S.pstate(st, pid)
         if r:
@@ -226,12 +226,40 @@ def top_scorers(st, lid=None, limit=20):
         r = S.pstate(st, pid_s)
         if not r or r[S.P_CLUB] not in teams or not s[S.S_APP]:
             continue
-        rows.append(dict(pid=int(pid_s), name=fc27.name(int(pid_s)),
+        rows.append(dict(pid=int(pid_s), name=R.name(st, int(pid_s)),
                          club=r[S.P_CLUB], clubName=fc27.team_name(r[S.P_CLUB]),
                          apps=s[S.S_APP], goals=s[S.S_GOAL], assists=s[S.S_AST],
                          rating=round(s[S.S_RSUM] / s[S.S_APP], 2)))
     rows.sort(key=lambda r: (-r['goals'], -r['assists'], -r['rating']))
     return rows[:limit]
+
+
+def finish_season(st):
+    """Simulate every remaining fixture, so the season can be closed.
+
+    play_next() only advances the MANAGED club's fixtures, so after its 38 games
+    the other 342 league matches are still unplayed and close_season() rightly
+    refuses. This walks the calendar day by day to the last fixture date, which
+    keeps recovery, injuries, bans and form ticking exactly as advance() does
+    rather than playing the tail in one undated batch.
+
+    -> dict(count, date, complete)
+    """
+    left = [f for f in st['fixtures'] if not f['played']]
+    if not left:
+        return dict(count=0, date=st['date'], complete=True)
+    last = max(f['date'] for f in left)
+    days = (_date(last) - _date(st['date'])).days
+    if days > 0:
+        r = advance(st, days=days)
+        n = r['count']
+    else:
+        n = 0
+    # Anything still due on the final date itself.
+    for f in [f for f in st['fixtures'] if not f['played'] and f['date'] <= st['date']]:
+        play_fixture(st, f)
+        n += 1
+    return dict(count=n, date=st['date'], complete=season_complete(st))
 
 
 def season_complete(st):

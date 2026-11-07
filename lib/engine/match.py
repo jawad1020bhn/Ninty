@@ -19,6 +19,7 @@ import random
 import fc27
 
 from . import store as S
+from . import roster as R
 from .lineup import units
 
 
@@ -56,41 +57,23 @@ INJURY_P = 0.018           # per player per match
 YELLOW_P = 0.11
 RED_P = 0.004
 
-_AB = None
-_IDX = None
-_TBL = None
-
-
-def _attrs():
-    """Load the raw attribute table once and index it by name."""
-    global _AB, _IDX, _TBL
-    if _TBL is None:
-        _AB = fc27.ea_ab()
-        _IDX = {n: i for i, n in enumerate(_AB)}
-        _TBL = fc27.ea_attrs()
-    return _IDX, _TBL
-
-
-def attr(pid, name, default=50):
-    idx, tbl = _attrs()
-    row = tbl.get(str(int(pid)))
-    if not row:
-        return default
-    return row[idx[name]]
+def attr(st, pid, name, default=50):
+    """One raw EA attribute, save-aware (generated players + career growth)."""
+    return R.ea_attrs(st, pid).get(name, default)
 
 
 def _mean(vals, default=50.0):
     return sum(vals) / float(len(vals)) if vals else default
 
 
-def _group(pids, names, weights=None):
+def _group(st, pids, names, weights=None):
     if not pids:
         return 50.0
     weights = weights or [1.0] * len(names)
     tot = sum(weights)
     per = []
     for pid in pids:
-        per.append(sum(attr(pid, n) * w for n, w in zip(names, weights)) / tot)
+        per.append(sum(attr(st, pid, n) * w for n, w in zip(names, weights)) / tot)
     return _mean(per)
 
 
@@ -107,14 +90,14 @@ GK_ATTRS = ['gkdiving', 'gkhandling', 'gkreflexes', 'gkpositioning', 'gkkicking'
 GK_W = [1.2, 1.2, 1.4, 1.4, 0.5]
 
 
-def unit_ratings(xi):
+def unit_ratings(st, xi):
     """-> dict(att, mid, def, gk) on roughly the same 0-99 scale as attributes."""
-    gk, df, mf, at = units(xi)
+    gk, df, mf, at = units(st, xi)
     # Lines help each other: midfield feeds attack, defence is shielded by it.
-    a = _group(at, ATT_ATTRS, ATT_W)
-    m = _group(mf, MID_ATTRS, MID_W)
-    d = _group(df, DEF_ATTRS, DEF_W)
-    g = _group(gk, GK_ATTRS, GK_W)
+    a = _group(st, at, ATT_ATTRS, ATT_W)
+    m = _group(st, mf, MID_ATTRS, MID_W)
+    d = _group(st, df, DEF_ATTRS, DEF_W)
+    g = _group(st, gk, GK_ATTRS, GK_W)
     if not at:
         a = m * 0.85
     if not mf:
@@ -139,13 +122,11 @@ def _ovr_scale(st, xi):
     """
     if not xi:
         return 1.0
-    rat = fc27.ratings()
     deltas = []
     for pid in xi:
         r = S.pstate(st, pid)
-        base = rat.get(str(int(pid)))
-        if r and base:
-            deltas.append(r[S.P_OVR] - base[0])
+        if r:
+            deltas.append(r[S.P_OVR] - R.base_ovr(st, pid))
     return 1.0 + (_mean(deltas, 0.0) / 100.0)
 
 
@@ -162,7 +143,7 @@ def simulate(st, fixture, home_xi, away_xi, home_bench=(), away_bench=(), seed=N
     seed = int(seed if seed is not None else (st.get('seed', 1) * 1000003 + int(fixture['id'])))
     rnd = random.Random(seed)
 
-    hu, au = unit_ratings(home_xi), unit_ratings(away_xi)
+    hu, au = unit_ratings(st, home_xi), unit_ratings(st, away_xi)
     for u, xi in ((hu, home_xi), (au, away_xi)):
         k = _ovr_scale(st, xi) * _fitness_factor(st, xi)
         for key in u:
@@ -187,8 +168,8 @@ def simulate(st, fixture, home_xi, away_xi, home_bench=(), away_bench=(), seed=N
     # Substitutions: three per side, from the bench, around the hour.
     subs = []
     for tid, xi, bench in ((home, home_xi, home_bench), (away, away_xi, away_bench)):
-        outfield = [p for p in xi if fc27.positions().get(str(p), 5) != 0]
-        pool = [p for p in bench if fc27.positions().get(str(p), 5) != 0]
+        outfield = [p for p in xi if R.pos(st, p) != 0]
+        pool = [p for p in bench if R.pos(st, p) != 0]
         for out_pid, in_pid in zip(outfield[-3:][::-1], pool[:3]):
             minute = rnd.randint(58, 78)
             subs.append((minute, tid, out_pid, in_pid))
@@ -225,16 +206,16 @@ def simulate(st, fixture, home_xi, away_xi, home_bench=(), away_bench=(), seed=N
             if rnd.random() >= p:
                 continue
             shots[tid] += 1
-            scorer = _pick_scorer(live[tid], rnd)
+            scorer = _pick_scorer(st, live[tid], rnd)
             if scorer is None:
                 continue
             conv = CONV_BASE * finish
-            conv *= 0.72 + 0.56 * (attr(scorer, 'finishing') / 100.0)
-            conv *= 0.80 + 0.40 * (attr(scorer, 'composure') / 100.0)
+            conv *= 0.72 + 0.56 * (attr(st, scorer, 'finishing') / 100.0)
+            conv *= 0.80 + 0.40 * (attr(st, scorer, 'composure') / 100.0)
             if rnd.random() < 0.68:
                 on_target[tid] += 1
             if rnd.random() < max(0.02, min(0.55, conv)):
-                assister = _pick_assister(live[tid], scorer, rnd)
+                assister = _pick_assister(st, live[tid], scorer, rnd)
                 goals[tid].append((minute, scorer, assister))
                 events.append(dict(min=minute, kind='goal', tid=tid, pid=scorer,
                                    assist=assister, score=[len(goals[home]), len(goals[away])]))
@@ -245,7 +226,7 @@ def simulate(st, fixture, home_xi, away_xi, home_bench=(), away_bench=(), seed=N
             mins = played.get(pid, 0) / 90.0
             if mins <= 0:
                 continue
-            agg = attr(pid, 'aggression') / 100.0
+            agg = attr(st, pid, 'aggression') / 100.0
             if rnd.random() < YELLOW_P * mins * (0.55 + agg) * (0.75 + 0.35 * strict):
                 cards[pid] = cards.get(pid, 0) + 1
                 events.append(dict(min=rnd.randint(1, 90), kind='yellow', tid=tid, pid=pid))
@@ -260,7 +241,7 @@ def simulate(st, fixture, home_xi, away_xi, home_bench=(), away_bench=(), seed=N
                                    pid=pid, days=injuries[pid]))
 
     hg, ag = len(goals[home]), len(goals[away])
-    rows = _ratings(home, away, team_players, goals, cards, played, hg, ag, rnd)
+    rows = _ratings(st, home, away, team_players, goals, cards, played, hg, ag, rnd)
     events.sort(key=lambda e: e['min'])
     poss = hu['mid'] / max(1.0, hu['mid'] + au['mid'])
     poss = int(round(100 * max(0.28, min(0.72, poss * 0.55 + 0.225))))
@@ -279,17 +260,16 @@ def simulate(st, fixture, home_xi, away_xi, home_bench=(), away_bench=(), seed=N
         attendance=_attendance(st, home, away, big))
 
 
-def _pick_scorer(xi, rnd):
+def _pick_scorer(st, xi, rnd):
     """Weight by line and by the attributes that actually put the ball away."""
-    pos = fc27.positions()
     weights, pids = [], []
     for pid in xi:
-        p = pos.get(str(pid), 5)
+        p = R.pos(st, pid)
         if p == 0:
             continue
         line = 3 if p >= 9 else 2 if p >= 4 else 1
         base = {3: 6.0, 2: 2.4, 1: 0.7}[line]
-        w = base * (0.45 + attr(pid, 'finishing') / 100.0) * (0.55 + attr(pid, 'positioning') / 100.0)
+        w = base * (0.45 + attr(st, pid, 'finishing') / 100.0) * (0.55 + attr(st, pid, 'positioning') / 100.0)
         weights.append(w)
         pids.append(pid)
     if not pids:
@@ -297,15 +277,14 @@ def _pick_scorer(xi, rnd):
     return rnd.choices(pids, weights=weights, k=1)[0]
 
 
-def _pick_assister(xi, scorer, rnd):
-    pos = fc27.positions()
+def _pick_assister(st, xi, scorer, rnd):
     weights, pids = [], []
     for pid in xi:
-        if pid == scorer or pos.get(str(pid), 5) == 0:
+        if pid == scorer or R.pos(st, pid) == 0:
             continue
-        p = pos.get(str(pid), 5)
+        p = R.pos(st, pid)
         base = 2.6 if p >= 9 else 3.2 if p >= 4 else 1.0
-        w = base * (0.4 + attr(pid, 'vision') / 100.0) * (0.5 + attr(pid, 'shortpassing') / 100.0)
+        w = base * (0.4 + attr(st, pid, 'vision') / 100.0) * (0.5 + attr(st, pid, 'shortpassing') / 100.0)
         weights.append(w)
         pids.append(pid)
     if not pids or rnd.random() > 0.72:
@@ -313,7 +292,7 @@ def _pick_assister(xi, scorer, rnd):
     return rnd.choices(pids, weights=weights, k=1)[0]
 
 
-def _ratings(home, away, team_players, goals, cards, played, hg, ag, rnd):
+def _ratings(st, home, away, team_players, goals, cards, played, hg, ag, rnd):
     """Per-player ratings, in the (pid, club, goals, assists, rating) shape that
     lib/formengine.compute and lib/seasonstats already consume."""
     scored = {}
@@ -331,13 +310,13 @@ def _ratings(home, away, team_players, goals, cards, played, hg, ag, rnd):
             mins = played.get(pid, 0)
             if mins <= 0:
                 continue
-            pos = fc27.positions().get(str(pid), 5)
+            pos = R.pos(st, pid)
             r = RATING_BASE + rnd.uniform(-0.45, 0.45)
             r += 0.85 * scored.get(pid, 0) + 0.55 * assisted.get(pid, 0)
             r += 0.22 if gf > ga else -0.22 if gf < ga else 0.0
             if pos == 0:
                 r += 0.45 if ga == 0 else 0.12 if ga == 1 else -0.18 * (ga - 1)
-                r += 0.03 * max(0, attr(pid, 'gkreflexes') - 70)
+                r += 0.03 * max(0, attr(st, pid, 'gkreflexes') - 70)
             elif pos <= 3:
                 r += 0.35 if ga == 0 else -0.16 * max(0, ga - 1)
             elif pos >= 9 and not scored.get(pid) and not assisted.get(pid):

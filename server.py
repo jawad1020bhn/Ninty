@@ -20211,10 +20211,25 @@ class H(BaseHTTPRequestHandler):
                 except fcengine.SaveError as _ex:
                     return self.send(400, dict(ok=False, error=str(_ex)))
                 _sel = dict(_sel)
-                _sel['xi'] = [dict(pid=_p, name=fc27db.name(_p),
-                                   pos=fc27db.positions().get(str(_p), 5)) for _p in _sel['xi']]
-                _sel['bench'] = [dict(pid=_p, name=fc27db.name(_p)) for _p in _sel['bench']]
+                # Resolve through the engine's save-aware roster, NOT fc27db:
+                # a youth-intake player has no database row, so fc27db.name()
+                # returned '' and positions() defaulted him to CMF.
+                from engine import roster as _eng_roster
+                _sel['xi'] = [dict(pid=_p, name=_eng_roster.name(_st, _p),
+                                   pos=_eng_roster.pos(_st, _p),
+                                   ovr=_eng_roster.ovr(_st, _p)) for _p in _sel['xi']]
+                _sel['bench'] = [dict(pid=_p, name=_eng_roster.name(_st, _p),
+                                      pos=_eng_roster.pos(_st, _p),
+                                      ovr=_eng_roster.ovr(_st, _p)) for _p in _sel['bench']]
                 return self.send(200, dict(ok=True, selection=_sel))
+            if u.path == '/api/engine/history':
+                _q = parse_qs(u.query)
+                try:
+                    _st = _eng_get(_q.get('id', [''])[0])
+                except fcengine.SaveError as _ex:
+                    return self.send(404, dict(ok=False, error=str(_ex)))
+                _lim = min(50, max(1, _qint(_q, 'limit', 10)))
+                return self.send(200, dict(ok=True, seasons=fcengine.history(_st, _lim)))
             if u.path == '/api/pes17/setup':
                 import pes17_setup
                 return self.send(200, pes17_setup.status(CFG, HERE))
@@ -20724,7 +20739,8 @@ class H(BaseHTTPRequestHandler):
                 return self.send(200, dict(ok=True, career=fcengine.summary(_st)))
             if self.path in ('/api/engine/play', '/api/engine/advance',
                              '/api/engine/save', '/api/engine/delete',
-                             '/api/engine/transfer'):
+                             '/api/engine/transfer', '/api/engine/close_season',
+                             '/api/engine/finish'):
                 _sid = str(body.get('id') or '').strip()
                 if self.path == '/api/engine/delete':
                     try:
@@ -20766,6 +20782,35 @@ class H(BaseHTTPRequestHandler):
                             _eng_put(_st)
                         return self.send(200, dict(ok=True, advanced=_r['count'],
                                                    date=_r['date'],
+                                                   career=fcengine.summary(_st),
+                                                   table=fcengine.table(_st)))
+                    if self.path == '/api/engine/finish':
+                        with _ENG_LOCK:
+                            _r = fcengine.finish_season(_st)
+                            _eng_put(_st)
+                        return self.send(200, dict(ok=True, played=_r['count'],
+                                                   date=_r['date'],
+                                                   complete=_r['complete'],
+                                                   career=fcengine.summary(_st),
+                                                   table=fcengine.table(_st)))
+                    if self.path == '/api/engine/close_season':
+                        # Refuse before mutating: close_season raises on an
+                        # unfinished season, and a half-applied rollover would
+                        # corrupt the career.
+                        if not fcengine.season_finished(_st):
+                            return self.send(400, dict(
+                                ok=False, error='season is not finished',
+                                career=fcengine.summary(_st)))
+                        with _ENG_LOCK:
+                            _rep = fcengine.close_season(_st)
+                            _eng_put(_st)
+                        # The full report can hold thousands of rows; ship the
+                        # headline counts plus the leading movers.
+                        _out = dict(_rep)
+                        for _k in ('risers', 'fallers', 'retired', 'youth',
+                                   'released', 'walked'):
+                            _out[_k] = _rep[_k][:25]
+                        return self.send(200, dict(ok=True, report=_out,
                                                    career=fcengine.summary(_st),
                                                    table=fcengine.table(_st)))
                     if self.path == '/api/engine/transfer':

@@ -13,33 +13,21 @@ Two stages:
               that XI.  Injured and suspended players are removed first, so the
               algorithm never picks someone who cannot play.
 """
-import datetime
 
 import ailineup
 import fc27
 import mlwrite
 
 from . import store as S
+from . import roster as R
 from .positions import formation_roles, line_of
 
 RECENT_LOOK = 6
 
 
-def age_on(pid, date):
-    """Age at an in-game date, from the database birthday (not the static age)."""
-    bd = fc27.birthdays().get(str(int(pid)))
-    if not bd:
-        r = fc27.ratings().get(str(int(pid)))
-        return r[1] if r else 25
-    try:
-        y, m, d = (int(x) for x in bd.split('-'))
-        ry, rm, rd = (int(x) for x in str(date)[:10].split('-'))
-    except (ValueError, AttributeError):
-        return 25
-    n = ry - y
-    if (rm, rd) < (m, d):
-        n -= 1
-    return max(15, n)
+def age_on(st, pid, date=None):
+    """Age at an in-game date. Save-aware: generated players have no db row."""
+    return R.age(st, pid, date)
 
 
 def available(st, tid):
@@ -59,15 +47,14 @@ def available(st, tid):
 
 def _squad_rows(st, tid, pids, date):
     """Shape ailineup.pick_xi expects: i, pid, pos, ovr, age, form, tired."""
-    pos_db = fc27.positions()
     recent = st.get('recent', {})
     rows = []
     for i, pid in enumerate(pids):
         r = S.pstate(st, pid)
         rr = recent.get(str(pid)) or []
         form = (sum(x[1] for x in rr[-RECENT_LOOK:]) / len(rr[-RECENT_LOOK:]) - 6.3) if rr else 0.0
-        rows.append(dict(i=i, pid=int(pid), pos=int(pos_db.get(str(pid), 5)),
-                         ovr=r[S.P_OVR], age=age_on(pid, date),
+        rows.append(dict(i=i, pid=int(pid), pos=R.pos(st, pid),
+                         ovr=r[S.P_OVR], age=age_on(st, pid, date),
                          form=round(form, 2), tired=r[S.P_FIT] < 70))
     return rows
 
@@ -181,10 +168,9 @@ def _progress(st):
     return round(done / float(len(fs)), 3)
 
 
-def units(xi):
+def units(st, xi):
     """Split an XI into goalkeeper / defence / midfield / attack pid lists."""
-    pos_db = fc27.positions()
     out = [[], [], [], []]
     for pid in xi:
-        out[line_of(pos_db.get(str(int(pid)), 5))].append(int(pid))
+        out[line_of(R.pos(st, pid))].append(int(pid))
     return out

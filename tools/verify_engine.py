@@ -275,6 +275,178 @@ def run(verbose=False, quick=False):
         check('match simulation reads EA\'s 34 raw attributes',
               'ea_attrs' in _source(os.path.join(HERE, 'lib', 'engine', 'match.py')))
 
+        # ---------------------------------------------------------- rollover
+        # Every check here corresponds to a defect that was actually observed,
+        # not a hypothetical one. See the notes on each.
+        from engine import rollover as RO, roster as RS, names as NM
+        r = engine.new(club=9, seed=7, sid='verify-roll')
+        check('a fresh season is not finished', not engine.season_finished(r))
+        check('close_season refuses an unfinished season',
+              _raises(RO.close_season, r))
+        check('refusing leaves the season unchanged',
+              r['season'] == 2026 and not r['results'])
+        SE.finish_season(r)
+        check('finish_season plays every remaining fixture',
+              engine.season_finished(r) and len(r['results']) == len(r['fixtures']))
+        check('finish_season is idempotent',
+              SE.finish_season(r)['count'] == 0)
+        # Probe the development inputs BEFORE the rollover consumes the stats.
+        # Only 20 of 717 clubs are simulated; the other 19,081 players have no
+        # minutes. Absent evidence must yield a neutral regular, not a zero.
+        _sim = {int(x['home']) for x in r['results']} | {int(x['away']) for x in r['results']}
+        _uns = next(((int(t), p) for t, c in r['clubs'].items()
+                     if int(t) not in _sim for p in c['squad']), None)
+        if check('an unsimulated club exists to probe', _uns is not None):
+            _pl = RO.develop(r, _uns[0], _uns[1])
+            check('unsimulated players get a neutral share, not zero',
+                  _pl['share'] >= RO.NEUTRAL_SHARE,
+                  'share=%.2f' % _pl['share'])
+            check('unsimulated players still earn development points',
+                  _pl['points'] > 0, 'points=%.2f' % _pl['points'])
+        # A young player who is not selected still trains. Without the academy
+        # floor his share was 0.0 and he could never close the gap.
+        _yb = next((p for t in _sim for p in store.squad_of(r, t)
+                    if RS.age(r, p) <= RO.YOUTH_TRAIN_AGE
+                    and store.stats_of(r, p)[store.S_APP] == 0), None)
+        if check('a benched youngster exists to probe', _yb is not None):
+            _pl = RO.develop(r, store.club_of(r, _yb), _yb)
+            check('a benched youngster gets the academy training floor',
+                  _pl['share'] >= RO.YOUTH_TRAIN_SHARE,
+                  'share=%.2f' % _pl['share'])
+        pop0 = len(r['players'])
+        rep = RO.close_season(r)
+        check('rollover advances the season', r['season'] == 2027)
+        check('rollover clears per-season counters',
+              not r['stats'] and not r['results'] and not r['suspended'])
+        check('rollover builds a fresh fixture list',
+              len(r['fixtures']) == 380 and not any(f['played'] for f in r['fixtures']))
+        check('rollover archives the champion',
+              bool(rep['champions']) and all('name' in c for c in rep['champions'].values()))
+        check('rollover keeps the previous season stats',
+              bool(r.get('previousStats')))
+        # The GK restock loop used fc27.positions(), which cannot see a
+        # generated pid, so it span forever. Bounded + save-aware now.
+        check('every club still has two keepers after rollover',
+              all(sum(1 for p in c['squad'] if RS.pos(r, p) == 0) >= 2
+                  for c in r['clubs'].values()))
+        check('no squad slot references a missing player',
+              all(str(p) in r['players'] for c in r['clubs'].values() for p in c['squad']))
+        check('squad membership and the club field agree',
+              all(store.pstate(r, p)[store.P_CLUB] == int(t)
+                  for t, c in r['clubs'].items() for p in c['squad']))
+        check('no player is in two squads', _no_duplicates(r))
+        check('free agents all carry club 0',
+              all(store.pstate(r, p)[store.P_CLUB] == 0
+                  for p in r['freeAgents'] if store.pstate(r, p)))
+        check('retired players leave no dangling generated row',
+              not (set(r.get('generated') or {}) - set(r['players'])))
+        # The GK age allowance was ADDED, which retired 30-year-old keepers.
+        ages = [x['age'] for x in rep['retired']]
+        check('nobody retires below the minimum age',
+              not ages or min(ages) >= RO.RETIRE_MIN_AGE, str(min(ages) if ages else '-'))
+        gk = [x for x in rep['retired'] if RS.pos(r, x['pid']) == 0]
+        check('retired report is populated', len(rep['retired']) > 0)
+        # Intake used to run BEFORE trimming, so a club already at the target
+        # got no academy at all - including the managed club.
+        clubs_with_youth = {x['club'] for x in rep['youth']}
+        check('every club receives a youth intake',
+              len(clubs_with_youth) == len(r['clubs']),
+              '%d/%d' % (len(clubs_with_youth), len(r['clubs'])))
+        check('the managed club gets an academy',
+              any(store.club_of(r, p) == r['club'] and RS.is_generated(r, p)
+                  for p in r['players']))
+        check('squads stay within the registration limit',
+              all(len(c['squad']) <= RO.TARGET_SQUAD + RO.YOUTH_PER_CLUB + 4
+                  for c in r['clubs'].values()))
+        # Only 20 of 717 clubs are simulated. Scoring the other 19,081 players
+        # as benchwarmers retired 1,224 of them in one close.
+        check('absent minutes are not treated as bad form',
+              len(rep['retired']) < pop0 * 0.05,
+              '%d retired of %d' % (len(rep['retired']), pop0))
+        check('unsimulated players still develop',
+              any(x['club'] not in {int(t) for t in r['clubs']
+                                    if r['clubs'][t]['league'] in r['leagues']}
+                  for x in rep['risers']))
+        # A generated player must be a first-class citizen everywhere.
+        gen = [p for p in r['players'] if RS.is_generated(r, p)]
+        check('generated players exist', len(gen) > 0)
+        check('generated players have names', all(RS.name(r, p) for p in gen))
+        check('generated players have a position',
+              all(0 <= RS.pos(r, p) <= 12 for p in gen))
+        check('generated players have a plausible age',
+              all(15 <= RS.age(r, p) <= 22 for p in gen))
+        check('generated players have 34 EA attributes',
+              all(len(RS.ea_of(r, p)) == 34 for p in gen))
+        check('generated players project to 25 PES attributes',
+              all(len(RS.pes_attrs(r, p)) == 25 for p in gen))
+        check('generated ids stay above the real id space',
+              all(int(p) >= RO.NEW_PID_BASE for p in gen))
+        check('generated youth can be selected and simulated',
+              _youth_playable(engine, r, store, RS))
+        # Name pools: unfiltered picking gave men's clubs feminine forenames and
+        # mixed language pools ("Maimouna Kubanychbekova").
+        import random as _rnd
+        nr = _rnd.Random(3)
+        pools = NM._pools()
+        masc = {n for p in pools.values() for n in p['first'].get(0, [])}
+        fem = {n for p in pools.values() for n in p['first'].get(1, [])}
+        # Call WITHOUT women= so the club-flag lookup is actually exercised;
+        # passing it explicitly hid a mutant that ignored the database flag.
+        mn = [NM.make_name(nr, 9) for _ in range(300)]
+        wn = [NM.make_name(nr, 116009) for _ in range(300)]
+        check("men's clubs get masculine forenames",
+              all(any(n.startswith(f + ' ') for f in masc) for n in mn))
+        check("women's clubs get feminine forenames",
+              all(any(n.startswith(f + ' ') for f in fem) for n in wn))
+        check('club gender comes from the database flag',
+              NM.is_women_club(116009) and not NM.is_women_club(9))
+        check('a name comes from a single language pool',
+              _single_pool(mn[:120], pools, 0))
+        # Compact codecs must round-trip, and still read the legacy shape.
+        od = {'Speed': 3, 'Finishing': -2}
+        enc = RS.encode_named(od, RS.PES_AB)
+        check('attribute codec round-trips', RS.decode_named(enc, RS.PES_AB) == od)
+        check('attribute codec reads a legacy dict', RS.decode_named(od, RS.PES_AB) == od)
+        check('empty progress is not stored',
+              RS.encode_named({}, RS.PES_AB) is None)
+        check('rollover survives a save/reload round trip',
+              _roundtrip(engine, store, r, 'verify-roll'))
+        # A second season must actually be playable, and the world must not
+        # inflate: intake once added ~1,000 players a season with no release.
+        SE.finish_season(r)
+        rep2 = RO.close_season(r)
+        check('a second rollover works', r['season'] == 2028)
+        # A keeper lookup that cannot see generated pids never satisfies the
+        # "has two keepers" test, so every close adds more: max went 5 -> 10 -> 14
+        # while the correct engine holds at 5. Bound it after two closes.
+        _gk = [sum(1 for p in c['squad'] if RS.pos(r, p) == 0)
+               for c in r['clubs'].values()]
+        check('keepers do not accumulate across rollovers',
+              max(_gk) <= 6, 'max %d keepers in a squad' % max(_gk))
+        check('population does not inflate across seasons',
+              len(r['players']) < pop0 * 1.15,
+              '%d -> %d' % (pop0, len(r['players'])))
+        check('the release valve is exercised', len(rep['released']) > 0)
+        check('free agents are aged out, not immortal', len(rep2['walked']) > 0)
+        check('history is capped', len(r['history']) <= RO.HISTORY_KEEP)
+        # Two rollovers cannot reach a 20-season cap, so fill the archive past
+        # the limit and prove the trim actually drops the oldest entries.
+        r['history'] = [dict(season=1900 + i, risers=[], fallers=[],
+                             retired=[], youth=[], released=[], walked=[],
+                             counts={}, champions={})
+                        for i in range(RO.HISTORY_KEEP + 5)]
+        SE.finish_season(r)
+        RO.close_season(r)
+        check('history drops the oldest seasons past the cap',
+              len(r['history']) == RO.HISTORY_KEEP,
+              '%d entries' % len(r['history']))
+        check('history keeps the newest season',
+              r['history'][-1]['season'] == r['season'] - 1)
+        check('archived movers are abbreviated',
+              all(len(h['risers']) <= RO.HISTORY_MOVERS for h in r['history']))
+        check('a rolled season still plays football',
+              _season_shaped(engine, r))
+
         # ------------------------------------------------------- calibration
         if not quick:
             g = h = d_ = a_ = sh = tot = 0
@@ -320,6 +492,77 @@ def run(verbose=False, quick=False):
     print('ALL PASS - %d checks' % COUNT)
     print('Engine is reproducible, saves reload exactly, and seasons stay football-shaped.')
     return 0
+
+
+def _youth_playable(engine, st, store, RS):
+    """A generated player must survive selection AND match simulation.
+
+    Threading the save through lineup/match was the fix for five modules that
+    looked generated pids up in the database and silently got a default.
+    """
+    tid = st['club']
+    sq = store.squad_of(st, tid)
+    gen = [p for p in sq if RS.is_generated(st, p)]
+    if not gen:
+        return False
+    # Force the youth into the side and simulate; a DB-only lookup would raise
+    # or quietly rate him 50 with no name.
+    xi = list(gen)
+    need = [p for p in sq if p not in xi]
+    xi += need[:max(0, 11 - len(xi))]
+    if len(xi) < 11:
+        return False
+    try:
+        from engine import match as M
+        # The two XIs must be DISJOINT: a player listed for both sides appears
+        # twice in the rating rows, so the goals would not sum to the scoreline.
+        f = next(f for f in st['fixtures']
+                 if tid in (int(f['home']), int(f['away'])))
+        opp = int(f['away']) if int(f['home']) == tid else int(f['home'])
+        osq = [p for p in store.squad_of(st, opp) if p not in xi]
+        if len(osq) < 11:
+            return False
+        oxi = osq[:11]
+        home_xi, away_xi = (xi, oxi) if int(f['home']) == tid else (oxi, xi)
+        res = M.simulate(st, f, home_xi, away_xi, [], [], seed=4242)
+        return (bool(res) and sum(res['sc']) == sum(r[2] for r in res['rows'])
+                and all(RS.name(st, r[0]) for r in res['rows']))
+    except Exception:
+        return False
+
+
+def _single_pool(names, pools, first_flag):
+    """Every name must decompose into forename+surname from ONE pool."""
+    for nm in names:
+        for p in pools.values():
+            lasts = set(p['last'].get(2, [])) | set(p['last'].get(first_flag, []))
+            for f in p['first'].get(first_flag, []):
+                if nm.startswith(f + ' ') and nm[len(f) + 1:] in lasts:
+                    break
+            else:
+                continue
+            break
+        else:
+            return False
+    return True
+
+
+def _roundtrip(engine, store, st, sid):
+    engine.save(st, sid)
+    back = engine.load(sid)
+    return json.dumps(back, sort_keys=True) == json.dumps(st, sort_keys=True)
+
+
+def _season_shaped(engine, st):
+    """After a rollover the new season must still produce sane football."""
+    from engine import season as SE
+    SE.finish_season(st)
+    R = st['results']
+    if not R:
+        return False
+    gg = sum(sum(x['sc']) for x in R) / float(len(R))
+    return (1.8 <= gg <= 4.0
+            and all(sum(r[2] for r in x['rows']) == sum(x['sc']) for x in R))
 
 
 def _raises(fn, *a):
